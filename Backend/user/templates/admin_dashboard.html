@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    {% comment %} <link rel="stylesheet" href="{% static 'css/styles.css' %}"> {% endcomment %}
+</head>
+<body>
+    <div class="container">
+        <h2>Welcome to the Admin Dashboard</h2>
+        <p>Here you can manage users, view system reports, and more.</p>
+        <a href="{% url 'user_logout' %}">Logout</a>
+    </div>
+</body>
+</html>
