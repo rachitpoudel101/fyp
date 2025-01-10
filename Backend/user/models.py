@@ -1,4 +1,3 @@
-# users/models.py
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -8,3 +7,4 @@ class CustomUser(AbstractUser):
         ('warehouse_manager', 'Warehouse Manager'),
     ]
     role = models.CharField(max_length=50, choices=ROLE_CHOICES)
+    email = models.EmailField(unique=True, blank=False, null=False)

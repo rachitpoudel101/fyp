@@ -5,15 +5,18 @@ from django.contrib.auth import login, logout, authenticate
 from django.http import HttpResponseForbidden
 from django.contrib.auth.decorators import login_required
 from .forms import CustomUserCreationForm
+from .models import CustomUser
 
 # Sign up view - Allows users to register with a role
 def signup(request):
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()
+            user = form.save(commit=False)
+            user.set_password(form.cleaned_data['password1'])  # Hash the password
+            user.save()
             login(request, user)
-            return redirect('dashboard')  # Redirect to dashboard after registration
+            return redirect('login')  # Redirect to login after registration
     else:
         form = CustomUserCreationForm()
     return render(request, 'signup.html', {'form': form})
@@ -55,8 +58,9 @@ def dashboard(request):
 @login_required
 def admin_dashboard(request):
     if request.user.role != 'admin':
-        return HttpResponseForbidden("You do not have permission to view this page.")
-    return render(request, 'admin_dashboard.html')
+        return HttpResponseForbidden("You are not authorized to view this page")
+    warehouse_managers = CustomUser.objects.filter(role='warehouse_manager')
+    return render(request, 'admin_dashboard.html', {'users': warehouse_managers})
 
 # Warehouse Manager Dashboard - Only accessible by warehouse manager users
 @login_required
