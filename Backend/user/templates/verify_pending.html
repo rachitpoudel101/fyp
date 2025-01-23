@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification Pending</title>
+    {% comment %} <link rel="stylesheet" href="{% static 'css/styles.css' %}"> {% endcomment %}
+</head>
+<body>
+    <div class="container">
+        <h1>Email Verification Pending</h1>
+        <p>Your email address has not been verified yet. Please check your inbox for the verification email.</p>
+        {% comment %} <p>If you did not receive an email, <a href="{% url 'resend_verification_email' %}">click here</a> to resend the verification email.</p> {% endcomment %}
+    </div>
+</body>
+</html>

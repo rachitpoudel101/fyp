@@ -1,4 +1,5 @@
 # users/views.py
+from profile import Profile
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
@@ -6,17 +7,51 @@ from django.http import HttpResponseForbidden
 from django.contrib.auth.decorators import login_required
 from .forms import CustomUserCreationForm
 from .models import CustomUser
+from django.core.mail import send_mail
+from django.utils.crypto import get_random_string
+from django.urls import reverse
+from django.shortcuts import get_object_or_404
 
+def verify_email(request, token):
+    profile = get_object_or_404(Profile, verification_token=token)
+    profile.user.is_email_verified = True
+    profile.user.save()
+    profile.verification_token = None  # Invalidate the token
+    profile.save()
+    return render(request, 'email_verified.html')
+
+def verify_pending(request):
+    return render(request, 'verify_pending.html')
+
+def generate_verification_token():
+    return get_random_string(length=32)
 # Sign up view - Allows users to register with a role
 def signup(request):
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.set_password(form.cleaned_data['password1'])  # Hash the password
+            user.set_password(form.cleaned_data['password1'])
+            user.is_email_verified = False  # Set to False until verified
             user.save()
-            login(request, user)
-            return redirect('login')  # Redirect to login after registration
+
+            # Generate email verification token
+            token = generate_verification_token()
+            user.profile.verification_token = token
+            user.profile.save()
+
+            # Send verification email
+            verification_link = request.build_absolute_uri(
+                reverse('verify_email', args=[token])
+            )
+            send_mail(
+                'Verify your email',
+                f'Click the link to verify your email: {verification_link}',
+                'noreply@yourdomain.com',
+                [user.email],
+            )
+
+            return redirect('login')  # Redirect after signup
     else:
         form = CustomUserCreationForm()
     return render(request, 'signup.html', {'form': form})
