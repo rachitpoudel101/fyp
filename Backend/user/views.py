@@ -13,11 +13,10 @@ from django.urls import reverse
 from django.shortcuts import get_object_or_404
 
 def verify_email(request, token):
-    profile = get_object_or_404(Profile, verification_token=token)
-    profile.user.is_email_verified = True
-    profile.user.save()
-    profile.verification_token = None  # Invalidate the token
-    profile.save()
+    user = get_object_or_404(CustomUser, verification_token=token)
+    user.is_email_verified = True
+    user.verification_token = None  # Invalidate the token
+    user.save()
     return render(request, 'email_verified.html')
 
 def verify_pending(request):
@@ -32,17 +31,13 @@ def signup(request):
         if form.is_valid():
             user = form.save(commit=False)
             user.set_password(form.cleaned_data['password1'])
-            user.is_email_verified = False  # Set to False until verified
+            user.is_email_verified = False  # Mark email as not verified
+            user.verification_token = get_random_string(length=32)  # Generate token
             user.save()
-
-            # Generate email verification token
-            token = generate_verification_token()
-            user.profile.verification_token = token
-            user.profile.save()
 
             # Send verification email
             verification_link = request.build_absolute_uri(
-                reverse('verify_email', args=[token])
+                reverse('verify_email', args=[user.verification_token])
             )
             send_mail(
                 'Verify your email',
@@ -50,8 +45,7 @@ def signup(request):
                 'noreply@yourdomain.com',
                 [user.email],
             )
-
-            return redirect('login')  # Redirect after signup
+            return redirect('verify_pending')  # Redirect to the pending page
     else:
         form = CustomUserCreationForm()
     return render(request, 'signup.html', {'form': form})

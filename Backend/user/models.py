@@ -9,3 +9,4 @@ class CustomUser(AbstractUser):
     role = models.CharField(max_length=50, choices=ROLE_CHOICES)
     email = models.EmailField(unique=True, blank=False, null=False)
     is_email_verified = models.BooleanField(default=False)
+    verification_token = models.CharField(max_length=64, blank=True, null=True)
