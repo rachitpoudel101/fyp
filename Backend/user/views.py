@@ -32,7 +32,7 @@ def signup(request):
             user = form.save(commit=False)
             user.set_password(form.cleaned_data['password1'])
             user.is_email_verified = False  # Mark email as not verified
-            user.verification_token = get_random_string(length=32)  # Generate token
+            user.generate_verification_token()  # Generate token
             user.save()
 
             # Send verification email
@@ -44,8 +44,9 @@ def signup(request):
                 f'Click the link to verify your email: {verification_link}',
                 'noreply@yourdomain.com',
                 [user.email],
-            )
-            return redirect('verify_pending')  # Redirect to the pending page
+    )
+    
+            return redirect('verify_pending')  # Redirect to a pending page
     else:
         form = CustomUserCreationForm()
     return render(request, 'signup.html', {'form': form})

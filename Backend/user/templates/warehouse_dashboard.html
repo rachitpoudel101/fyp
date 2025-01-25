@@ -1,18 +1,101 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warehouse Manager Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    <div class="container mt-5">
-        <h2>Welcome to the Warehouse Manager Dashboard</h2>
-        <p>Here you can view inventory, manage stock, and more.</p>
-        <a href="{% url 'warehouse_manager_panel' %}" class="btn btn-primary">Product</a>
-        <a href="{% url 'user_logout' %}" class="btn btn-danger">Logout</a>
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Warehouse Dashboard - Marline{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link active" href="#">
+            <i class="fas fa-home me-2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#">
+            <i class="fas fa-box me-2"></i> Inventory
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#">
+            <i class="fas fa-truck me-2"></i> Shipments
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#">
+            <i class="fas fa-clipboard-list me-2"></i> Orders
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Warehouse Dashboard</h1>
+    <p class="text-muted">Manage inventory and shipments</p>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="metric-card">
+            <h6 class="text-muted mb-3">Pending Orders</h6>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Products</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders %}
+                        {% if order.status == 'pending' %}
+                        <tr>
+                            <td>{{ order.order_number }}</td>
+                            <td>{{ order.products.count }}</td>
+                            <td>
+                                <span class="badge bg-warning">Pending</span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-primary">Process</button>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    
+    <div class="col-md-6">
+        <div class="metric-card">
+            <h6 class="text-muted mb-3">Low Stock Products</h6>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Current Stock</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in top_products %}
+                        {% if product.stock < 10 %}
+                        <tr>
+                            <td>{{ product.name }}</td>
+                            <td>{{ product.stock }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning">Restock</button>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,30 +1,66 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect, render
+
+# Create your views here.
+from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
-from .models import Product, Batch
-from django.contrib.auth import login, logout
-from .forms import ProductForm
+from django.db.models import Sum, Count
+from django.utils import timezone
+from datetime import timedelta
+from .models import Order, Product, Category
+from user.models import CustomUser
 
-# @login_required
-def admin_add_product(request):
-    if request.user.role != 'admin':
-        return HttpResponseForbidden("You are not authorized to view this page")
-    if request.method == "POST":
-        form = ProductForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            return redirect('admin_add_product')
+@login_required
+def dashboard(request):
+    if not request.user.is_email_verified:
+        return redirect('verify_pending')
+        
+    # Get date ranges
+    today = timezone.now()
+    thirty_days_ago = today - timedelta(days=30)
+    
+    # Calculate metrics
+    total_sales = Order.objects.filter(
+        created_at__gte=thirty_days_ago
+    ).aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
+    total_orders = Order.objects.filter(
+        created_at__gte=thirty_days_ago
+    ).count()
+    
+    total_customers = CustomUser.objects.filter(
+        order__created_at__gte=thirty_days_ago
+    ).distinct().count()
+    
+    # Calculate changes from previous period
+    previous_period = Order.objects.filter(
+        created_at__gte=thirty_days_ago - timedelta(days=30),
+        created_at__lt=thirty_days_ago
+    )
+    
+    previous_sales = previous_period.aggregate(
+        Sum('total_amount')
+    )['total_amount__sum'] or 0
+    
+    sales_change = ((total_sales - previous_sales) / previous_sales * 100) if previous_sales else 0
+    
+    # Get recent orders
+    recent_orders = Order.objects.select_related('customer').order_by('-created_at')[:5]
+    
+    # Get top selling products
+    top_products = Product.objects.annotate(
+        total_sales=Count('orderitem')
+    ).order_by('-total_sales')[:5]
+    
+    context = {
+        'total_sales': total_sales,
+        'total_orders': total_orders,
+        'total_customers': total_customers,
+        'sales_change': sales_change,
+        'recent_orders': recent_orders,
+        'top_products': top_products,
+    }
+    
+    if request.user.role == 'admin':
+        return render(request, 'admin_dashboard.html', context)
     else:
-        form = ProductForm()
-    return render(request, 'admin_add_product.html', {'form': form})
-
-# @login_required
-def warehouse_manager_panel(request):
-    if request.user.role != 'warehouse_manager':
-        return HttpResponseForbidden("You are not authorized to view this page")
-    products = Product.objects.all()
-    return render(request, 'warehouse_product.html', {'products': products})
-
-def user_logout(request):
-    logout(request)
-    return redirect('login')  # Redirect to login after logout
+        return render(request, 'warehouse_dashboard.html', context)

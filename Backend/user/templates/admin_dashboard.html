@@ -1,38 +1,107 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard</title>
-    {% comment %} <link rel="stylesheet" href="{% static 'css/styles.css' %}"> {% endcomment %}
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-    <div class="container mt-5">
-        <h2>Welcome to the Admin Dashboard</h2>
-        <p>Here you can manage users, view system reports, and more.</p>
-        <h3>Users List</h3>
-        <a href="{% url 'admin_add_product' %}" class="btn btn-primary">add product</a>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for user in users %}
-                <tr>
-                    <td>{{ user.username }}</td>
-                    <td>{{ user.email }}</td>
-                    <td>{{ user.get_role_display }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <a href="{% url 'user_logout' %}" class="btn btn-danger">Logout</a>
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Admin Dashboard - Marline{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link active" href="#">
+            <i class="fas fa-home me-2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="">
+            <i class="fas fa-users me-2"></i> Users
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#">
+            <i class="fas fa-box me-2"></i> Products
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#">
+            <i class="fas fa-chart-bar me-2"></i> Reports
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#">
+            <i class="fas fa-cog me-2"></i> Settings
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Welcome, {{ request.user.get_full_name }}</h1>
+    <p class="text-muted">{{ request.user.email }}</p>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="metric-card">
+            <h6 class="text-muted mb-2">Total Sales</h6>
+            <h3 class="text-success mb-1">${{ total_sales|floatformat:2 }}</h3>
+            <small class="{% if sales_change > 0 %}text-success{% else %}text-danger{% endif %}">
+                {% if sales_change > 0 %}↑{% else %}↓{% endif %}
+                {{ sales_change|floatformat:1 }}% vs last month
+            </small>
+        </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+    <div class="col-md-4">
+        <div class="metric-card">
+            <h6 class="text-muted mb-2">Total Orders</h6>
+            <h3 class="mb-1">{{ total_orders }}</h3>
+            <small class="text-muted">Last 30 days</small>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card">
+            <h6 class="text-muted mb-2">Total Customers</h6>
+            <h3 class="mb-1">{{ total_customers }}</h3>
+            <small class="text-muted">Active customers</small>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="metric-card">
+            <h6 class="text-muted mb-3">Recent Orders</h6>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders %}
+                        <tr>
+                            <td>{{ order.order_number }}</td>
+                            <td>{{ order.customer.get_full_name }}</td>
+                            <td>${{ order.total_amount }}</td>
+                            <td>
+                                <span class="badge bg-{{ order.status|lower }}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ order.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary">View</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
