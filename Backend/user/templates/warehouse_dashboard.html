@@ -16,7 +16,7 @@
     </li>
     <li class="nav-item">
         <a class="nav-link" href="#">
-            <i class="fas fa-truck me-2"></i> Shipments
+            <i class="fas fa-truck me-2"></i> Warehouses
         </a>
     </li>
     <li class="nav-item">
@@ -69,33 +69,58 @@
     </div>
     
     <div class="col-md-6">
-        <div class="metric-card">
-            <h6 class="text-muted mb-3">Low Stock Products</h6>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Product</th>
-                            <th>Current Stock</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for product in top_products %}
-                        {% if product.stock < 10 %}
-                        <tr>
-                            <td>{{ product.name }}</td>
-                            <td>{{ product.stock }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-warning">Restock</button>
-                            </td>
-                        </tr>
-                        {% endif %}
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+  <div class="metric-card">
+    <h6 class="text-muted mb-3">Product Inventory</h6>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Current Stock</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for product in products %}
+          <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ product.stock }}</td>
+            <td>
+              <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#updateStockModal{{ product.id }}">Update Stock</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
+  </div>
 </div>
+</div>
+<!-- Update Stock Modal -->
+{% for product in products %}
+<div class="modal fade" id="updateStockModal{{ product.id }}" tabindex="-1" aria-labelledby="updateStockModalLabel{{ product.id }}" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="updateStockModalLabel{{ product.id }}">Update Stock for {{ product.name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="updateStockForm{{ product.id }}">
+          <div class="mb-3">
+            <label for="currentStock{{ product.id }}" class="form-label">Current Stock</label>
+            <input type="number" class="form-control" id="currentStock{{ product.id }}" value="{{ product.stock }}" readonly>
+          </div>
+          <div class="mb-3">
+            <label for="stockChange{{ product.id }}" class="form-label">Stock Change</label>
+            <input type="number" class="form-control" id="stockChange{{ product.id }}" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Update Stock</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
 {% endblock %}
+
