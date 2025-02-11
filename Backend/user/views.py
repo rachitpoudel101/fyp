@@ -112,6 +112,15 @@ def admin_dashboard(request):
 def warehouse_dashboard(request):
     if request.user.role != 'warehouse_manager':
         return HttpResponseForbidden("You are not authorized to view this page")
+    
+    if request.method == "POST":
+        product_id = request.POST.get('product_id')
+        stock_change = int(request.POST.get('stock_change'))
+        product = get_object_or_404(Product, id=product_id)
+        product.stock += stock_change
+        product.save()
+        return redirect('warehouse_dashboard')
+    
     products = Product.objects.all()
     recent_orders = Order.objects.filter(status='pending')
     return render(request, 'warehouse_dashboard.html', {'products': products, 'recent_orders': recent_orders})
