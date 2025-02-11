@@ -1,16 +1,15 @@
-# users/views.py
-from profile import Profile
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
 from django.http import HttpResponseForbidden
 from django.contrib.auth.decorators import login_required
+from inventory.models import Order, Product, Category
+from inventory.forms import ProductForm
 from .forms import CustomUserCreationForm
 from .models import CustomUser
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.urls import reverse
-from django.shortcuts import get_object_or_404
 
 def verify_email(request, token):
     user = get_object_or_404(CustomUser, verification_token=token)
@@ -24,6 +23,7 @@ def verify_pending(request):
 
 def generate_verification_token():
     return get_random_string(length=32)
+
 # Sign up view - Allows users to register with a role
 def signup(request):
     if request.method == "POST":
@@ -44,13 +44,11 @@ def signup(request):
                 f'Click the link to verify your email: {verification_link}',
                 'noreply@yourdomain.com',
                 [user.email],
-    )
-    
+            )
             return redirect('verify_pending')  # Redirect to a pending page
     else:
         form = CustomUserCreationForm()
     return render(request, 'signup.html', {'form': form})
-
 
 def user_login(request):
     if request.method == "POST":
@@ -89,12 +87,31 @@ def dashboard(request):
 def admin_dashboard(request):
     if request.user.role != 'admin':
         return HttpResponseForbidden("You are not authorized to view this page")
+    
+    if request.method == "POST":
+        form = ProductForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('admin_dashboard')
+    else:
+        form = ProductForm()
+    
+    if 'delete_product_id' in request.POST:
+        product_id = request.POST.get('delete_product_id')
+        product = get_object_or_404(Product, id=product_id)
+        product.delete()
+        return redirect('admin_dashboard')
+    
     warehouse_managers = CustomUser.objects.filter(role='warehouse_manager')
-    return render(request, 'admin_dashboard.html', {'users': warehouse_managers})
+    products = Product.objects.all()
+    recent_orders = Order.objects.filter(status='pending')
+    return render(request, 'admin_dashboard.html', {'users': warehouse_managers, 'products': products, 'recent_orders': recent_orders, 'form': form})
 
 # Warehouse Manager Dashboard - Only accessible by warehouse manager users
 @login_required
 def warehouse_dashboard(request):
     if request.user.role != 'warehouse_manager':
-        return HttpResponseForbidden("You do not have permission to view this page.")
-    return render(request, 'warehouse_dashboard.html')
+        return HttpResponseForbidden("You are not authorized to view this page")
+    products = Product.objects.all()
+    recent_orders = Order.objects.filter(status='pending')
+    return render(request, 'warehouse_dashboard.html', {'products': products, 'recent_orders': recent_orders})
