@@ -4,7 +4,7 @@ from django.contrib.auth import login, logout, authenticate
 from django.http import HttpResponseForbidden
 from django.contrib.auth.decorators import login_required
 from inventory.models import Order, Product, Category
-from inventory.forms import ProductForm
+from inventory.forms import ProductForm, OrderForm
 from .forms import CustomUserCreationForm
 from .models import CustomUser
 from django.core.mail import send_mail
@@ -56,11 +56,12 @@ def user_login(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)  # Log the user in
-            print(user.role)  # Log the role to check if it's correct
             if user.role == 'admin':
                 return redirect('admin_dashboard')
             elif user.role == 'warehouse_manager':
                 return redirect('warehouse_dashboard')
+            elif user.role == 'customer':
+                return redirect('order_list')
             else:
                 return HttpResponseForbidden("You do not have permission to view this page.")
     else:
@@ -79,6 +80,8 @@ def dashboard(request):
         return redirect('admin_dashboard')
     elif request.user.role == 'warehouse_manager':
         return redirect('warehouse_dashboard')
+    elif request.user.role == 'customer':
+        return redirect('order_list')
     else:
         return HttpResponseForbidden("You do not have permission to view this page.")
 
@@ -124,3 +127,47 @@ def warehouse_dashboard(request):
     products = Product.objects.all()
     recent_orders = Order.objects.filter(status='pending')
     return render(request, 'warehouse_dashboard.html', {'products': products, 'recent_orders': recent_orders})
+
+# Customer views
+@login_required
+def create_order(request):
+    if request.user.role != 'customer':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    if request.method == "POST":
+        form = OrderForm(request.POST)
+        if form.is_valid():
+            order = form.save(commit=False)
+            order.customer = request.user
+            order.save()
+            return redirect('order_detail', order_id=order.id)
+    else:
+        form = OrderForm()
+    return render(request, 'create_order.html', {'form': form})
+
+@login_required
+def update_order_status(request, order_id):
+    order = get_object_or_404(Order, id=order_id)
+    if request.method == "POST":
+        form = OrderForm(request.POST, instance=order)
+        if form.is_valid():
+            form.save()
+            return redirect('order_detail', order_id=order.id)
+    else:
+        form = OrderForm(instance=order)
+    return render(request, 'update_order_status.html', {'form': form, 'order': order})
+
+@login_required
+def order_detail(request, order_id):
+    order = get_object_or_404(Order, id=order_id)
+    if request.user.role != 'customer' or order.customer != request.user:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    return render(request, 'order_detail.html', {'order': order})
+
+@login_required
+def order_list(request):
+    if request.user.role != 'customer':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    orders = Order.objects.filter(customer=request.user)
+    return render(request, 'order_list.html', {'orders': orders})

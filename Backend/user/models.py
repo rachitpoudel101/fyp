@@ -6,6 +6,7 @@ class CustomUser(AbstractUser):
     ROLE_CHOICES = [
         ('admin', 'Admin'),
         ('warehouse_manager', 'Warehouse Manager'),
+        ('customer', 'customer'),
     ]
     role = models.CharField(max_length=50, choices=ROLE_CHOICES)
     email = models.EmailField(unique=True, blank=False, null=False)
