@@ -165,9 +165,11 @@ def order_detail(request, order_id):
     return render(request, 'order_detail.html', {'order': order})
 
 @login_required
+@login_required
 def order_list(request):
     if request.user.role != 'customer':
         return HttpResponseForbidden("You are not authorized to view this page")
     
     orders = Order.objects.filter(customer=request.user)
-    return render(request, 'order_list.html', {'orders': orders})
+    products = Product.objects.all()
+    return render(request, 'order_list.html', {'orders': orders, 'products': products})
