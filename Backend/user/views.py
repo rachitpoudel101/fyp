@@ -165,11 +165,13 @@ def order_detail(request, order_id):
     return render(request, 'order_detail.html', {'order': order})
 
 @login_required
-@login_required
 def order_list(request):
-    if request.user.role != 'customer':
+    if request.user.role == 'customer':
+        orders = Order.objects.filter(customer=request.user)
+        products = Product.objects.all()
+        return render(request, 'order_list.html', {'orders': orders, 'products': products})
+    elif request.user.role == 'warehouse_manager':
+        orders = Order.objects.all()
+        return render(request, 'order_list.html', {'orders': orders})
+    else:
         return HttpResponseForbidden("You are not authorized to view this page")
-    
-    orders = Order.objects.filter(customer=request.user)
-    products = Product.objects.all()
-    return render(request, 'order_list.html', {'orders': orders, 'products': products})

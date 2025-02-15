@@ -65,6 +65,9 @@
         .order-list a:hover, .product-list a:hover {
             text-decoration: underline;
         }
+        .order-form {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
@@ -87,6 +90,7 @@
                 {% endfor %}
             </ul>
         </div>
+        {% if user.role == 'customer' %}
         <div class="product-list">
             <h2>Available Products</h2>
             <ul>
@@ -95,6 +99,22 @@
                 {% endfor %}
             </ul>
         </div>
+        <div class="order-form">
+            <h2>Place an Order</h2>
+            <form method="post" action="{% url 'create_order' %}">
+                {% csrf_token %}
+                <label for="product">Product:</label>
+                <select name="product" id="product">
+                    {% for product in products %}
+                        <option value="{{ product.id }}">{{ product.name }}</option>
+                    {% endfor %}
+                </select>
+                <label for="quantity">Quantity:</label>
+                <input type="number" name="quantity" id="quantity" min="1" required>
+                <button type="submit">Order</button>
+            </form>
+        </div>
+        {% endif %}
     </div>
 </body>
 </html>
