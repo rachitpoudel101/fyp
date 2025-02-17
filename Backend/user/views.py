@@ -117,11 +117,18 @@ def warehouse_dashboard(request):
         return HttpResponseForbidden("You are not authorized to view this page")
     
     if request.method == "POST":
-        product_id = request.POST.get('product_id')
-        stock_change = int(request.POST.get('stock_change'))
-        product = get_object_or_404(Product, id=product_id)
-        product.stock += stock_change
-        product.save()
+        if 'product_id' in request.POST:
+            product_id = request.POST.get('product_id')
+            stock_change = int(request.POST.get('stock_change'))
+            product = get_object_or_404(Product, id=product_id)
+            product.stock += stock_change
+            product.save()
+        elif 'status' in request.POST:
+            order_id = request.POST.get('order_id')
+            status = request.POST.get('status')
+            order = get_object_or_404(Order, id=order_id)
+            order.status = status
+            order.save()
         return redirect('warehouse_dashboard')
     
     products = Product.objects.all()
@@ -140,11 +147,18 @@ def create_order(request):
             order = form.save(commit=False)
             order.customer = request.user
             order.save()
+            
+            # Decrease stock
+            product_id = request.POST.get('product')
+            quantity = int(request.POST.get('quantity'))
+            product = get_object_or_404(Product, id=product_id)
+            product.stock -= quantity
+            product.save()
+            
             return redirect('order_detail', order_id=order.id)
     else:
         form = OrderForm()
     return render(request, 'create_order.html', {'form': form})
-
 @login_required
 def update_order_status(request, order_id):
     order = get_object_or_404(Order, id=order_id)
