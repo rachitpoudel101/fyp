@@ -3,13 +3,14 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
 from django.http import HttpResponseForbidden
 from django.contrib.auth.decorators import login_required
-from inventory.models import Order, Product, Category
+from inventory.models import Order, OrderItem, Product, Category
 from inventory.forms import ProductForm, OrderForm
 from .forms import CustomUserCreationForm
 from .models import CustomUser
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.urls import reverse
+import uuid
 
 def verify_email(request, token):
     user = get_object_or_404(CustomUser, verification_token=token)
@@ -133,7 +134,8 @@ def warehouse_dashboard(request):
     
     products = Product.objects.all()
     recent_orders = Order.objects.filter(status='pending')
-    return render(request, 'warehouse_dashboard.html', {'products': products, 'recent_orders': recent_orders})
+    canceled_orders = Order.objects.filter(status='cancelled')
+    return render(request, 'warehouse_dashboard.html', {'products': products, 'recent_orders': recent_orders, 'canceled_orders': canceled_orders})
 
 # Customer views
 @login_required
@@ -142,23 +144,36 @@ def create_order(request):
         return HttpResponseForbidden("You are not authorized to view this page")
     
     if request.method == "POST":
-        form = OrderForm(request.POST)
-        if form.is_valid():
-            order = form.save(commit=False)
-            order.customer = request.user
-            order.save()
-            
-            # Decrease stock
-            product_id = request.POST.get('product')
-            quantity = int(request.POST.get('quantity'))
-            product = get_object_or_404(Product, id=product_id)
-            product.stock -= quantity
-            product.save()
-            
-            return redirect('order_detail', order_id=order.id)
-    else:
-        form = OrderForm()
-    return render(request, 'create_order.html', {'form': form})
+        product_id = request.POST.get('product')
+        quantity = int(request.POST.get('quantity'))
+        product = get_object_or_404(Product, id=product_id)
+        
+        if product.stock < quantity:
+            return HttpResponseForbidden("Not enough stock available")
+        
+        order = Order.objects.create(
+            order_number=str(uuid.uuid4()),
+            customer=request.user,
+            total_amount=product.price * quantity,
+            status='pending'
+        )
+        
+        OrderItem.objects.create(
+            order=order,
+            product=product,
+            quantity=quantity,
+            price=product.price
+        )
+        
+        # Decrease stock
+        product.stock -= quantity
+        product.save()
+        
+        return redirect('order_detail', order_id=order.id)
+    
+    products = Product.objects.all()
+    return render(request, 'create_order.html', {'products': products})
+
 @login_required
 def update_order_status(request, order_id):
     order = get_object_or_404(Order, id=order_id)

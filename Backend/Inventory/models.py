@@ -1,6 +1,4 @@
-from django.db import models
-
-# Create your models here.
+import uuid
 from django.db import models
 from user.models import CustomUser
 
@@ -44,7 +42,7 @@ class Order(models.Model):
         ('cancelled', 'Cancelled'),
     ]
     
-    order_number = models.CharField(max_length=50, unique=True)
+    order_number = models.CharField(max_length=50, unique=True, default=uuid.uuid4)
     customer = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     products = models.ManyToManyField(Product, through='OrderItem')
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)

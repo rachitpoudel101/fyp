@@ -10,17 +10,12 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="#">
+        <a class="nav-link" href="inventory-section">
             <i class="fas fa-box me-2"></i> Inventory
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="#">
-            <i class="fas fa-truck me-2"></i> Warehouses
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="#">
+        <a class="nav-link" href="orders-section">
             <i class="fas fa-clipboard-list me-2"></i> Orders
         </a>
     </li>
@@ -33,7 +28,7 @@
     <p class="text-muted">Manage inventory and shipments</p>
 </div>
 
-<div class="row g-4 mb-4">
+<div id="orders-section" class="row g-4 mb-4">
     <div class="col-md-6">
         <div class="metric-card">
             <h6 class="text-muted mb-3">Pending Orders</h6>
@@ -53,19 +48,15 @@
                             <td>{{ order.order_number }}</td>
                             <td>{{ order.products.count }}</td>
                             <td>
-                                <span class="badge bg-warning">Pending</span>
-                            </td>
-                            <td>
                                 <form method="POST" action="{% url 'update_order_status' order.id %}">
                                     {% csrf_token %}
-                                    <select name="status" class="form-select form-select-sm">
+                                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                                         <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
                                         <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
                                         <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
                                         <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
                                         <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
                                     </select>
-                                    <button type="submit" class="btn btn-sm btn-primary mt-2">Update</button>
                                 </form>
                             </td>
                         </tr>
@@ -77,6 +68,36 @@
     </div>
     
     <div class="col-md-6">
+        <div class="metric-card">
+            <h6 class="text-muted mb-3">Canceled Orders</h6>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Products</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in canceled_orders %}
+                        <tr>
+                            <td>{{ order.order_number }}</td>
+                            <td>{{ order.products.count }}</td>
+                            <td>
+                                <span class="badge bg-danger">Cancelled</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="inventory-section" class="row g-4 mb-4">
+    <div class="col-md-12">
         <div class="metric-card">
             <h6 class="text-muted mb-3">Product Inventory</h6>
             <div class="table-responsive">
