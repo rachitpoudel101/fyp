@@ -9,6 +9,9 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('warehouse-dashboard/', views.warehouse_dashboard, name='warehouse_dashboard'),
+     path('inventory/', views.inventory, name='inventory'),
+    path('orders/', views.orders, name='orders'),
+    path('update_order_status/<int:order_id>/', views.update_order_status, name='update_order_status'),
     path('verify-email/<str:token>/', views.verify_email, name='verify_email'),
     path('verify-pending/', views.verify_pending, name='verify_pending'),
 
