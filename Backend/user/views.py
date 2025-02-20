@@ -116,26 +116,45 @@ def admin_dashboard(request):
 def warehouse_dashboard(request):
     if request.user.role != 'warehouse_manager':
         return HttpResponseForbidden("You are not authorized to view this page")
+    return render(request, 'warehouse_dashboard.html')
+
+@login_required
+def inventory(request):
+    if request.user.role != 'warehouse_manager':
+        return HttpResponseForbidden("You are not authorized to view this page")
     
     if request.method == "POST":
-        if 'product_id' in request.POST:
-            product_id = request.POST.get('product_id')
-            stock_change = int(request.POST.get('stock_change'))
-            product = get_object_or_404(Product, id=product_id)
-            product.stock += stock_change
-            product.save()
-        elif 'status' in request.POST:
-            order_id = request.POST.get('order_id')
-            status = request.POST.get('status')
-            order = get_object_or_404(Order, id=order_id)
-            order.status = status
-            order.save()
-        return redirect('warehouse_dashboard')
+        product_id = request.POST.get('product_id')
+        stock_change = int(request.POST.get('stock_change'))
+        product = get_object_or_404(Product, id=product_id)
+        product.stock += stock_change
+        product.save()
+        return redirect('inventory')
     
     products = Product.objects.all()
+    return render(request, 'inventory.html', {'products': products})
+
+@login_required
+def orders(request):
+    if request.user.role != 'warehouse_manager':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
     recent_orders = Order.objects.filter(status='pending')
     canceled_orders = Order.objects.filter(status='cancelled')
-    return render(request, 'warehouse_dashboard.html', {'products': products, 'recent_orders': recent_orders, 'canceled_orders': canceled_orders})
+    return render(request, 'orders.html', {'recent_orders': recent_orders, 'canceled_orders': canceled_orders})
+
+@login_required
+def update_order_status(request, order_id):
+    if request.user.role != 'warehouse_manager':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    order = get_object_or_404(Order, id=order_id)
+    if request.method == "POST":
+        status = request.POST.get('status')
+        order.status = status
+        order.save()
+        return redirect('orders')
+    return render(request, 'orders.html')
 
 # Customer views
 @login_required
@@ -173,18 +192,6 @@ def create_order(request):
     
     products = Product.objects.all()
     return render(request, 'create_order.html', {'products': products})
-
-@login_required
-def update_order_status(request, order_id):
-    order = get_object_or_404(Order, id=order_id)
-    if request.method == "POST":
-        form = OrderForm(request.POST, instance=order)
-        if form.is_valid():
-            form.save()
-            return redirect('order_detail', order_id=order.id)
-    else:
-        form = OrderForm(instance=order)
-    return render(request, 'update_order_status.html', {'form': form, 'order': order})
 
 @login_required
 def order_detail(request, order_id):
