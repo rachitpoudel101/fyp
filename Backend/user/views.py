@@ -43,7 +43,6 @@ def signup(request):
             send_mail(
                 'Verify your email',
                 f'Click the link to verify your email: {verification_link}',
-                'noreply@yourdomain.com',
                 [user.email],
             )
             return redirect('verify_pending')  # Redirect to a pending page
@@ -211,3 +210,19 @@ def order_list(request):
         return render(request, 'order_list.html', {'orders': orders})
     else:
         return HttpResponseForbidden("You are not authorized to view this page")
+
+@login_required
+def user_statistics(request):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    total_users = CustomUser.objects.count()
+    warehouse_managers = CustomUser.objects.filter(role='warehouse_manager').count()
+    customers = CustomUser.objects.filter(role='customer').count()
+    
+    context = {
+        'total_users': total_users,
+        'warehouse_managers': warehouse_managers,
+        'customers': customers,
+    }
+    return render(request, 'user_statistics.html', context)

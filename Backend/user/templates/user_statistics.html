@@ -1,0 +1,56 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}User Statistics - Marline{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'warehouse_dashboard' %}">
+            <i class="fas fa-home me-2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'inventory' %}">
+            <i class="fas fa-box me-2"></i> Inventory
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'orders' %}">
+            <i class="fas fa-clipboard-list me-2"></i> Orders
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'user_statistics' %}">
+            <i class="fas fa-users me-2"></i> User Statistics
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">User Statistics</h1>
+    <p class="text-muted">Overview of users in the system</p>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="metric-card">
+            <h6 class="text-muted mb-3">Total Users</h6>
+            <h3>{{ total_users }}</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card">
+            <h6 class="text-muted mb-3">Warehouse Managers</h6>
+            <h3>{{ warehouse_managers }}</h3>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card">
+            <h6 class="text-muted mb-3">Customers</h6>
+            <h3>{{ customers }}</h3>
+        </div>
+    </div>
+</div>
+{% endblock %}
