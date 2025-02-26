@@ -1,0 +1,21 @@
+.sidebar {
+    background-color: #1e1e1e;
+    min-height: 100vh;
+}
+.sidebar .nav-link {
+    color: white;
+    padding: 0.5rem 1rem;
+    margin: 0.2rem 0;
+}
+.sidebar .nav-link:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+.main-content {
+    background-color: #f8f9fa;
+}
+.metric-card {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}

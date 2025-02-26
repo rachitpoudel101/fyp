@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.contrib.auth.decorators import login_required
 from inventory.models import Order, OrderItem, Product, Category
 from inventory.forms import ProductForm, OrderForm
@@ -11,6 +11,7 @@ from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.urls import reverse
 import uuid
+from django.db.models import Sum
 
 def verify_email(request, token):
     user = get_object_or_404(CustomUser, verification_token=token)
@@ -92,23 +93,36 @@ def admin_dashboard(request):
         return HttpResponseForbidden("You are not authorized to view this page")
     
     if request.method == "POST":
-        form = ProductForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('admin_dashboard')
-    else:
-        form = ProductForm()
+        if 'delete_product_id' in request.POST:
+            product_id = request.POST.get('delete_product_id')
+            product = get_object_or_404(Product, id=product_id)
+            product.delete()
+            return JsonResponse({'success': True})
+        else:
+            form = ProductForm(request.POST)
+            if form.is_valid():
+                form.save()
+                return JsonResponse({'success': True})
+            else:
+                return JsonResponse({'success': False, 'error': form.errors.as_json()})
     
-    if 'delete_product_id' in request.POST:
-        product_id = request.POST.get('delete_product_id')
-        product = get_object_or_404(Product, id=product_id)
-        product.delete()
-        return redirect('admin_dashboard')
-    
-    warehouse_managers = CustomUser.objects.filter(role='warehouse_manager')
+    total_sales = Order.objects.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    total_orders = Order.objects.count()
+    total_customers = CustomUser.objects.filter(role='customer').count()
+    recent_orders = Order.objects.order_by('-created_at')[:5]
     products = Product.objects.all()
-    recent_orders = Order.objects.filter(status='pending')
-    return render(request, 'admin_dashboard.html', {'users': warehouse_managers, 'products': products, 'recent_orders': recent_orders, 'form': form})
+    users = CustomUser.objects.all()
+    
+    context = {
+        'total_sales': total_sales,
+        'total_orders': total_orders,
+        'total_customers': total_customers,
+        'recent_orders': recent_orders,
+        'products': products,
+        'form': ProductForm(),
+        'users': users,
+    }
+    return render(request, 'admin_dashboard.html', context)
 
 # Warehouse Manager Dashboard - Only accessible by warehouse manager users
 @login_required
@@ -216,13 +230,12 @@ def user_statistics(request):
     if request.user.role != 'admin':
         return HttpResponseForbidden("You are not authorized to view this page")
     
-    total_users = CustomUser.objects.count()
-    warehouse_managers = CustomUser.objects.filter(role='warehouse_manager').count()
-    customers = CustomUser.objects.filter(role='customer').count()
+    users = CustomUser.objects.all()
     
-    context = {
-        'total_users': total_users,
-        'warehouse_managers': warehouse_managers,
-        'customers': customers,
+    context = {'users': users
     }
     return render(request, 'user_statistics.html', context)
+
+def product_management(request):
+    products = Product.objects.all()
+    return render(request, 'product_management.html', {'products': products})

@@ -1,18 +1,27 @@
+{% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Detail</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="{% static 'css/order_detail.css' %}" rel="stylesheet">
 </head>
 <body>
-    <h2>Order Detail</h2>
-    <p>Order Number: {{ order.order_number }}</p>
-    <p>Status: {{ order.status }}</p>
-    <p>Total Amount: {{ order.total_amount }}</p>
-    <h3>Products</h3>
-    <ul>
-        {% for item in order.orderitem_set.all %}
-            <li>{{ item.product.name }} - {{ item.quantity }} x {{ item.price }}</li>
-        {% endfor %}
-    </ul>
+    <div class="container">
+        <h2>Order Detail</h2>
+        <p>Order Number: {{ order.order_number }}</p>
+        <p>Status: {{ order.status }}</p>
+        <p>Total Amount: {{ order.total_amount }}</p>
+        <h3>Products</h3>
+        <ul>
+            {% for item in order.orderitem_set.all %}
+                <li>{{ item.product.name }} - {{ item.quantity }} x {{ item.price }}</li>
+            {% endfor %}
+        </ul>
+        <button id="dashboardButton" class="btn btn-primary"> <a href="{% url 'order_list' %}">Go to Order Dashboard </a></button>
+    </div>
+    <script src="{% static 'js/order_detail.js' %}"></script>
 </body>
 </html>

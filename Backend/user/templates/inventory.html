@@ -1,4 +1,5 @@
 {% extends 'base_dashboard.html' %}
+{% load static %}
 
 {% block title %}Inventory - Marline{% endblock %}
 
@@ -85,4 +86,8 @@
     </div>
 </div>
 {% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/inventory.js' %}"></script>
 {% endblock %}

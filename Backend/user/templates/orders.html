@@ -1,7 +1,7 @@
 {% extends 'base_dashboard.html' %}
-
+{% load static %}
 {% block title %}Orders - Marline{% endblock %}
-
+<link href="{% static 'css/orders.css' %}" rel="stylesheet">
 {% block sidebar_menu %}
 <ul class="nav flex-column">
     <li class="nav-item">
@@ -94,4 +94,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/orders.js' %}"></script>
 {% endblock %}
