@@ -236,6 +236,12 @@ def user_statistics(request):
     }
     return render(request, 'user_statistics.html', context)
 
+@login_required
 def product_management(request):
     products = Product.objects.all()
     return render(request, 'product_management.html', {'products': products})
+
+@login_required
+def billing(request):
+    orders = Order.objects.filter(customer=request.user)
+    return render(request, 'billing.html', {'orders': orders})

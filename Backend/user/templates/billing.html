@@ -1,0 +1,53 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="{% static 'css/billing.css' %}" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Billing</h1>
+            <nav>
+                <ul>
+                    <li><a href="{% url 'order_list' %}">Orders</a></li>
+                    <li><a href="{% url 'billing' %}">Billing</a></li>
+                    <li><a href="{% url 'logout' %}">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <div class="container">
+        <div class="card">
+            <h2>Order List</h2>
+            <div class="card-content">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order Number</th>
+                            <th>Status</th>
+                            <th>Total Amount</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr>
+                            <td>{{ order.order_number }}</td>
+                            <td>{{ order.status }}</td>
+                            <td>${{ order.total_amount }}</td>
+                            <td><a href="{% url 'order_detail' order.id %}">View Details</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="{% static 'js/billing.js' %}"></script>
+</body>
+</html>
