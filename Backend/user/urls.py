@@ -1,4 +1,3 @@
-# users/urls.py
 from django.urls import path
 from . import views
 
@@ -31,4 +30,8 @@ urlpatterns = [
     # Additional management URLs
     path('product_management/', views.product_management, name='product_management'),  # Product management (Admin)
     path('billing/', views.billing, name='billing'),  # Billing management (Admin)
+
+    # Warehouse management URLs
+    path('create_warehouse/', views.create_warehouse, name='create_warehouse'),  # Create warehouse (Admin)
+    path('manage_warehouses/', views.manage_warehouses, name='manage_warehouses'),  # Manage warehouses (Admin)
 ]

@@ -5,8 +5,8 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.contrib.auth.decorators import login_required
 from inventory.models import Order, OrderItem, Product, Category
 from inventory.forms import ProductForm, OrderForm
-from .forms import CustomUserCreationForm
-from .models import CustomUser
+from .forms import CustomUserCreationForm, WarehouseForm
+from .models import CustomUser, Warehouse
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.urls import reverse
@@ -98,6 +98,14 @@ def admin_dashboard(request):
             product = get_object_or_404(Product, id=product_id)
             product.delete()
             return JsonResponse({'success': True})
+        elif 'assign_manager' in request.POST:
+            warehouse_id = request.POST.get('warehouse_id')
+            manager_id = request.POST.get('manager_id')
+            warehouse = get_object_or_404(Warehouse, id=warehouse_id)
+            manager = get_object_or_404(CustomUser, id=manager_id)
+            warehouse.manager = manager
+            warehouse.save()
+            return JsonResponse({'success': True})
         else:
             form = ProductForm(request.POST)
             if form.is_valid():
@@ -112,6 +120,7 @@ def admin_dashboard(request):
     recent_orders = Order.objects.order_by('-created_at')[:5]
     products = Product.objects.all()
     users = CustomUser.objects.all()
+    warehouses = Warehouse.objects.all()
     
     context = {
         'total_sales': total_sales,
@@ -121,8 +130,32 @@ def admin_dashboard(request):
         'products': products,
         'form': ProductForm(),
         'users': users,
+        'warehouses': warehouses,
     }
     return render(request, 'admin_dashboard.html', context)
+
+@login_required
+def create_warehouse(request):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    if request.method == "POST":
+        form = WarehouseForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('admin_dashboard')
+    else:
+        form = WarehouseForm()
+    
+    return render(request, 'create_warehouse.html', {'form': form})
+
+@login_required
+def manage_warehouses(request):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    warehouses = Warehouse.objects.all()
+    return render(request, 'manage_warehouses.html', {'warehouses': warehouses})
 
 # Warehouse Manager Dashboard - Only accessible by warehouse manager users
 @login_required
@@ -232,8 +265,7 @@ def user_statistics(request):
     
     users = CustomUser.objects.all()
     
-    context = {'users': users
-    }
+    context = {'users': users}
     return render(request, 'user_statistics.html', context)
 
 @login_required

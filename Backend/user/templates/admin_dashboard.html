@@ -19,6 +19,11 @@
             <i class="fas fa-box me-2"></i> Products
         </a>
     </li>
+   <li class="nav-item">
+        <a class="nav-link" href="{% url 'create_warehouse' %}">
+            <i class="fas fa-plus me-2"></i> Create Warehouse
+        </a>
+    </li>
 </ul>
 {% endblock %}
 
@@ -28,138 +33,171 @@
     <p class="text-muted">{{ request.user.email }}</p>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-md-4">
-        <div class="metric-card">
-            <h6 class="text-muted mb-2">Total Sales</h6>
-            <h3 class="text-success mb-1">${{ total_sales|floatformat:2 }}</h3>
-            <small class="{% if sales_change > 0 %}text-success{% else %}text-danger{% endif %}">
-                {% if sales_change > 0 %}↑{% else %}↓{% endif %}
-                {{ sales_change|floatformat:1 }}% vs last month
-            </small>
+<div class="tab-content">
+    <div class="tab-pane fade show active" id="dashboardTab">
+        <div class="row g-4 mb-4">
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-2">Total Sales</h6>
+                    <h3 class="text-success mb-1">${{ total_sales|floatformat:2 }}</h3>
+                    <small class="{% if sales_change > 0 %}text-success{% else %}text-danger{% endif %}">
+                        {% if sales_change > 0 %}↑{% else %}↓{% endif %}
+                        {{ sales_change|floatformat:1 }}% vs last month
+                    </small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-2">Total Orders</h6>
+                    <h3 class="mb-1">{{ total_orders }}</h3>
+                    <small class="text-muted">Last 30 days</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-2">Total Customers</h6>
+                    <h3 class="mb-1">{{ total_customers }}</h3>
+                    <small class="text-muted">Active customers</small>
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="metric-card">
-            <h6 class="text-muted mb-2">Total Orders</h6>
-            <h3 class="mb-1">{{ total_orders }}</h3>
-            <small class="text-muted">Last 30 days</small>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="metric-card">
-            <h6 class="text-muted mb-2">Total Customers</h6>
-            <h3 class="mb-1">{{ total_customers }}</h3>
-            <small class="text-muted">Active customers</small>
-        </div>
-    </div>
-</div>
 
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="metric-card">
-            <h6 class="text-muted mb-3">Recent Orders</h6>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Order ID</th>
-                            <th>Customer</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in recent_orders %}
-                        <tr>
-                            <td>{{ order.order_number }}</td>
-                            <td>{{ order.customer.get_full_name }}</td>
-                            <td>${{ order.total_amount }}</td>
-                            <td>
-                                <span class="badge bg-{{ order.status|lower }}">
-                                    {{ order.get_status_display }}
-                                </span>
-                            </td>
-                            <td>{{ order.created_at|date:"M d, Y" }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary">View</button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-3">Recent Orders</h6>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in recent_orders %}
+                                <tr>
+                                    <td>{{ order.order_number }}</td>
+                                    <td>{{ order.customer.get_full_name }}</td>
+                                    <td>${{ order.total_amount }}</td>
+                                    <td>
+                                        <span class="badge bg-{{ order.status|lower }}">
+                                            {{ order.get_status_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ order.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary">View</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-3">Product Management</h6>
+                    <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                        <i class="fas fa-plus me-2"></i>Add New Product
+                    </button>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Product ID</th>
+                                    <th>Name</th>
+                                    <th>Category</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products %}
+                                <tr>
+                                    <td>{{ product.id }}</td>
+                                    <td>{{ product.name }}</td>
+                                    <td>{{ product.category.name }}</td>
+                                    <td>${{ product.price }}</td>
+                                    <td>{{ product.stock }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#editProductModal{{ product.id }}">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteProductModal{{ product.id }}">Delete</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-3">User Management</</h6>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>{{ user.role }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="metric-card">
-            <h6 class="text-muted mb-3">Product Management</h6>
-            <button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#addProductModal">
-                <i class="fas fa-plus me-2"></i>Add New Product
-            </button>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Product ID</th>
-                            <th>Name</th>
-                            <th>Category</th>
-                            <th>Price</th>
-                            <th>Stock</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for product in products %}
-                        <tr>
-                            <td>{{ product.id }}</td>
-                            <td>{{ product.name }}</td>
-                            <td>{{ product.category.name }}</td>
-                            <td>${{ product.price }}</td>
-                            <td>{{ product.stock }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#editProductModal{{ product.id }}">Edit</button>
-                                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteProductModal{{ product.id }}">Delete</button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="metric-card">
-            <h6 class="text-muted mb-3">User Management</h6>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>User ID</th>
-                            <th>Username</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in users %}
-                        <tr>
-                            <td>{{ user.id }}</td>
-                            <td>{{ user.username }}</td>
-                            <td>{{ user.email }}</td>
-                            <td>{{ user.role }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <!-- Assign Manager to Warehouse Tab -->
+    <div class="tab-pane fade" id="assignManagerTab">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-3">Assign Manager to Warehouse</h6>
+                    <form method="post" id="assign-manager-form">
+                        {% csrf_token %}
+                        <label for="warehouse_id">Warehouse:</label>
+                        <select name="warehouse_id" id="warehouse_id">
+                            {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}">{{ warehouse.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <label for="manager_id">Manager:</label>
+                        <select name="manager_id" id="manager_id">
+                            {% for user in users %}
+                            {% if user.role == 'warehouse_manager' %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                        <button type="submit" name="assign_manager" class="btn btn-primary mt-3">Assign Manager</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
