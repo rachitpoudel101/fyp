@@ -122,6 +122,10 @@ def admin_dashboard(request):
     users = CustomUser.objects.all()
     warehouses = Warehouse.objects.all()
     
+    # Low stock threshold
+    low_stock_threshold = 10
+    low_stock_products = Product.objects.filter(stock__lt=low_stock_threshold)
+    
     context = {
         'total_sales': total_sales,
         'total_orders': total_orders,
@@ -131,6 +135,7 @@ def admin_dashboard(request):
         'form': ProductForm(),
         'users': users,
         'warehouses': warehouses,
+        'low_stock_products': low_stock_products,
     }
     return render(request, 'admin_dashboard.html', context)
 
