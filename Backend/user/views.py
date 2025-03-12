@@ -109,7 +109,13 @@ def admin_dashboard(request):
         else:
             form = ProductForm(request.POST)
             if form.is_valid():
-                form.save()
+                product = form.save(commit=False)
+                if product.expires:
+                    warehouse = Warehouse.objects.get(name="Expires Warehouse")
+                else:
+                    warehouse = Warehouse.objects.get(name="Non-Expires Warehouse")
+                product.warehouse = warehouse
+                product.save()
                 return JsonResponse({'success': True})
             else:
                 return JsonResponse({'success': False, 'error': form.errors.as_json()})

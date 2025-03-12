@@ -29,6 +29,7 @@ class Product(models.Model):
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    expires = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):
         return self.name
