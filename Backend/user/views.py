@@ -1,10 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.contrib.auth.decorators import login_required
 from inventory.models import Order, OrderItem, Product, Category
-from inventory.forms import ProductForm, OrderForm
+from inventory.forms import CategoryForm, ProductForm, OrderForm
 from .forms import CustomUserCreationForm, WarehouseForm
 from .models import CustomUser, Warehouse
 from django.core.mail import send_mail
@@ -281,8 +281,124 @@ def user_statistics(request):
 
 @login_required
 def product_management(request):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    if request.method == "POST":
+        if 'delete_product_id' in request.POST:
+            product_id = request.POST.get('delete_product_id')
+            product = get_object_or_404(Product, id=product_id)
+            product.delete()
+            return JsonResponse({'success': True})
+        
+        elif 'category_name' in request.POST:
+            category_name = request.POST.get('category_name')
+            category_description = request.POST.get('category_description')
+            try:
+                category = Category.objects.create(
+                    name=category_name,
+                    description=category_description
+                )
+                return JsonResponse({
+                    'success': True,
+                    'id': category.id,
+                    'name': category.name
+                })
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': str(e)})
+        
+        else:
+            form = ProductForm(request.POST, request.FILES)
+            if form.is_valid():
+                product = form.save(commit=False)
+                if product.expires:
+                    warehouse = Warehouse.objects.get_or_create(
+                        name="Expires Warehouse",
+                        defaults={'location': 'Default Location'}
+                    )[0]
+                else:
+                    warehouse = Warehouse.objects.get_or_create(
+                        name="Non-Expires Warehouse",
+                        defaults={'location': 'Default Location'}
+                    )[0]
+                product.warehouse = warehouse
+                product.save()
+                return JsonResponse({'success': True})
+            return JsonResponse({'success': False, 'error': form.errors})
+
     products = Product.objects.all()
-    return render(request, 'product_management.html', {'products': products})
+    categories = Category.objects.all()
+    warehouses = Warehouse.objects.all()
+    
+    context = {
+        'products': products,
+        'categories': categories,
+        'warehouses': warehouses,
+        'form': ProductForm(),
+        'category_form': CategoryForm()
+    }
+    return render(request, 'product_management.html', context)
+
+@login_required
+def update_product(request, product_id):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    product = get_object_or_404(Product, id=product_id)
+    
+    if request.method == "POST":
+        form = ProductForm(request.POST, request.FILES, instance=product)
+        if form.is_valid():
+            product = form.save(commit=False)
+            if product.expires:
+                warehouse = Warehouse.objects.get_or_create(
+                    name="Expires Warehouse",
+                    defaults={'location': 'Default Location'}
+                )[0]
+            else:
+                warehouse = Warehouse.objects.get_or_create(
+                    name="Non-Expires Warehouse",
+                    defaults={'location': 'Default Location'}
+                )[0]
+            product.warehouse = warehouse
+            product.save()
+            return JsonResponse({'success': True})
+        return JsonResponse({'success': False, 'error': form.errors})
+    
+    data = {
+        'id': product.id,
+        'name': product.name,
+        'category': product.category.id if product.category else None,
+        'price': str(product.price),
+        'stock': product.stock,
+        'description': product.description,
+        'expires': product.expires.isoformat() if product.expires else None,
+    }
+    return JsonResponse(data)
+
+@login_required
+def add_category(request):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == "POST":
+        name = request.POST.get('category_name')
+        description = request.POST.get('category_description')
+        
+        try:
+            category = Category.objects.create(
+                name=name,
+                description=description
+            )
+            return JsonResponse({
+                'success': True, 
+                'id': category.id,
+                'name': category.name
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return HttpResponseBadRequest()
 
 @login_required
 def billing(request):
