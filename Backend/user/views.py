@@ -291,40 +291,32 @@ def product_management(request):
             product.delete()
             return JsonResponse({'success': True})
         
-        elif 'category_name' in request.POST:
-            category_name = request.POST.get('category_name')
-            category_description = request.POST.get('category_description')
-            try:
-                category = Category.objects.create(
-                    name=category_name,
-                    description=category_description
-                )
-                return JsonResponse({
-                    'success': True,
-                    'id': category.id,
-                    'name': category.name
-                })
-            except Exception as e:
-                return JsonResponse({'success': False, 'error': str(e)})
-        
+        product_id = request.POST.get('product_id')
+        if product_id:
+            # Edit existing product
+            product = get_object_or_404(Product, id=product_id)
+            form = ProductForm(request.POST, instance=product)
         else:
-            form = ProductForm(request.POST, request.FILES)
-            if form.is_valid():
-                product = form.save(commit=False)
-                if product.expires:
-                    warehouse = Warehouse.objects.get_or_create(
-                        name="Expires Warehouse",
-                        defaults={'location': 'Default Location'}
-                    )[0]
-                else:
-                    warehouse = Warehouse.objects.get_or_create(
-                        name="Non-Expires Warehouse",
-                        defaults={'location': 'Default Location'}
-                    )[0]
-                product.warehouse = warehouse
-                product.save()
-                return JsonResponse({'success': True})
-            return JsonResponse({'success': False, 'error': form.errors})
+            # Create new product
+            form = ProductForm(request.POST)
+        
+        if form.is_valid():
+            product = form.save(commit=False)
+            # Assign warehouse based on expiry date
+            if product.expires:
+                warehouse = Warehouse.objects.get_or_create(
+                    name="Expires Warehouse",
+                    defaults={'location': 'Default Location'}
+                )[0]
+            else:
+                warehouse = Warehouse.objects.get_or_create(
+                    name="Non-Expires Warehouse",
+                    defaults={'location': 'Default Location'}
+                )[0]
+            product.warehouse = warehouse
+            product.save()
+            return JsonResponse({'success': True})
+        return JsonResponse({'success': False, 'error': form.errors})
 
     products = Product.objects.all()
     categories = Category.objects.all()
@@ -334,11 +326,9 @@ def product_management(request):
         'products': products,
         'categories': categories,
         'warehouses': warehouses,
-        'form': ProductForm(),
-        'category_form': CategoryForm()
+        'form': ProductForm()
     }
     return render(request, 'product_management.html', context)
-
 @login_required
 def update_product(request, product_id):
     if request.user.role != 'admin':
@@ -404,3 +394,15 @@ def add_category(request):
 def billing(request):
     orders = Order.objects.filter(customer=request.user)
     return render(request, 'billing.html', {'orders': orders})
+
+@login_required
+def get_product_details(request, product_id):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    product = get_object_or_404(Product, id=product_id)
+    data = {
+        'category': product.category.id,
+        'description': product.description,
+    }
+    return JsonResponse(data)

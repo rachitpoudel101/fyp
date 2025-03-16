@@ -115,9 +115,36 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="productForm" enctype="multipart/form-data">
+                <form id="addProductForm">
                     {% csrf_token %}
-                    {{ form.as_p }}
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Product Name</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-control" id="category" name="category" required>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}">{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="price" class="form-label">Price</label>
+                        <input type="number" step="0.01" class="form-control" id="price" name="price" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="stock" class="form-label">Stock</label>
+                        <input type="number" class="form-control" id="stock" name="stock" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="expires" class="form-label">Expiry Date</label>
+                        <input type="date" class="form-control" id="expires" name="expires">
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -159,14 +186,14 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function () {
     // Product Form Handling
     const addProductModal = new bootstrap.Modal(document.getElementById('addProductModal'));
-    const productForm = document.getElementById('productForm');
+    const addProductForm = document.getElementById('addProductForm');
     const saveProductBtn = document.getElementById('saveProduct');
 
     saveProductBtn.addEventListener('click', function() {
-        const formData = new FormData(productForm);
+        const formData = new FormData(addProductForm);
 
         fetch('{% url "product_management" %}', {
             method: 'POST',
@@ -179,6 +206,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                addProductModal.hide();
                 location.reload();
             } else {
                 alert('Error: ' + JSON.stringify(data.error));
@@ -188,6 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('An error occurred. Please try again.');
         });
     });
+
 
     // Category Form Handling
     const addCategoryModal = new bootstrap.Modal(document.getElementById('addCategoryModal'));
@@ -242,6 +271,56 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             }
         });
+    });
+});
+const editModal = new bootstrap.Modal(document.getElementById('editProductModal'));
+const editForm = document.getElementById('editProductForm');
+
+document.querySelectorAll('.edit-product').forEach(button => {
+    button.addEventListener('click', function() {
+        const productId = this.dataset.id;
+        const row = this.closest('tr');
+        
+        document.getElementById('edit_product_id').value = productId;
+        document.getElementById('edit_name').value = row.cells[0].textContent;
+        document.getElementById('edit_price').value = row.cells[2].textContent.replace('$', '');
+        document.getElementById('edit_stock').value = row.cells[3].textContent;
+        document.getElementById('edit_expires').value = row.cells[5].textContent !== 'N/A' ? row.cells[5].textContent : '';
+        
+        // Fetch additional product details
+        fetch(`/product/${productId}/`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('edit_category').value = data.category;
+                document.getElementById('edit_description').value = data.description;
+            });
+        
+        editModal.show();
+    });
+});
+
+// Update Product
+document.getElementById('updateProduct').addEventListener('click', function() {
+    const formData = new FormData(editForm);
+    
+    fetch('{% url "product_management" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + JSON.stringify(data.error));
+        }
+    })
+    .catch(error => {
+        alert('An error occurred. Please try again.');
     });
 });
 </script>
