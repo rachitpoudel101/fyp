@@ -3,8 +3,8 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
 from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.contrib.auth.decorators import login_required
-from inventory.models import Order, OrderItem, Product, Category
-from inventory.forms import CategoryForm, ProductForm, OrderForm
+from Inventory.models import Order, OrderItem, Product, Category
+from Inventory.forms import CategoryForm, ProductForm, OrderForm
 from .forms import CustomUserCreationForm, WarehouseForm
 from .models import CustomUser, Warehouse
 from django.core.mail import send_mail
@@ -12,6 +12,7 @@ from django.utils.crypto import get_random_string
 from django.urls import reverse
 import uuid
 from django.db.models import Sum
+from django.contrib import messages  # Import for user notifications
 
 def verify_email(request, token):
     user = get_object_or_404(CustomUser, verification_token=token)
@@ -27,6 +28,7 @@ def generate_verification_token():
     return get_random_string(length=32)
 
 # Sign up view - Allows users to register with a role
+
 def signup(request):
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
@@ -37,18 +39,23 @@ def signup(request):
             user.generate_verification_token()  # Generate token
             user.save()
 
-            # Send verification email
+            # Generate verification link
             verification_link = request.build_absolute_uri(
                 reverse('verify_email', args=[user.verification_token])
             )
+
+            # Send verification email
             send_mail(
                 'Verify your email',
                 f'Click the link to verify your email: {verification_link}',
-                [user.email],
+                'your_email@example.com',  # ✅ Add from_email (replace with your email)
+                [user.email],  # ✅ Ensure recipient_list is a list
             )
+
             return redirect('verify_pending')  # Redirect to a pending page
     else:
         form = CustomUserCreationForm()
+    
     return render(request, 'signup.html', {'form': form})
 
 def user_login(request):
@@ -142,6 +149,7 @@ def admin_dashboard(request):
         'users': users,
         'warehouses': warehouses,
         'low_stock_products': low_stock_products,
+        'user_form': CustomUserCreationForm(),  # Add user creation form
     }
     return render(request, 'admin_dashboard.html', context)
 
@@ -316,7 +324,9 @@ def product_management(request):
             product.warehouse = warehouse
             product.save()
             return JsonResponse({'success': True})
-        return JsonResponse({'success': False, 'error': form.errors})
+        else:
+            # Return detailed form errors
+            return JsonResponse({'success': False, 'error': form.errors.as_json()})
 
     products = Product.objects.all()
     categories = Category.objects.all()
@@ -326,9 +336,10 @@ def product_management(request):
         'products': products,
         'categories': categories,
         'warehouses': warehouses,
-        'form': ProductForm()
+        'form': ProductForm()  # Ensure the form is passed to the template
     }
     return render(request, 'product_management.html', context)
+
 @login_required
 def update_product(request, product_id):
     if request.user.role != 'admin':
@@ -406,3 +417,67 @@ def get_product_details(request, product_id):
         'description': product.description,
     }
     return JsonResponse(data)
+
+@login_required
+def resend_verification_email(request):
+    if not request.user.is_email_verified:
+        user = request.user
+        user.generate_verification_token()  # Generate a new token
+        user.save()
+
+        # Generate verification link
+        verification_link = request.build_absolute_uri(
+            reverse('verify_email', args=[user.verification_token])
+        )
+
+        # Send verification email
+        send_mail(
+            'Verify your email',
+            f'Click the link to verify your email: {verification_link}',
+            'your_email@example.com',  # Replace with your email
+            [user.email],
+        )
+
+        messages.success(request, "Verification email has been resent.")
+    else:
+        messages.info(request, "Your email is already verified.")
+
+    return redirect('verify_pending')
+
+@login_required
+def add_user(request):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == "POST":
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            try:
+                user = form.save(commit=False)
+                user.set_password(form.cleaned_data['password1'])
+                user.is_email_verified = False  # Mark email as not verified
+                user.generate_verification_token()  # Generate token
+                user.role = request.POST.get('role')  # Save the role
+                user.save()
+
+                # Optionally send a verification email
+                verification_link = request.build_absolute_uri(
+                    reverse('verify_email', args=[user.verification_token])
+                )
+                send_mail(
+                    'Verify your email',
+                    f'Click the link to verify your email: {verification_link}',
+                    'your_email@example.com',  # Replace with your email
+                    [user.email],
+                )
+                messages.success(request, "User has been successfully created.")
+                return JsonResponse({'success': True})
+            except Exception as e:
+                messages.error(request, f"An error occurred: {str(e)}")
+                return JsonResponse({'success': False, 'error': str(e)})
+        else:
+            errors = form.errors.as_json()
+            messages.error(request, "Failed to create user. Please check the form.")
+            return JsonResponse({'success': False, 'error': errors})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})

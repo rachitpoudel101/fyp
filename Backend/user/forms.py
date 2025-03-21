@@ -9,6 +9,7 @@ class WarehouseForm(forms.ModelForm):
 class CustomUserCreationForm(forms.ModelForm):
     password1 = forms.CharField(label='Password', widget=forms.PasswordInput)
     password2 = forms.CharField(label='Confirm Password', widget=forms.PasswordInput)
+    role = forms.ChoiceField(choices=[('admin', 'Admin'), ('warehouse_manager', 'Warehouse Manager'), ('customer', 'Customer')])
 
     class Meta:
         model = CustomUser
