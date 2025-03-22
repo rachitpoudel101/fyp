@@ -84,6 +84,8 @@ def user_logout(request):
 # Dashboard view - Redirects users to role-based dashboards
 @login_required
 def dashboard(request):
+    if request.user.role == 'super_admin':
+        return redirect('super_admin_dashboard')
     if request.user.role == 'admin':
         return redirect('admin_dashboard')
     elif request.user.role == 'warehouse_manager':
@@ -479,5 +481,39 @@ def add_user(request):
             errors = form.errors.as_json()
             messages.error(request, "Failed to create user. Please check the form.")
             return JsonResponse({'success': False, 'error': errors})
+
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})    
+@login_required
+def super_admin_dashboard(request):
+    if request.user.role != 'super_admin':
+        return HttpResponseForbidden("You are not authorized to view this page")
     
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+    admins = CustomUser.objects.filter(role='admin')
+    activities = Order.objects.all()  # Example: Fetch all orders as activities
+    
+    context = {
+        'admins': admins,
+        'activities': activities,
+        'user_form': CustomUserCreationForm(),  # Form to add new admins
+    }
+    return render(request, 'super_admin_dashboard.html', context)
+
+@login_required
+def add_admin(request):
+    if request.user.role != 'super_admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == "POST":
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.set_password(form.cleaned_data['password1'])
+            user.role = 'admin'  # Assign admin role
+            user.save()
+            messages.success(request, "Admin has been successfully created.")
+            return redirect('super_admin_dashboard')
+        else:
+            messages.error(request, "Failed to create admin. Please check the form.")
+    
+    return redirect('super_admin_dashboard')

@@ -13,6 +13,7 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),  # General user dashboard
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),  # Admin dashboard
     path('warehouse-dashboard/', views.warehouse_dashboard, name='warehouse_dashboard'),  # Warehouse dashboard
+    path('super_admin_dashboard/', views.super_admin_dashboard, name='super_admin_dashboard'),  # Super Admin dashboard
 
     # Inventory and orders management URLs
     path('inventory/', views.inventory, name='inventory'),  # Inventory management (Admin/Warehouse)
@@ -42,4 +43,5 @@ urlpatterns = [
 
     # Add user URL
     path('add_user/', add_user, name='add_user'),
+    path('add_admin/', views.add_admin, name='add_admin'),  # Add admin URL
 ]

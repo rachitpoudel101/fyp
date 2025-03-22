@@ -12,6 +12,7 @@ class Warehouse(models.Model):
 
 class CustomUser(AbstractUser):
     ROLE_CHOICES = [
+        ('super_admin', 'Super Admin'),  # Add Super Admin role
         ('admin', 'Admin'),
         ('warehouse_manager', 'Warehouse Manager'),
         ('customer', 'Customer'),
