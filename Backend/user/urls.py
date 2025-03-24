@@ -22,6 +22,7 @@ urlpatterns = [
     path('verify-email/<str:token>/', views.verify_email, name='verify_email'),  # Email verification (Customer)
     path('verify-pending/', views.verify_pending, name='verify_pending'),  # Pending verification (Customer)
     path('resend-verification-email/', views.resend_verification_email, name='resend_verification_email'),  # Resend verification email (Customer)
+    path('request-verification/', views.request_verification, name='request_verification'),  # Request verification (Customer)
 
     # Order creation and details URLs
     path('create_order/', views.create_order, name='create_order'),  # Create order (Customer)
@@ -40,8 +41,18 @@ urlpatterns = [
     # Warehouse management URLs
     path('create_warehouse/', views.create_warehouse, name='create_warehouse'),  # Create warehouse (Admin)
     path('manage_warehouses/', views.manage_warehouses, name='manage_warehouses'),  # Manage warehouses (Admin)
+    path('add-warehouse-manager/', views.add_warehouse_manager, name='add_warehouse_manager'),  # Add warehouse manager URL
 
     # Add user URL
     path('add_user/', add_user, name='add_user'),
     path('add_admin/', views.add_admin, name='add_admin'),  # Add admin URL
+
+    # New admin approval and verification URLs
+    path('approve-admin/<int:admin_id>/', views.approve_admin, name='approve_admin'),
+    path('verify-admin/<int:admin_id>/', views.verify_admin, name='verify_admin'),
+
+    # Admin management URLs
+    path('admin-management/', views.admin_management, name='admin_management'),  # Admin management page
+    path('edit-admin/<int:admin_id>/', views.edit_admin, name='edit_admin'),  # Edit admin
+    path('delete-admin/<int:admin_id>/', views.delete_admin, name='delete_admin'),  # Delete admin
 ]

@@ -1,0 +1,156 @@
+{% extends "base_superadmin.html" %}
+
+{% block title %}Super Admin Dashboard{% endblock %}
+
+{% block header %}Super Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <!-- Verified Admins Section -->
+    <div class="bg-white shadow-md rounded-lg p-6">
+        <h2 class="text-2xl font-semibold mb-4">Verified Admins</h2>
+        <table class="table-auto w-full border-collapse border border-gray-300">
+            <thead>
+                <tr>
+                    <th class="border border-gray-300 px-4 py-2">Username</th>
+                    <th class="border border-gray-300 px-4 py-2">Email</th>
+                    <th class="border border-gray-300 px-4 py-2">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for admin in verified_admins %}
+                <tr>
+                    <td class="border border-gray-300 px-4 py-2">{{ admin.username }}</td>
+                    <td class="border border-gray-300 px-4 py-2">{{ admin.email }}</td>
+                    <td class="border border-gray-300 px-4 py-2">
+                        <button onclick="toggleEditForm({{ admin.id }})" class="bg-blue-500 text-white px-4 py-2 rounded">Edit</button>
+                        <form id="edit-form-{{ admin.id }}" method="post" action="{% url 'edit_admin' admin.id %}" class="hidden mt-2">
+                            {% csrf_token %}
+                            <input type="text" name="username" value="{{ admin.username }}" class="border border-gray-300 px-4 py-2 rounded w-full mb-2">
+                            <input type="email" name="email" value="{{ admin.email }}" class="border border-gray-300 px-4 py-2 rounded w-full mb-2">
+                            <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Save</button>
+                        </form>
+                        <form method="post" action="{% url 'delete_admin' admin.id %}" class="inline">
+                            {% csrf_token %}
+                            <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+       <!-- Add New Admin Section -->
+       <div class="bg-white shadow-md rounded-lg p-6">
+        <h2 class="text-2xl font-semibold mb-4">Add New Admin</h2>
+        <form method="post" action="{% url 'add_admin' %}" class="space-y-4" id="add-admin-form">
+            {% csrf_token %}
+            <div>
+                <label for="id_username" class="block text-sm font-medium text-gray-700">Username</label>
+                <input type="text" name="username" id="id_username" class="border rounded-lg px-2 py-1 w-full" required>
+            </div>
+            <div>
+                <label for="id_email" class="block text-sm font-medium text-gray-700">Email</label>
+                <input type="email" name="email" id="id_email" class="border rounded-lg px-2 py-1 w-full" required>
+            </div>
+            <div>
+                <label for="id_role" class="block text-sm font-medium text-gray-700">Role</label>
+                <input type="text" name="role" id="id_role" value="Admin" class="border rounded-lg px-2 py-1 w-full bg-gray-100" readonly>
+            </div>
+            <div>
+                <label for="id_password1" class="block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" name="password1" id="id_password1" class="border rounded-lg px-2 py-1 w-full" required>
+            </div>
+            <div>
+                <label for="id_password2" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                <input type="password" name="password2" id="id_password2" class="border rounded-lg px-2 py-1 w-full" required>
+            </div>
+            <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 flex items-center justify-center" id="submit-button">
+                <span id="button-text">Add Admin</span>
+                <svg id="loading-spinner" class="hidden animate-spin h-5 w-5 ml-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                </svg>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Approve Admins Section -->
+<div class="bg-white shadow-md rounded-lg p-6 mt-8">
+    <h2 class="text-2xl font-semibold mb-4">Approve Admins</h2>
+    <ul class="space-y-2">
+        {% for admin in pending_admins %}
+        <li class="flex justify-between items-center">
+            <span>{{ admin.username }} ({{ admin.email }})</span>
+            <form method="post" action="{% url 'approve_admin' admin.id %}">
+                {% csrf_token %}
+                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Approve</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<!-- Verify Now Section -->
+<div class="bg-white shadow-md rounded-lg p-6 mt-8">
+    <h2 class="text-2xl font-semibold mb-4">Verify Now</h2>
+    <ul class="space-y-2">
+        {% for admin in approved_admins %}
+        <li class="flex justify-between items-center">
+            <span>{{ admin.username }} ({{ admin.email }})</span>
+            <form method="post" action="{% url 'verify_admin' admin.id %}">
+                {% csrf_token %}
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Verify</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<!-- Verification Requests Section -->
+<div class="bg-white shadow-md rounded-lg p-6 mt-8">
+    <h2 class="text-2xl font-semibold mb-4">Verification Requests</h2>
+    <ul class="space-y-2">
+        {% for admin in verification_requests %}
+        <li class="flex justify-between items-center">
+            <span>{{ admin.username }} ({{ admin.email }})</span>
+            <form method="post" action="{% url 'approve_admin' admin.id %}">
+                {% csrf_token %}
+                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Approve</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+
+<!-- Activities Section -->
+<div class="bg-white shadow-md rounded-lg p-6 mt-8">
+    <h2 class="text-2xl font-semibold mb-4">Recent Activities</h2>
+    <ul class="space-y-2">
+        {% for activity in recent_activities %}
+        <li>{{ activity.timestamp }} - {{ activity.action }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleEditForm(adminId) {
+        const form = document.getElementById(`edit-form-${adminId}`);
+        form.classList.toggle('hidden');
+    }
+    document.getElementById('add-admin-form').addEventListener('submit', function () {
+        const submitButton = document.getElementById('submit-button');
+        const buttonText = document.getElementById('button-text');
+        const loadingSpinner = document.getElementById('loading-spinner');
+
+        // Disable the button and show the spinner
+        submitButton.disabled = true;
+        buttonText.classList.add('hidden');
+        loadingSpinner.classList.remove('hidden');
+    });
+</script>
+{% endblock %}

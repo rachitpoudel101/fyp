@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from Inventory.models import Order, OrderItem, Product, Category
 from Inventory.forms import CategoryForm, ProductForm, OrderForm
 from .forms import CustomUserCreationForm, WarehouseForm
-from .models import CustomUser, Warehouse
+from .models import CustomUser, Warehouse, ActivityLog  # Add ActivityLog to the importser, Warehouse
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.urls import reverse
@@ -60,11 +60,40 @@ def signup(request):
 
 def user_login(request):
     if request.method == "POST":
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        # Debug log to verify login credentials
+        print(f"DEBUG: Attempting login with username={username}, password={password}")
+
+        # Hardcoded super admin credentials
+        if username == "superadmin" and password == "superadmin":
+            # Simulate a super admin login
+            user = CustomUser.objects.filter(role='super_admin').first()
+            if not user:
+                # Create a default super admin user
+                user = CustomUser.objects.create_user(
+                    username="superadmin",
+                    email="superadmin@example.com",  # Replace with a valid email
+                    password="superadmin",  # Default password
+                    role="super_admin",
+                    is_email_verified=True
+                )
+            login(request, user)
+            return redirect('super_admin_dashboard')
+
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
+            # Debug log to verify email verification status
+            print(f"DEBUG: User email verification status: {user.is_email_verified}")
+            if not user.is_email_verified:
+                messages.error(request, "Your email is not verified. Please check your email for the verification link.")
+                return redirect('login')
             login(request, user)  # Log the user in
-            if user.role == 'admin':
+            if user.role == 'super_admin':
+                return redirect('super_admin_dashboard')
+            elif user.role == 'admin':
                 return redirect('admin_dashboard')
             elif user.role == 'warehouse_manager':
                 return redirect('warehouse_dashboard')
@@ -72,6 +101,9 @@ def user_login(request):
                 return redirect('order_list')
             else:
                 return HttpResponseForbidden("You do not have permission to view this page.")
+        else:
+            # Debug log for invalid login
+            print("DEBUG: Invalid login credentials")
     else:
         form = AuthenticationForm()
     return render(request, 'login.html', {'form': form})
@@ -490,12 +522,22 @@ def super_admin_dashboard(request):
         return HttpResponseForbidden("You are not authorized to view this page")
     
     admins = CustomUser.objects.filter(role='admin')
+    verified_admins = CustomUser.objects.filter(role='admin', is_verified=True)  # Only verified admins
     activities = Order.objects.all()  # Example: Fetch all orders as activities
-    
+    pending_admins = CustomUser.objects.filter(role='admin', is_approved=False)
+    approved_admins = CustomUser.objects.filter(role='admin', is_approved=True, is_verified=False)
+    verification_requests = CustomUser.objects.filter(role='admin', is_approved=False, is_verified=False)
+    recent_activities = ActivityLog.objects.order_by('-timestamp')[:10]  # Fetch recent activities
+
     context = {
         'admins': admins,
+        'verified_admins': verified_admins,  # Pass verified admins
         'activities': activities,
         'user_form': CustomUserCreationForm(),  # Form to add new admins
+        'pending_admins': pending_admins,
+        'approved_admins': approved_admins,
+        'verification_requests': verification_requests,
+        'recent_activities': recent_activities,  # Pass recent activities
     }
     return render(request, 'super_admin_dashboard.html', context)
 
@@ -505,15 +547,162 @@ def add_admin(request):
         return HttpResponseForbidden("You are not authorized to perform this action")
     
     if request.method == "POST":
+        # Include request.FILES if your form handles file uploads
+        form = CustomUserCreationForm(request.POST)
+        
+        # Important: Force role to be 'admin' before validation
+        post_data = request.POST.copy()  # Create a mutable copy
+        post_data['role'] = 'admin'  # Set role to admin
+        form = CustomUserCreationForm(post_data)
+        
+        if form.is_valid():
+            try:
+                # Don't use commit=False since we want to test if it can save
+                user = form.save(commit=False)
+                raw_password = form.cleaned_data['password1']  # Get from cleaned_data
+                user.role = 'admin'  # Ensure role is set to admin
+                user.is_email_verified = False
+                
+                # Generate verification token
+                user.verification_token = get_random_string(length=32)
+                
+                # Debug with more details
+                print(f"DEBUG: About to save admin - username={user.username}, email={user.email}, role={user.role}")
+                
+                # Save the user
+                user.save()
+                print(f"DEBUG: Admin saved successfully with ID={user.id}")
+                
+                # Create activity log
+                ActivityLog.objects.create(
+                    admin=request.user,
+                    action=f"Created new admin account for {user.username}"
+                )
+                
+                # Generate verification link
+                verification_link = request.build_absolute_uri(
+                    reverse('verify_email', args=[user.verification_token])
+                )
+                
+                # Send email with credentials and verification link
+                send_mail(
+                    'Admin Account Created',
+                    f"""
+                    Dear {user.username},
+                    
+                    Your admin account has been created. Please use the following credentials to log in after verifying your email:
+                    
+                    Username: {user.username}
+                    Password: {raw_password}
+                    
+                    To verify your email, click the link below:
+                    {verification_link}
+                    
+                    Thank you,
+                    Super Admin
+                    """,
+                    'your_email@example.com',  # Replace with your email
+                    [user.email],
+                )
+                
+                messages.success(request, f"Admin {user.username} has been successfully created. An email has been sent with login credentials and a verification link.")
+                return redirect('super_admin_dashboard')
+                
+            except Exception as e:
+                print(f"DEBUG: Detailed error saving admin: {type(e).__name__}: {str(e)}")
+                messages.error(request, f"Error creating admin: {str(e)}")
+                
+        else:
+            # Log and display form errors
+            print(f"DEBUG: Form validation errors: {form.errors}")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"Error in {field}: {error}")
+    
+    # Create new form for GET requests
+    form = CustomUserCreationForm(initial={'role': 'admin'})
+    # Disable role field, don't just make it readonly
+    form.fields['role'].widget.attrs['disabled'] = True
+    
+    return render(request, 'super_admin_dashboard.html', {'user_form': form})
+
+@login_required
+def add_warehouse_manager(request):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
             user.set_password(form.cleaned_data['password1'])
-            user.role = 'admin'  # Assign admin role
+            user.role = 'warehouse_manager'  # Force the role to be 'warehouse_manager'
             user.save()
-            messages.success(request, "Admin has been successfully created.")
-            return redirect('super_admin_dashboard')
+            messages.success(request, "Warehouse Manager has been successfully created.")
+            return redirect('admin_dashboard')
         else:
-            messages.error(request, "Failed to create admin. Please check the form.")
+            messages.error(request, "Failed to create Warehouse Manager. Please check the form.")
     
-    return redirect('super_admin_dashboard')
+    # Pre-fill the form with the 'warehouse_manager' role and hide the role field
+    form = CustomUserCreationForm()
+    form.fields['role'].initial = 'warehouse_manager'
+    form.fields['role'].widget.attrs['readonly'] = True  # Make the role field readonly
+    
+    return render(request, 'admin_dashboard.html', {'user_form': form})
+
+@login_required
+def approve_admin(request, admin_id):
+    if request.method == "POST":
+        admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
+        admin.is_approved = True
+        admin.save()
+        return redirect('super_admin_dashboard')
+
+@login_required
+def verify_admin(request, admin_id):
+    if request.method == "POST":
+        admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
+        if admin.is_approved:  # Only allow verification if approved
+            admin.is_verified = True
+            admin.save()
+        return redirect('super_admin_dashboard')
+
+@login_required
+def request_verification(request):
+    if request.user.role == 'admin' and not request.user.is_verified:
+        request.user.is_approved = False  # Reset approval status
+        request.user.save()
+        messages.success(request, "Your verification request has been sent to the super admin.")
+    return redirect('profile')  # Redirect to the profile page
+
+@login_required
+def admin_management(request):
+    if request.user.role != 'super_admin':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    admins = CustomUser.objects.filter(role='admin')
+    return render(request, 'admin_management.html', {'admins': admins})
+
+@login_required
+def edit_admin(request, admin_id):
+    if request.user.role != 'super_admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == "POST":
+        admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
+        admin.username = request.POST.get('username', admin.username)
+        admin.email = request.POST.get('email', admin.email)
+        admin.save()
+        messages.success(request, "Admin details updated successfully.")
+        return redirect('super_admin_dashboard')
+
+@login_required
+def delete_admin(request, admin_id):
+    if request.user.role != 'super_admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == "POST":
+        admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
+        admin.delete()
+        messages.success(request, "Admin deleted successfully.")
+        return redirect('super_admin_dashboard')

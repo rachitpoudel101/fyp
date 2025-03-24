@@ -176,6 +176,28 @@
     </div>
 </div>
 
+<div class="bg-white shadow-md rounded-lg p-6 mt-8">
+    <h2 class="text-2xl font-semibold mb-4">Add Warehouse Manager</h2>
+    <form method="post" action="{% url 'add_warehouse_manager' %}" class="space-y-4">
+        {% csrf_token %}
+        {{ user_form.as_p }}
+        {% if user_form.errors %}
+            <div class="text-red-500 text-sm">
+                <ul>
+                    {% for field, errors in user_form.errors.items %}
+                        {% for error in errors %}
+                            <li>{{ field|capfirst }}: {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
+            Add Warehouse Manager
+        </button>
+    </form>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     // Add Member Form Submission
