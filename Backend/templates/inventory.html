@@ -1,28 +1,23 @@
 {% extends 'base_dashboard.html' %}
 {% load static %}
 
-{% block title %}Inventory - Marline{% endblock %}
+{% block title %}Inventory {% endblock %}
 
 {% block sidebar_menu %}
 <ul class="nav flex-column">
     <li class="nav-item">
-        <a class="nav-link active" href="{% url 'admin_dashboard' %}">
+        <a class="nav-link" href="{% url 'warehouse_dashboard' %}">
             <i class="fas fa-home me-2"></i> Dashboard
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'user_statistics' %}">
-            <i class="fas fa-cog me-2"></i> User
+        <a class="nav-link active" href="{% url 'inventory' %}">
+            <i class="fas fa-box me-2"></i> Inventory
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'product_management' %}">
-            <i class="fas fa-box me-2"></i> Products
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{% url 'create_warehouse' %}">
-            <i class="fas fa-plus me-2"></i> Create Warehouse
+        <a class="nav-link" href="{% url 'orders' %}">
+            <i class="fas fa-clipboard-list me-2"></i> Orders
         </a>
     </li>
 </ul>

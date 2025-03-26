@@ -16,6 +16,8 @@ body {
     padding: 40px;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 90%;
 }
 
 h1 {
@@ -28,6 +30,13 @@ h1 {
 p {
     font-size: 16px;
     margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.note {
+    color: #666;
+    font-size: 14px;
+    font-style: italic;
 }
 
 a {
@@ -54,4 +63,33 @@ button {
 
 button:hover {
     background-color: #2563eb;
+}
+
+.messages {
+    margin-bottom: 20px;
+}
+
+.alert {
+    padding: 12px 20px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.alert-error {
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.alert-success {
+    background-color: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+
+.alert-info {
+    background-color: #dbeafe;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
 }

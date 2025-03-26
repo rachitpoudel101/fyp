@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up</title>
+    <title>Customer Sign Up</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="{% static 'css/signup.css' %}" rel="stylesheet">
@@ -13,24 +13,26 @@
 </head>
 <body>
     <div class="signup-container">
-        <h2>Join Us</h2>
+        <h2>Customer Sign Up</h2>
         <form method="POST">
             {% csrf_token %}
             {% for field in form %}
-                <div class="mb-4">
-                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                    <div class="icon-input">
-                        <i class="fas fa-{% if field.name == 'username' %}user{% elif field.name == 'email' %}envelope{% elif 'password' in field.name %}lock{% else %}pen{% endif %}"></i>
-                        {% render_field field class="form-control" placeholder=field.label %}
+                {% if field.name != 'role' %}
+                    <div class="mb-4">
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                        <div class="icon-input">
+                            <i class="fas fa-{% if field.name == 'username' %}user{% elif field.name == 'email' %}envelope{% elif 'password' in field.name %}lock{% else %}pen{% endif %}"></i>
+                            {% render_field field class="form-control" placeholder=field.label %}
+                        </div>
+                        {% if field.errors %}
+                            {% for error in field.errors %}
+                                <div class="text-danger">{{ error }}</div>
+                            {% endfor %}
+                        {% endif %}
                     </div>
-                    {% if field.errors %}
-                        {% for error in field.errors %}
-                            <div class="text-danger">{{ error }}</div>
-                        {% endfor %}
-                    {% endif %}
-                </div>
+                {% endif %}
             {% endfor %}
-            <button type="submit" class="btn btn-primary w-100">Create Account</button>
+            <button type="submit" class="btn btn-primary w-100">Create Customer Account</button>
         </form>
         <p class="login-link">Already have an account? <a href="{% url 'login' %}">Log in here</a></p>
     </div>

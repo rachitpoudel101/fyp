@@ -5,21 +5,50 @@ from django.http import HttpResponseBadRequest, HttpResponseForbidden, JsonRespo
 from django.contrib.auth.decorators import login_required
 from Inventory.models import Order, OrderItem, Product, Category
 from Inventory.forms import CategoryForm, ProductForm, OrderForm
-from .forms import CustomUserCreationForm, WarehouseForm
+from .forms import CustomUserCreationForm, WarehouseForm, StaffCreationForm
 from .models import CustomUser, Warehouse, ActivityLog  # Add ActivityLog to the importser, Warehouse
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.urls import reverse
 import uuid
-from django.db.models import Sum
+from django.db.models import Sum, Q, F
 from django.contrib import messages  # Import for user notifications
 
 def verify_email(request, token):
-    user = get_object_or_404(CustomUser, verification_token=token)
-    user.is_email_verified = True
-    user.verification_token = None  # Invalidate the token
-    user.save()
-    return render(request, 'email_verified.html')
+    try:
+        # Debug log to see what token we're looking for
+        print(f"DEBUG: Attempting to verify email with token: {token}")
+        
+        # Try to find the user with this token
+        user = CustomUser.objects.filter(verification_token=token).first()
+        
+        if not user:
+            print(f"DEBUG: No user found with token: {token}")
+            messages.error(request, "Invalid or expired verification link. Please request a new verification email.")
+            return redirect('verify_pending')
+            
+        print(f"DEBUG: Found user: {user.username} with email: {user.email}")
+        
+        # Check if already verified
+        if user.is_email_verified:
+            print(f"DEBUG: User {user.username} is already verified")
+            messages.info(request, "Your email is already verified. You can now log in.")
+            return redirect('login')
+            
+        # Verify the user
+        user.is_email_verified = True
+        user.verification_token = None  # Invalidate the token
+        user.save()
+        
+        print(f"DEBUG: Successfully verified user: {user.username}")
+        messages.success(request, "Your email has been successfully verified!")
+        
+        return render(request, 'email_verified.html')
+        
+    except Exception as e:
+        print(f"DEBUG: Error during email verification: {str(e)}")
+        messages.error(request, "An error occurred during email verification. Please try again.")
+        return redirect('verify_pending')
 
 def verify_pending(request):
     return render(request, 'verify_pending.html')
@@ -30,32 +59,24 @@ def generate_verification_token():
 # Sign up view - Allows users to register with a role
 
 def signup(request):
-    if request.method == "POST":
+    if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save(commit=False)
-            user.set_password(form.cleaned_data['password1'])
-            user.is_email_verified = False  # Mark email as not verified
-            user.generate_verification_token()  # Generate token
+            user.role = 'customer'  # Force role to be customer
+            user.is_email_verified = False
             user.save()
-
-            # Generate verification link
-            verification_link = request.build_absolute_uri(
-                reverse('verify_email', args=[user.verification_token])
-            )
-
+            
+            # Generate verification token
+            token = generate_verification_token()
+            
             # Send verification email
-            send_mail(
-                'Verify your email',
-                f'Click the link to verify your email: {verification_link}',
-                'your_email@example.com',  # ✅ Add from_email (replace with your email)
-                [user.email],  # ✅ Ensure recipient_list is a list
-            )
-
-            return redirect('verify_pending')  # Redirect to a pending page
+            send_verification_email(user, token)
+            
+            messages.success(request, 'Account created successfully. Please check your email to verify your account.')
+            return redirect('login')
     else:
         form = CustomUserCreationForm()
-    
     return render(request, 'signup.html', {'form': form})
 
 def user_login(request):
@@ -133,57 +154,18 @@ def admin_dashboard(request):
     if request.user.role != 'admin':
         return HttpResponseForbidden("You are not authorized to view this page")
     
-    if request.method == "POST":
-        if 'delete_product_id' in request.POST:
-            product_id = request.POST.get('delete_product_id')
-            product = get_object_or_404(Product, id=product_id)
-            product.delete()
-            return JsonResponse({'success': True})
-        elif 'assign_manager' in request.POST:
-            warehouse_id = request.POST.get('warehouse_id')
-            manager_id = request.POST.get('manager_id')
-            warehouse = get_object_or_404(Warehouse, id=warehouse_id)
-            manager = get_object_or_404(CustomUser, id=manager_id)
-            warehouse.manager = manager
-            warehouse.save()
-            return JsonResponse({'success': True})
-        else:
-            form = ProductForm(request.POST)
-            if form.is_valid():
-                product = form.save(commit=False)
-                if product.expires:
-                    warehouse = Warehouse.objects.get(name="Expires Warehouse")
-                else:
-                    warehouse = Warehouse.objects.get(name="Non-Expires Warehouse")
-                product.warehouse = warehouse
-                product.save()
-                return JsonResponse({'success': True})
-            else:
-                return JsonResponse({'success': False, 'error': form.errors.as_json()})
+    # Get warehouse managers and staff added by the current admin
+    warehouse_managers = CustomUser.objects.filter(role='warehouse_manager', created_by=request.user)
+    staff_members = CustomUser.objects.filter(role='staff', created_by=request.user)
     
-    total_sales = Order.objects.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
-    total_orders = Order.objects.count()
-    total_customers = CustomUser.objects.filter(role='customer').count()
-    recent_orders = Order.objects.order_by('-created_at')[:5]
-    products = Product.objects.all()
-    users = CustomUser.objects.all()
-    warehouses = Warehouse.objects.all()
-    
-    # Low stock threshold
-    low_stock_threshold = 10
-    low_stock_products = Product.objects.filter(stock__lt=low_stock_threshold)
+    # Get low stock products
+    low_stock_products = Product.objects.filter(stock__lte=F('min_stock'))
     
     context = {
-        'total_sales': total_sales,
-        'total_orders': total_orders,
-        'total_customers': total_customers,
-        'recent_orders': recent_orders,
-        'products': products,
-        'form': ProductForm(),
-        'users': users,
-        'warehouses': warehouses,
+        'warehouse_managers': warehouse_managers,
+        'staff_members': staff_members,
         'low_stock_products': low_stock_products,
-        'user_form': CustomUserCreationForm(),  # Add user creation form
+        'user_form': CustomUserCreationForm(),
     }
     return render(request, 'admin_dashboard.html', context)
 
@@ -316,9 +298,18 @@ def user_statistics(request):
     if request.user.role != 'admin':
         return HttpResponseForbidden("You are not authorized to view this page")
     
-    users = CustomUser.objects.all()
+    # Get all users with their creators (admins)
+    users = CustomUser.objects.select_related('created_by').all().order_by('role')
     
-    context = {'users': users}
+    # Filter users based on role and created_by
+    warehouse_managers = CustomUser.objects.filter(role='warehouse_manager')
+    staff_members = CustomUser.objects.filter(role='staff')
+    
+    context = {
+        'users': users,
+        'warehouse_managers': warehouse_managers,
+        'staff_members': staff_members,
+    }
     return render(request, 'user_statistics.html', context)
 
 @login_required
@@ -627,28 +618,66 @@ def add_admin(request):
     return render(request, 'super_admin_dashboard.html', {'user_form': form})
 
 @login_required
+def add_staff(request):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You don't have permission to add staff members.")
+    
+    if request.method == 'POST':
+        form = StaffCreationForm(request.POST)
+        if form.is_valid():
+            try:
+                user = form.save(commit=False)
+                user.created_by = request.user  # Set the creator
+                user.is_email_verified = False
+                user.save()
+                
+                # Generate verification token
+                token = generate_verification_token()
+                user.verification_token = token
+                user.save()
+                
+                # Send verification email
+                send_verification_email(user, token)
+                
+                messages.success(request, 'Staff member added successfully. Please check your email to verify your account.')
+                return redirect('admin_dashboard')
+            except Exception as e:
+                messages.error(request, f'Error adding staff member: {str(e)}')
+    else:
+        form = StaffCreationForm()
+    
+    return render(request, 'add_staff.html', {'form': form})
+
+@login_required
 def add_warehouse_manager(request):
     if request.user.role != 'admin':
-        return HttpResponseForbidden("You are not authorized to perform this action")
+        return HttpResponseForbidden("You don't have permission to add warehouse managers.")
     
-    if request.method == "POST":
-        form = CustomUserCreationForm(request.POST)
+    if request.method == 'POST':
+        form = WarehouseForm(request.POST)
         if form.is_valid():
-            user = form.save(commit=False)
-            user.set_password(form.cleaned_data['password1'])
-            user.role = 'warehouse_manager'  # Force the role to be 'warehouse_manager'
-            user.save()
-            messages.success(request, "Warehouse Manager has been successfully created.")
-            return redirect('admin_dashboard')
-        else:
-            messages.error(request, "Failed to create Warehouse Manager. Please check the form.")
+            try:
+                user = form.save(commit=False)
+                user.created_by = request.user  # Set the creator
+                user.is_email_verified = False
+                user.save()
+                
+                # Generate verification token
+                token = generate_verification_token()
+                user.verification_token = token
+                user.save()
+                
+                # Send verification email
+                send_verification_email(user, token)
+                
+                messages.success(request, 'Warehouse manager added successfully. Please check your email to verify your account.')
+                return redirect('admin_dashboard')
+            except Exception as e:
+                messages.error(request, f'Error adding warehouse manager: {str(e)}')
+    else:
+        form = WarehouseForm()
     
-    # Pre-fill the form with the 'warehouse_manager' role and hide the role field
-    form = CustomUserCreationForm()
-    form.fields['role'].initial = 'warehouse_manager'
-    form.fields['role'].widget.attrs['readonly'] = True  # Make the role field readonly
-    
-    return render(request, 'admin_dashboard.html', {'user_form': form})
+    return render(request, 'add_warehouse_manager.html', {'form': form})
 
 @login_required
 def approve_admin(request, admin_id):
@@ -706,3 +735,52 @@ def delete_admin(request, admin_id):
         admin.delete()
         messages.success(request, "Admin deleted successfully.")
         return redirect('super_admin_dashboard')
+
+@login_required
+def change_admin_password(request, admin_id):
+    if request.user.role != 'super_admin':
+        return HttpResponseForbidden("You don't have permission to change admin passwords.")
+    
+    admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
+    
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        if new_password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return redirect('super_admin_dashboard')
+        
+        admin.set_password(new_password)
+        admin.save()
+        
+        ActivityLog.objects.create(
+            admin=request.user,
+            action=f"Changed password for admin {admin.username}"
+        )
+        
+        messages.success(request, f"Password changed successfully for admin {admin.username}")
+        return redirect('super_admin_dashboard')
+    
+    return HttpResponseBadRequest("Invalid request method")
+
+@login_required
+def toggle_admin_status(request, admin_id):
+    if request.user.role != 'super_admin':
+        return HttpResponseForbidden("You don't have permission to toggle admin status.")
+    
+    admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
+    
+    # Toggle the is_active status
+    admin.is_active = not admin.is_active
+    admin.save()
+    
+    # Log the activity
+    action = "Activated" if admin.is_active else "Deactivated"
+    ActivityLog.objects.create(
+        admin=request.user,
+        action=f"{action} admin account {admin.username}"
+    )
+    
+    messages.success(request, f"Admin {admin.username} has been {action.lower()} successfully.")
+    return redirect('super_admin_dashboard')

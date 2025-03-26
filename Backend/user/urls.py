@@ -5,8 +5,7 @@ from .views import add_user
 urlpatterns = [
     # User authentication URLs
     path('signup/', views.signup, name='signup'),  # Signup URL
-    path('', views.user_login, name='login'),  # Login URL
-    path('login/', views.user_login, name='login'),  # Add this line
+    path('login/', views.user_login, name='login'),  # Login URL
     path('logout/', views.user_logout, name='logout'),  # Logout URL
 
     # Dashboard URLs
@@ -42,9 +41,10 @@ urlpatterns = [
     path('create_warehouse/', views.create_warehouse, name='create_warehouse'),  # Create warehouse (Admin)
     path('manage_warehouses/', views.manage_warehouses, name='manage_warehouses'),  # Manage warehouses (Admin)
     path('add-warehouse-manager/', views.add_warehouse_manager, name='add_warehouse_manager'),  # Add warehouse manager URL
+    path('add-staff/', views.add_staff, name='add_staff'),  # Add staff URL
 
     # Add user URL
-    path('add_user/', add_user, name='add_user'),
+    path('add_user/', views.add_user, name='add_user'),
     path('add_admin/', views.add_admin, name='add_admin'),  # Add admin URL
 
     # New admin approval and verification URLs
@@ -55,4 +55,6 @@ urlpatterns = [
     path('admin-management/', views.admin_management, name='admin_management'),  # Admin management page
     path('edit-admin/<int:admin_id>/', views.edit_admin, name='edit_admin'),  # Edit admin
     path('delete-admin/<int:admin_id>/', views.delete_admin, name='delete_admin'),  # Delete admin
+    path('change-admin-password/<int:admin_id>/', views.change_admin_password, name='change_admin_password'),
+    path('toggle-admin-status/<int:admin_id>/', views.toggle_admin_status, name='toggle_admin_status'),
 ]

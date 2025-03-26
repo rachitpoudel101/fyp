@@ -15,15 +15,18 @@ class CustomUser(AbstractUser):
         ('super_admin', 'Super Admin'),
         ('admin', 'Admin'),
         ('warehouse_manager', 'Warehouse Manager'),
+        ('staff', 'Staff'),
         ('customer', 'Customer'),
     ]
-    role = models.CharField(max_length=50, choices=ROLE_CHOICES)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='customer')
     email = models.EmailField(unique=True, blank=False, null=False)
     is_email_verified = models.BooleanField(default=False)
-    verification_token = models.CharField(max_length=64, blank=True, null=True)
+    verification_token = models.CharField(max_length=100, blank=True, null=True)
     warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True, blank=True, related_name='employees')
     is_approved = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
+    created_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_users')
 
     def generate_verification_token(self):
         """Generate a new unique verification token."""
@@ -34,6 +37,9 @@ class CustomUser(AbstractUser):
         # Debug log to verify role before saving
         print(f"DEBUG: Saving user with username={self.username}, role={self.role}")
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.username
 
 class ActivityLog(models.Model):
     admin = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='activities')

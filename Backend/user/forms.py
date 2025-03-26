@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
 from .models import Warehouse, CustomUser
 
 class WarehouseForm(forms.ModelForm):
@@ -6,54 +7,32 @@ class WarehouseForm(forms.ModelForm):
         model = Warehouse
         fields = ['name', 'location']
 
-class CustomUserCreationForm(forms.ModelForm):
-    password1 = forms.CharField(label='Password', widget=forms.PasswordInput)
-    password2 = forms.CharField(label='Confirm Password', widget=forms.PasswordInput)
-    
+class CustomUserCreationForm(UserCreationForm):
+    email = forms.EmailField(required=True)
+    role = forms.ChoiceField(choices=CustomUser.ROLE_CHOICES, initial='customer', widget=forms.HiddenInput())
+
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'role']
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Make email field required
-        self.fields['email'].required = True
-        
-        # Set role choices
-        if 'role' in self.fields:
-            self.fields['role'].choices = [
-                ('admin', 'Admin'),
-                ('warehouse_manager', 'Warehouse Manager'),
-            ]
-    
-    def clean_email(self):
-        email = self.cleaned_data.get('email')
-        if email:
-            if CustomUser.objects.filter(email=email).exists():
-                raise forms.ValidationError("Email already exists")
-        return email
-    
-    def clean_username(self):
-        username = self.cleaned_data.get('username')
-        if username:
-            if CustomUser.objects.filter(username=username).exists():
-                raise forms.ValidationError("Username already exists")
-        return username
-    
-    def clean_password2(self):
-        password1 = self.cleaned_data.get('password1')
-        password2 = self.cleaned_data.get('password2')
-        if password1 and password2 and password1 != password2:
-            raise forms.ValidationError("Passwords don't match")
-        return password2
-    
+        fields = ('username', 'email', 'password1', 'password2', 'role')
+
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.set_password(self.cleaned_data["password1"])
-        
-        # Always ensure role is 'admin'
-        user.role = 'admin'
-        
+        user.email = self.cleaned_data['email']
+        user.role = 'customer'  # Always set role to customer
         if commit:
             user.save()
         return user
+
+class StaffCreationForm(CustomUserCreationForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['role'].initial = 'staff'
+        self.fields['role'].widget = forms.HiddenInput()
+        self.fields['is_staff'] = forms.BooleanField(initial=True, widget=forms.HiddenInput())
+
+class WarehouseManagerCreationForm(CustomUserCreationForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['role'].initial = 'warehouse_manager'
+        self.fields['role'].widget = forms.HiddenInput()
+        self.fields['is_staff'] = forms.BooleanField(initial=True, widget=forms.HiddenInput())

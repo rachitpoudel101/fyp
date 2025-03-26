@@ -105,10 +105,11 @@
 
     <!-- Users Tab -->
     <div class="tab-pane fade" id="usersTab">
+        <!-- Warehouse Managers Section -->
         <div class="row mb-4">
             <div class="col-12">
                 <div class="metric-card">
-                    <h6 class="text-muted mb-3">Users</h6>
+                    <h6 class="text-muted mb-3">Warehouse Managers</h6>
                     <div class="table-responsive">
                         <table class="table">
                             <thead>
@@ -116,16 +117,67 @@
                                     <th>ID</th>
                                     <th>Username</th>
                                     <th>Email</th>
-                                    <th>Role</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for user in users %}
+                                {% for manager in warehouse_managers %}
                                 <tr>
-                                    <td>{{ user.id }}</td>
-                                    <td>{{ user.username }}</td>
-                                    <td>{{ user.email }}</td>
-                                    <td>{{ user.role }}</td>
+                                    <td>{{ manager.id }}</td>
+                                    <td>{{ manager.username }}</td>
+                                    <td>{{ manager.email }}</td>
+                                    <td>
+                                        {% if manager.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No warehouse managers found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Staff Members Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-3">Staff Members</h6>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for staff in staff_members %}
+                                <tr>
+                                    <td>{{ staff.id }}</td>
+                                    <td>{{ staff.username }}</td>
+                                    <td>{{ staff.email }}</td>
+                                    <td>
+                                        {% if staff.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No staff members found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -142,34 +194,30 @@
             <div class="col-12">
                 <div class="metric-card">
                     <h6 class="text-muted mb-3">Add New Member</h6>
-                    <form method="post" action="{% url 'add_user' %}" id="add-member-form">
-                        {% csrf_token %}
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" name="username" required>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Add Staff Member</h5>
+                                    <p class="card-text">Add a new staff member to help manage inventory and orders.</p>
+                                    <a href="{% url 'add_staff' %}" class="btn btn-primary">
+                                        <i class="fas fa-user-plus me-2"></i>Add Staff
+                                    </a>
+                                </div>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Add Warehouse Manager</h5>
+                                    <p class="card-text">Add a new warehouse manager to oversee warehouse operations.</p>
+                                    <a href="{% url 'add_warehouse_manager' %}" class="btn btn-primary">
+                                        <i class="fas fa-user-plus me-2"></i>Add Warehouse Manager
+                                    </a>
+                                </div>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="role" class="form-label">Role</label>
-                            <select class="form-control" id="role" name="role" required>
-                                <option value="admin">Admin</option>
-                                <option value="warehouse_manager">Warehouse Manager</option>
-                                <option value="customer">Customer</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password1" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password1" name="password1" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password2" class="form-label">Confirm Password</label>
-                            <input type="password" class="form-control" id="password2" name="password2" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary">Add Member</button>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
