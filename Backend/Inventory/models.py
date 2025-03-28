@@ -1,6 +1,6 @@
 import uuid
 from django.db import models
-from user.models import CustomUser
+from user.models import CustomUser, Warehouse
 
 class Profile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
@@ -27,6 +27,7 @@ class Category(models.Model):
 class Product(models.Model):
     name = models.CharField(max_length=200)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.SET_NULL, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.IntegerField(default=0)
     description = models.TextField()
@@ -35,6 +36,15 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
+    def save(self, *args, **kwargs):
+        if not self.warehouse:
+            # Assign to appropriate warehouse based on expires field
+            if self.expires:
+                self.warehouse = Warehouse.objects.filter(handles_expiring=True).first()
+            else:
+                self.warehouse = Warehouse.objects.filter(handles_expiring=False).first()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 

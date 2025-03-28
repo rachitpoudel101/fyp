@@ -1,34 +1,124 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 text-gray-800">
-    <div class="container mx-auto p-6">
-        <h1 class="text-3xl font-bold mb-6">Profile</h1>
-        <div class="bg-white shadow-md rounded-lg p-6">
-            <div class="flex items-center">
-                {% if user.role == 'admin' %}
-                    <img src="{% static 'images/admin-icon.png' %}" alt="Admin Icon" class="w-12 h-12 mr-4">
-                {% endif %}
-                <div>
-                    <p><strong>Username:</strong> {{ user.username }}</p>
-                    <p><strong>Email:</strong> {{ user.email }}</p>
-                    <p><strong>Role:</strong> {{ user.get_role_display }}</p>
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen py-12">
+    <div class="max-w-4xl mx-auto px-4">
+        <!-- Profile Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl overflow-hidden shadow-xl">
+            <div class="p-8">
+                <div class="flex items-center space-x-6">
+                    <div class="relative">
+                        <div class="w-24 h-24 rounded-full bg-white ring-4 ring-white flex items-center justify-center">
+                            <span class="text-3xl font-bold text-blue-600">{{ user.username|first|upper }}</span>
+                        </div>
+                        <button class="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full text-white hover:bg-blue-600 transition-colors">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                    </div>
+                    <div class="text-white">
+                        <h1 class="text-3xl font-bold">{{ user.username }}</h1>
+                        <p class="text-blue-100">{{ user.email }}</p>
+                        <div class="mt-2">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-800 text-white">
+                                {{ user.get_role_display }}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            {% if user.role == 'admin' and not user.is_verified %}
-                <form method="post" action="{% url 'request_verification' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="mt-4 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
-                        Verify Your Profile
-                    </button>
-                </form>
-            {% endif %}
+        </div>
+
+        <!-- Profile Content -->
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Main Info -->
+            <div class="md:col-span-2 space-y-6">
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-sm font-medium text-gray-500">Username</div>
+                        <div class="text-sm text-gray-900">{{ user.username }}</div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-sm font-medium text-gray-500">Email</div>
+                        <div class="text-sm text-gray-900">
+                            {{ user.email }}
+                            {% if user.is_email_verified %}
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <svg class="mr-1 h-3 w-3 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                    </svg>
+                                    Verified
+                                </span>
+                            {% else %}
+                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Not Verified
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-sm font-medium text-gray-500">Role</div>
+                        <div class="text-sm text-gray-900">{{ user.get_role_display }}</div>
+                    </div>
+
+                    {% if user.created_by %}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-sm font-medium text-gray-500">Added By</div>
+                        <div class="text-sm text-gray-900">{{ user.created_by.username }}</div>
+                    </div>
+                    {% endif %}
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-sm font-medium text-gray-500">Account Status</div>
+                        <div class="text-sm text-gray-900">
+                            {% if user.is_active %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Active
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    Inactive
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {% if not user.is_email_verified %}
+                <div class="mt-6">
+                    <form method="post" action="{% url 'resend_verification_email' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Resend Verification Email
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Side Info -->
+            <div class="space-y-6">
+                <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+                    <div class="max-w-md w-full space-y-8">
+                        <div class="text-center">
+                            <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
+                                Access Restricted
+                            </h2>
+                            <p class="mt-2 text-sm text-gray-600">
+                                This page can only be accessed from your dashboard.
+                            </p>
+                            <div class="mt-5">
+                                <a href="{% url 'dashboard' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    Go to Dashboard
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-</body>
-</html>
+</div>
+{% endblock %}

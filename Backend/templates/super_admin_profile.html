@@ -1,0 +1,57 @@
+{% extends "base_superadmin.html" %}
+
+{% block title %}Super Admin Profile{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <!-- Dashboard Button -->
+    <div class="mb-6">
+        <a href="{% url 'super_admin_dashboard' %}" class="inline-flex items-center bg-blue-500 hover:bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+            </svg>
+            Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Profile Information Card -->
+    <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+        <h2 class="text-2xl font-bold mb-6">Profile Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <p class="text-gray-600">Username</p>
+                <p class="font-semibold">{{ user.username }}</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Email</p>
+                <p class="font-semibold">{{ user.email }}</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Role</p>
+                <p class="font-semibold">Super Administrator</p>
+            </div>
+            <div>
+                <p class="text-gray-600">Last Login</p>
+                <p class="font-semibold">{{ user.last_login|date:"F j, Y, g:i a" }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activities Card -->
+    <div class="bg-white shadow-lg rounded-lg p-6">
+        <h2 class="text-2xl font-bold mb-6">Recent Activities</h2>
+        <div class="space-y-4">
+            {% if recent_activities %}
+                {% for activity in recent_activities %}
+                    <div class="border-b pb-4">
+                        <p class="text-gray-600 text-sm">{{ activity.timestamp|date:"F j, Y, g:i a" }}</p>
+                        <p class="font-medium">{{ activity.action }}</p>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-gray-500">No recent activities found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

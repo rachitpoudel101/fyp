@@ -1,0 +1,40 @@
+.hero {
+    padding: 100px 0;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.hero h1 {
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.features .card {
+    transition: transform 0.3s ease;
+}
+
+.features .card:hover {
+    transform: translateY(-5px);
+}
+
+.features .fas {
+    color: #4a90e2;
+}
+
+.cta {
+    background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+}
+
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.btn-primary {
+    background-color: #4a90e2;
+    border-color: #4a90e2;
+}
+
+.btn-primary:hover {
+    background-color: #357abd;
+    border-color: #357abd;
+}

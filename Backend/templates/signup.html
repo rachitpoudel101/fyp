@@ -5,38 +5,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Sign Up</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Sign Up - Marline</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@shadcn/ui/dist/shadcn-ui.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link href="{% static 'css/signup.css' %}" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
 </head>
-<body>
-    <div class="signup-container">
-        <h2>Customer Sign Up</h2>
-        <form method="POST">
-            {% csrf_token %}
-            {% for field in form %}
-                {% if field.name != 'role' %}
-                    <div class="mb-4">
-                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                        <div class="icon-input">
-                            <i class="fas fa-{% if field.name == 'username' %}user{% elif field.name == 'email' %}envelope{% elif 'password' in field.name %}lock{% else %}pen{% endif %}"></i>
-                            {% render_field field class="form-control" placeholder=field.label %}
+<body class="bg-gradient-to-br from-blue-600 to-indigo-600 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <!-- Logo and Branding -->
+        <div class="text-center mb-8">
+            <img src="{% static 'images/logo.png' %}" alt="Marline" class="h-12 mx-auto mb-4">
+            <h2 class="text-3xl font-bold text-white">Create Account</h2>
+            <p class="text-blue-100 mt-2">Join Marline's warehouse management platform</p>
+        </div>
+
+        <!-- Sign Up Form -->
+        <div class="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8">
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
+                {% for field in form %}
+                    {% if field.name != 'role' %}
+                    <div class="space-y-2">
+                        <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700">
+                            {{ field.label }}
+                        </label>
+                        <div class="relative">
+                            <i class="fas fa-{% if field.name == 'username' %}user{% elif field.name == 'email' %}envelope{% elif 'password' in field.name %}lock{% endif %} absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            {{ field|add_class:"w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" }}
                         </div>
                         {% if field.errors %}
                             {% for error in field.errors %}
-                                <div class="text-danger">{{ error }}</div>
+                                <p class="text-red-500 text-sm mt-1">{{ error }}</p>
                             {% endfor %}
                         {% endif %}
                     </div>
-                {% endif %}
-            {% endfor %}
-            <button type="submit" class="btn btn-primary w-100">Create Customer Account</button>
-        </form>
-        <p class="login-link">Already have an account? <a href="{% url 'login' %}">Log in here</a></p>
+                    {% endif %}
+                {% endfor %}
+
+                <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    Create Account
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <p class="text-gray-600">Already have an account?</p>
+                <a href="{% url 'login' %}" class="text-blue-600 font-semibold hover:text-blue-800 transition-colors">
+                    Sign in here
+                </a>
+            </div>
+        </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{% static 'js/signup.js' %}"></script>
 </body>
 </html>

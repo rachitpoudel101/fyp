@@ -6,9 +6,10 @@ class Warehouse(models.Model):
     name = models.CharField(max_length=255)
     location = models.CharField(max_length=255)
     manager = models.OneToOneField('CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='managed_warehouse')
+    handles_expiring = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({'Expiring' if self.handles_expiring else 'Non-Expiring'} Products)"
 
 class CustomUser(AbstractUser):
     ROLE_CHOICES = [

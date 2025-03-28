@@ -3,6 +3,7 @@ from . import views
 from .views import add_user
 
 urlpatterns = [
+    path('', views.landing_page, name='landing_page'),  # Add this line at the top
     # User authentication URLs
     path('signup/', views.signup, name='signup'),  # Signup URL
     path('login/', views.user_login, name='login'),  # Login URL
@@ -57,4 +58,8 @@ urlpatterns = [
     path('delete-admin/<int:admin_id>/', views.delete_admin, name='delete_admin'),  # Delete admin
     path('change-admin-password/<int:admin_id>/', views.change_admin_password, name='change_admin_password'),
     path('toggle-admin-status/<int:admin_id>/', views.toggle_admin_status, name='toggle_admin_status'),
+
+    # Profile URL
+    path('profile/', views.profile_view, name='profile'),
+    path('super-admin-profile/', views.super_admin_profile, name='super_admin_profile'),
 ]

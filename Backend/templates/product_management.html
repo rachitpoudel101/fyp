@@ -142,17 +142,17 @@
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="categoryName" class="form-label">Category Name</label>
-                        <input type="text" class="form-control" id="categoryName" name="category_name" required>
+                        <input type="text" class="form-control" id="categoryName" name="name" required>
                     </div>
                     <div class="mb-3">
                         <label for="categoryDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="categoryDescription" name="category_description" rows="3"></textarea>
+                        <textarea class="form-control" id="categoryDescription" name="description"></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveCategory">Save Category</button>
+                <button type="button" class="btn btn-primary" onclick="addCategory()">Save Category</button>
             </div>
         </div>
     </div>
@@ -297,6 +297,63 @@ document.getElementById('updateProduct').addEventListener('click', function() {
         alert('An error occurred. Please try again.');
     });
 });
+
+function addCategory() {
+    const formData = new FormData(document.getElementById('categoryForm'));
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch('{% url "add_category" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add new category to the table
+            const categoriesTable = document.querySelector('#categories table tbody');
+            const newRow = categoriesTable.insertRow();
+            newRow.innerHTML = `
+                <td>${data.category.name}</td>
+                <td>${data.category.description || ''}</td>
+                <td>0</td>
+            `;
+            
+            // Add to product form category dropdown
+            const categorySelect = document.querySelector('#id_category');
+            const option = new Option(data.category.name, data.category.id);
+            categorySelect.add(option);
+            
+            // Close modal and show success message
+            bootstrap.Modal.getInstance(document.getElementById('addCategoryModal')).hide();
+            alert(data.message);
+        } else {
+            alert(data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to add category. Please try again.');
+    });
+}
+
+// Helper function to get CSRF token from cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
 </script>
 {% endblock %}
 

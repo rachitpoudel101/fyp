@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <!-- Hero Section -->
+    <div class="py-20">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col lg:flex-row items-center">
+                <div class="lg:w-1/2 mb-10 lg:mb-0">
+                    <h1 class="text-4xl lg:text-6xl font-bold text-gray-900 mb-6">
+                        Warehouse Management Made Simple
+                    </h1>
+                    <p class="text-lg text-gray-600 mb-8">
+                        Streamline your warehouse operations with our comprehensive management solution.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="{% url 'signup' %}" class="btn-primary">
+                            Get Started
+                        </a>
+                        <a href="#features" class="px-6 py-3 border border-gray-300 rounded-lg hover:border-gray-400 transition-colors">
+                            Learn More
+                        </a>
+                    </div>
+                </div>
+                <div class="lg:w-1/2">
+                    <img src="{% static 'images/warehouse-hero.svg' %}" alt="Warehouse Management" class="w-full">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div id="features" class="py-20 bg-gradient-to-r from-white via-blue-50 to-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">Key Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="p-6 bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                    <i class="fas fa-box text-3xl text-blue-600 mb-4"></i>
+                    <h3 class="text-xl font-semibold mb-2">Inventory Management</h3>
+                    <p class="text-gray-600">Track your inventory in real-time with advanced analytics.</p>
+                </div>
+                <div class="p-6 bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                    <i class="fas fa-truck text-3xl text-blue-600 mb-4"></i>
+                    <h3 class="text-xl font-semibold mb-2">Order Processing</h3>
+                    <p class="text-gray-600">Efficient order management and fulfillment system.</p>
+                </div>
+                <div class="p-6 bg-white rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+                    <i class="fas fa-chart-line text-3xl text-blue-600 mb-4"></i>
+                    <h3 class="text-xl font-semibold mb-2">Analytics</h3>
+                    <p class="text-gray-600">Detailed insights and reporting capabilities.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Why Choose Us Section -->
+    <div class="py-20 bg-gradient-to-br from-gray-50 via-blue-50 to-gray-50">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">Why Choose Us?</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="text-center p-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-all">
+                    <div class="text-blue-600 mb-4">
+                        <i class="fas fa-shield-alt text-4xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Secure</h3>
+                    <p class="text-gray-600">Your data is protected with enterprise-level security</p>
+                </div>
+                <div class="text-center p-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-all">
+                    <div class="text-blue-600 mb-4">
+                        <i class="fas fa-bolt text-4xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Fast</h3>
+                    <p class="text-gray-600">Lightning-fast processing of your orders</p>
+                </div>
+                <div class="text-center p-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-all">
+                    <div class="text-blue-600 mb-4">
+                        <i class="fas fa-headset text-4xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">24/7 Support</h3>
+                    <p class="text-gray-600">Round-the-clock customer support</p>
+                </div>
+                <div class="text-center p-6 bg-white rounded-xl shadow-md hover:shadow-lg transition-all">
+                    <div class="text-blue-600 mb-4">
+                        <i class="fas fa-sync text-4xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">Real-time Updates</h3>
+                    <p class="text-gray-600">Live tracking and instant notifications</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Section -->
+    <div class="py-20 bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 text-white">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <i class="fas fa-users text-5xl mb-4"></i>
+                    <h3 class="text-4xl font-bold mb-2">1000+</h3>
+                    <p class="text-xl">Happy Clients</p>
+                </div>
+                <div class="text-center">
+                    <i class="fas fa-box text-5xl mb-4"></i>
+                    <h3 class="text-4xl font-bold mb-2">50,000+</h3>
+                    <p class="text-xl">Products Managed</p>
+                </div>
+                <div class="text-center">
+                    <i class="fas fa-warehouse text-5xl mb-4"></i>
+                    <h3 class="text-4xl font-bold mb-2">100+</h3>
+                    <p class="text-xl">Warehouses</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works Section -->
+    <div class="py-20 bg-gradient-to-br from-white via-blue-50 to-white">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">How It Works</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="relative flex flex-col items-center">
+                    <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-sign-in-alt text-3xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">1. Sign Up</h3>
+                    <p class="text-center text-gray-600">Create your account in minutes</p>
+                </div>
+                <div class="relative flex flex-col items-center">
+                    <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-cog text-3xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">2. Setup</h3>
+                    <p class="text-center text-gray-600">Configure your warehouse settings</p>
+                </div>
+                <div class="relative flex flex-col items-center">
+                    <div class="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fas fa-check-circle text-3xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-2">3. Start Managing</h3>
+                    <p class="text-center text-gray-600">Begin managing your inventory</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

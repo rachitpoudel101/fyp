@@ -148,7 +148,8 @@ def dashboard(request):
     else:
         return HttpResponseForbidden("You do not have permission to view this page.")
 
-# Admin Dashboard - Only accessible by admin users
+# ...existing code...
+
 @login_required
 def admin_dashboard(request):
     if request.user.role != 'admin':
@@ -168,6 +169,8 @@ def admin_dashboard(request):
         'user_form': CustomUserCreationForm(),
     }
     return render(request, 'admin_dashboard.html', context)
+
+# ...existing code...
 
 @login_required
 def create_warehouse(request):
@@ -326,34 +329,64 @@ def product_management(request):
         
         product_id = request.POST.get('product_id')
         if product_id:
-            # Edit existing product
             product = get_object_or_404(Product, id=product_id)
-            form = ProductForm(request.POST, instance=product)
+            form = ProductForm(request.POST, request.FILES, instance=product)
         else:
-            # Create new product
-            form = ProductForm(request.POST)
+            form = ProductForm(request.POST, request.FILES)
         
         if form.is_valid():
-            product = form.save(commit=False)
-            # Assign warehouse based on expiry date
-            if product.expires:
-                warehouse = Warehouse.objects.get_or_create(
-                    name="Expires Warehouse",
-                    defaults={'location': 'Default Location'}
-                )[0]
-            else:
-                warehouse = Warehouse.objects.get_or_create(
-                    name="Non-Expires Warehouse",
-                    defaults={'location': 'Default Location'}
-                )[0]
-            product.warehouse = warehouse
-            product.save()
-            return JsonResponse({'success': True})
+            try:
+                product = form.save(commit=False)
+                
+                # Find appropriate warehouse based on expiry
+                if product.expires:
+                    warehouse = Warehouse.objects.filter(handles_expiring=True).first()
+                    if not warehouse:
+                        warehouse = Warehouse.objects.create(
+                            name="Expiring Products Warehouse",
+                            location="Default Location",
+                            handles_expiring=True
+                        )
+                else:
+                    warehouse = Warehouse.objects.filter(handles_expiring=False).first()
+                    if not warehouse:
+                        warehouse = Warehouse.objects.create(
+                            name="Non-Expiring Products Warehouse",
+                            location="Default Location",
+                            handles_expiring=False
+                        )
+                
+                product.warehouse = warehouse
+                product.save()
+                
+                ActivityLog.objects.create(
+                    admin=request.user,
+                    action=f"{'Updated' if product_id else 'Added'} product {product.name}"
+                )
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f"Product successfully {'updated' if product_id else 'added'}!"
+                })
+            except Exception as e:
+                return JsonResponse({
+                    'success': False,
+                    'error': str(e)
+                })
         else:
-            # Return detailed form errors
-            return JsonResponse({'success': False, 'error': form.errors.as_json()})
+            # Convert form errors to a more readable format
+            errors = {}
+            for field, error_list in form.errors.items():
+                errors[field] = error_list[0]  # Take the first error message for each field
+            
+            return JsonResponse({
+                'success': False,
+                'error': errors,
+                'message': 'Please fill in all required fields correctly.'
+            })
 
-    products = Product.objects.all()
+    # GET request handling
+    products = Product.objects.all().select_related('warehouse')
     categories = Category.objects.all()
     warehouses = Warehouse.objects.all()
     
@@ -361,7 +394,7 @@ def product_management(request):
         'products': products,
         'categories': categories,
         'warehouses': warehouses,
-        'form': ProductForm()  # Ensure the form is passed to the template
+        'form': ProductForm()
     }
     return render(request, 'product_management.html', context)
 
@@ -405,26 +438,62 @@ def update_product(request, product_id):
 @login_required
 def add_category(request):
     if request.user.role != 'admin':
-        return HttpResponseForbidden("You are not authorized to perform this action")
+        return JsonResponse({
+            'success': False,
+            'error': 'Only admin users can add categories'
+        }, status=403)
     
-    if request.method == "POST":
-        name = request.POST.get('category_name')
-        description = request.POST.get('category_description')
+    if request.method != "POST":
+        return JsonResponse({
+            'success': False,
+            'error': 'Only POST method is allowed'
+        }, status=405)
+
+    try:
+        name = request.POST.get('name', '').strip()
+        description = request.POST.get('description', '').strip()
         
-        try:
-            category = Category.objects.create(
-                name=name,
-                description=description
-            )
+        if not name:
             return JsonResponse({
-                'success': True, 
+                'success': False,
+                'error': 'Category name cannot be empty'
+            }, status=400)
+
+        # Case-insensitive check for existing category
+        if Category.objects.filter(name__iexact=name).exists():
+            return JsonResponse({
+                'success': False,
+                'error': f'Category "{name}" already exists'
+            }, status=400)
+
+        # Create new category
+        category = Category.objects.create(
+            name=name,
+            description=description if description else None
+        )
+        
+        # Log the activity
+        ActivityLog.objects.create(
+            admin=request.user,
+            action=f"Added new category: {category.name}"
+        )
+
+        return JsonResponse({
+            'success': True,
+            'category': {
                 'id': category.id,
-                'name': category.name
-            })
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    
-    return HttpResponseBadRequest()
+                'name': category.name,
+                'description': category.description or ''
+            },
+            'message': f'Category "{category.name}" added successfully!'
+        })
+
+    except Exception as e:
+        print(f"Error adding category: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 @login_required
 def billing(request):
@@ -436,12 +505,34 @@ def get_product_details(request, product_id):
     if request.user.role != 'admin':
         return HttpResponseForbidden("You are not authorized to perform this action")
     
-    product = get_object_or_404(Product, id=product_id)
-    data = {
-        'category': product.category.id,
-        'description': product.description,
-    }
-    return JsonResponse(data)
+    try:
+        product = get_object_or_404(Product, id=product_id)
+        data = {
+            'success': True,
+            'data': {
+                'id': product.id,
+                'name': product.name,
+                'category': product.category.id if product.category else None,
+                'category_name': product.category.name if product.category else None,
+                'price': str(product.price),
+                'stock': product.stock,
+                'description': product.description,
+                'expires': product.expires.isoformat() if product.expires else None,
+                'min_stock': product.min_stock,
+                'warehouse': product.warehouse.id if product.warehouse else None
+            }
+        }
+        return JsonResponse(data)
+    except Product.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Product not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
 
 @login_required
 def resend_verification_email(request):
@@ -784,3 +875,23 @@ def toggle_admin_status(request, admin_id):
     
     messages.success(request, f"Admin {admin.username} has been {action.lower()} successfully.")
     return redirect('super_admin_dashboard')
+
+def landing_page(request):
+    return render(request, 'landing.html')
+
+@login_required
+def profile_view(request):
+    return render(request, 'profile.html', {
+        'user': request.user
+    })
+
+@login_required
+def super_admin_profile(request):
+    if request.user.role != 'super_admin':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    context = {
+        'user': request.user,
+        'recent_activities': ActivityLog.objects.filter(admin=request.user).order_by('-timestamp')[:10]
+    }
+    return render(request, 'super_admin_profile.html', context)

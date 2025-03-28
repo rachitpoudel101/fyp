@@ -4,26 +4,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Billing</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link href="{% static 'css/billing.css' %}" rel="stylesheet">
+    <title>Billing - Marline</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@shadcn/ui/dist/shadcn-ui.min.css" rel="stylesheet">
 </head>
-<body>
-    <header>
-        <div class="container">
-            <h1>Billing</h1>
-            <nav>
-                <ul>
-                    <li><a href="{% url 'order_list' %}">Orders</a></li>
-                    <li><a href="{% url 'billing' %}">Billing</a></li>
-                    <li><a href="{% url 'logout' %}">Logout</a></li>
-                </ul>
-            </nav>
+<body class="bg-gray-50">
+    <!-- Modern Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold text-gray-800">Billing Management</h1>
+                <nav class="flex items-center space-x-4">
+                    <a href="{% url 'order_list' %}" class="text-gray-600 hover:text-blue-600 transition-colors">
+                        <i class="fas fa-list mr-2"></i>Orders
+                    </a>
+                    <a href="{% url 'billing' %}" class="text-blue-600 font-medium">
+                        <i class="fas fa-file-invoice-dollar mr-2"></i>Billing
+                    </a>
+                    <a href="{% url 'logout' %}" class="text-red-600 hover:text-red-700 transition-colors">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </a>
+                </nav>
+            </div>
         </div>
     </header>
-    <div class="container">
-        <div class="card">
-            <h2>Order List</h2>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Summary Cards -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <!-- billing summary content -->
+            </div>
+            
+            <!-- Recent Transactions -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <!-- transactions content -->
+            </div>
+        </div>
+
+        <!-- Billing Table -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <div class="card-content">
                 <table>
                     <thead>
@@ -48,6 +69,5 @@
             </div>
         </div>
     </div>
-    <script src="{% static 'js/billing.js' %}"></script>
 </body>
 </html>
