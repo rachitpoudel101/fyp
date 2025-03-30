@@ -1,0 +1,69 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Warehouse Products - {{ warehouse.name }}{% endblock %}
+
+{% block content %}
+<div class="pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">{{ warehouse.name }} - Products</h1>
+    <p class="text-muted">{{ warehouse.location }}</p>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Stock</th>
+                                <th>Price</th>
+                                {% if warehouse.handles_expiring %}
+                                <th>Expiry Date</th>
+                                {% endif %}
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in products %}
+                            <tr>
+                                <td>{{ product.id }}</td>
+                                <td>{{ product.name }}</td>
+                                <td>{{ product.category.name }}</td>
+                                <td>{{ product.stock }}</td>
+                                <td>${{ product.price }}</td>
+                                {% if warehouse.handles_expiring %}
+                                <td>
+                                    {% if product.expires %}
+                                        {{ product.expires|date:"Y-m-d" }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                                <td>
+                                    {% if product.stock <= product.min_stock %}
+                                        <span class="badge bg-danger">Low Stock</span>
+                                    {% else %}
+                                        <span class="badge bg-success">In Stock</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="{% if warehouse.handles_expiring %}7{% else %}6{% endif %}" class="text-center">
+                                    No products found in this warehouse.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

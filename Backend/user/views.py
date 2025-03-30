@@ -60,23 +60,68 @@ def generate_verification_token():
 
 def signup(request):
     if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)
+        # Create a mutable copy of POST data
+        post_data = request.POST.copy()
+        # Force role to be 'customer' for signup
+        post_data['role'] = 'customer'
+        
+        form = CustomUserCreationForm(post_data)
         if form.is_valid():
-            user = form.save(commit=False)
-            user.role = 'customer'  # Force role to be customer
-            user.is_email_verified = False
-            user.save()
-            
-            # Generate verification token
-            token = generate_verification_token()
-            
-            # Send verification email
-            send_verification_email(user, token)
-            
-            messages.success(request, 'Account created successfully. Please check your email to verify your account.')
-            return redirect('login')
+            try:
+                # Debug log to see form data
+                print("DEBUG: Form data:", form.cleaned_data)
+                
+                user = form.save(commit=False)
+                user.role = 'customer'  # Force role to be customer
+                user.is_email_verified = False
+                
+                # Debug log before saving
+                print("DEBUG: About to save user:", {
+                    'username': user.username,
+                    'email': user.email,
+                    'role': user.role
+                })
+                
+                user.save()
+                
+                # Debug log after saving
+                print("DEBUG: User saved successfully with ID:", user.id)
+                
+                # Generate verification token
+                token = generate_verification_token()
+                user.verification_token = token
+                user.save()
+                
+                # Send verification email
+                verification_link = request.build_absolute_uri(
+                    reverse('verify_email', args=[token])
+                )
+                send_mail(
+                    'Verify your email',
+                    f'Click the link to verify your email: {verification_link}',
+                    'your_email@example.com',  # Replace with your email
+                    [user.email],
+                )
+                
+                messages.success(request, 'Account created successfully! Please check your email to verify your account.')
+                
+                # Log the successful creation
+                print("DEBUG: Customer account created and verification email sent")
+                
+                return redirect('login')
+                
+            except Exception as e:
+                # Log any errors that occur
+                print("DEBUG: Error creating user:", str(e))
+                messages.error(request, f'Error creating account: {str(e)}')
+                return render(request, 'signup.html', {'form': form})
+        else:
+            # Log form validation errors
+            print("DEBUG: Form validation errors:", form.errors)
+            messages.error(request, 'Please correct the errors below.')
     else:
-        form = CustomUserCreationForm()
+        form = CustomUserCreationForm(initial={'role': 'customer'})
+    
     return render(request, 'signup.html', {'form': form})
 
 def user_login(request):
@@ -159,33 +204,60 @@ def admin_dashboard(request):
     warehouse_managers = CustomUser.objects.filter(role='warehouse_manager', created_by=request.user)
     staff_members = CustomUser.objects.filter(role='staff', created_by=request.user)
     
+    # Get all warehouses
+    warehouses = Warehouse.objects.all()
+    
+    # Get available managers for warehouse assignment
+    available_managers = CustomUser.objects.filter(
+        role='warehouse_manager',
+        managed_warehouse__isnull=True,
+        is_active=True
+    )
+    
     # Get low stock products
     low_stock_products = Product.objects.filter(stock__lte=F('min_stock'))
     
     context = {
         'warehouse_managers': warehouse_managers,
         'staff_members': staff_members,
+        'warehouses': warehouses,
+        'available_managers': available_managers,
         'low_stock_products': low_stock_products,
         'user_form': CustomUserCreationForm(),
     }
     return render(request, 'admin_dashboard.html', context)
 
-# ...existing code...
-
 @login_required
 def create_warehouse(request):
     if request.user.role != 'admin':
-        return HttpResponseForbidden("You are not authorized to view this page")
-    
-    if request.method == "POST":
-        form = WarehouseForm(request.POST)
-        if form.is_valid():
-            form.save()
+        return HttpResponseForbidden("You are not authorized to perform this action")
+        
+    if request.method == 'POST':
+        warehouse_name = request.POST.get('warehouse_name')
+        location = request.POST.get('location')
+        handles_expiring = request.POST.get('handles_expiring') == 'on'
+        
+        try:
+            # Create new warehouse
+            warehouse = Warehouse.objects.create(
+                name=warehouse_name,
+                location=location,
+                handles_expiring=handles_expiring
+            )
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Created new warehouse: {warehouse_name}"
+            )
+            
+            messages.success(request, f'Warehouse "{warehouse_name}" created successfully!')
             return redirect('admin_dashboard')
-    else:
-        form = WarehouseForm()
+        except Exception as e:
+            messages.error(request, f'Error creating warehouse: {str(e)}')
+            return redirect('create_warehouse')
     
-    return render(request, 'create_warehouse.html', {'form': form})
+    return render(request, 'create_warehouse.html')
 
 @login_required
 def manage_warehouses(request):
@@ -223,9 +295,21 @@ def orders(request):
     if request.user.role != 'warehouse_manager':
         return HttpResponseForbidden("You are not authorized to view this page")
     
-    recent_orders = Order.objects.filter(status='pending')
-    canceled_orders = Order.objects.filter(status='cancelled')
-    return render(request, 'orders.html', {'recent_orders': recent_orders, 'canceled_orders': canceled_orders})
+    # Get all orders with their status
+    all_orders = Order.objects.all()
+    
+    context = {
+        'recent_orders': all_orders.order_by('-created_at'),
+        'total_orders': all_orders.count(),
+        'pending_orders': all_orders.filter(status='pending').count(),
+        'processing_orders': all_orders.filter(status='processing').count(),
+        'completed_orders': all_orders.filter(status__in=['delivered', 'shipped']).count(),
+        'delivered_orders': all_orders.filter(status='delivered').count(),
+        'shipped_orders': all_orders.filter(status='shipped').count(),
+        'cancelled_orders': all_orders.filter(status='cancelled').count(),
+    }
+    
+    return render(request, 'orders.html', context)
 
 @login_required
 def update_order_status(request, order_id):
@@ -234,11 +318,24 @@ def update_order_status(request, order_id):
     
     order = get_object_or_404(Order, id=order_id)
     if request.method == "POST":
-        status = request.POST.get('status')
-        order.status = status
-        order.save()
+        try:
+            status = request.POST.get('status')
+            old_status = order.status
+            order.status = status
+            order.save()
+            
+            # Log the status change
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Updated order {order.order_number} status from {old_status} to {status}"
+            )
+            
+            messages.success(request, f"Order status successfully updated to {status}")
+        except Exception as e:
+            messages.error(request, f"Error updating order status: {str(e)}")
+        
         return redirect('orders')
-    return render(request, 'orders.html')
+    return redirect('orders')
 
 # Customer views
 @login_required
@@ -374,10 +471,9 @@ def product_management(request):
                     'error': str(e)
                 })
         else:
-            # Convert form errors to a more readable format
             errors = {}
             for field, error_list in form.errors.items():
-                errors[field] = error_list[0]  # Take the first error message for each field
+                errors[field] = error_list[0]
             
             return JsonResponse({
                 'success': False,
@@ -385,7 +481,6 @@ def product_management(request):
                 'message': 'Please fill in all required fields correctly.'
             })
 
-    # GET request handling
     products = Product.objects.all().select_related('warehouse')
     categories = Category.objects.all()
     warehouses = Warehouse.objects.all()
@@ -460,7 +555,7 @@ def add_category(request):
             }, status=400)
 
         # Case-insensitive check for existing category
-        if Category.objects.filter(name__iexact=name).exists():
+        if Category.objects.filter(name__iexact(name)).exists():
             return JsonResponse({
                 'success': False,
                 'error': f'Category "{name}" already exists'
@@ -895,3 +990,51 @@ def super_admin_profile(request):
         'recent_activities': ActivityLog.objects.filter(admin=request.user).order_by('-timestamp')[:10]
     }
     return render(request, 'super_admin_profile.html', context)
+
+@login_required
+def assign_warehouse_manager(request, warehouse_id):
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == "POST":
+        manager_id = request.POST.get('manager_id')
+        warehouse = get_object_or_404(Warehouse, id=warehouse_id)
+        
+        try:
+            if manager_id:
+                manager = get_object_or_404(CustomUser, id=manager_id, role='warehouse_manager')
+                warehouse.manager = manager
+                warehouse.save()
+                
+                # Log the activity
+                ActivityLog.objects.create(
+                    admin=request.user,
+                    action=f"Assigned manager {manager.username} to warehouse {warehouse.name}"
+                )
+                
+                messages.success(request, f'Successfully assigned {manager.username} to {warehouse.name}')
+            else:
+                warehouse.manager = None
+                warehouse.save()
+                messages.success(request, f'Successfully unassigned manager from {warehouse.name}')
+                
+        except Exception as e:
+            messages.error(request, f'Error assigning manager: {str(e)}')
+        
+        return redirect('admin_dashboard')
+    
+    return HttpResponseBadRequest("Invalid request method")
+
+@login_required
+def warehouse_products(request, warehouse_id):
+    if request.user.role not in ['admin', 'warehouse_manager']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id)
+    products = Product.objects.filter(warehouse=warehouse)
+    
+    context = {
+        'warehouse': warehouse,
+        'products': products
+    }
+    return render(request, 'warehouse_products.html', context)

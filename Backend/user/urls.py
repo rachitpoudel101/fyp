@@ -43,6 +43,8 @@ urlpatterns = [
     path('manage_warehouses/', views.manage_warehouses, name='manage_warehouses'),  # Manage warehouses (Admin)
     path('add-warehouse-manager/', views.add_warehouse_manager, name='add_warehouse_manager'),  # Add warehouse manager URL
     path('add-staff/', views.add_staff, name='add_staff'),  # Add staff URL
+    path('assign-warehouse-manager/<int:warehouse_id>/', views.assign_warehouse_manager, name='assign_warehouse_manager'),
+    path('warehouse/<int:warehouse_id>/products/', views.warehouse_products, name='warehouse_products'),
 
     # Add user URL
     path('add_user/', views.add_user, name='add_user'),

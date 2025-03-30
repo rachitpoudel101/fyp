@@ -5,13 +5,13 @@
 {% block sidebar_menu %}
 <ul class="nav flex-column">
     <li class="nav-item">
-        <a class="nav-link active" href="#">
+        <a class="nav-link active" href="{% url 'admin_dashboard' %}">
             <i class="fas fa-home me-2"></i> Dashboard
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="{% url 'user_statistics' %}">
-            <i class="fas fa-cog me-2"></i> User
+            <i class="fas fa-users me-2"></i> User Management
         </a>
     </li>
     <li class="nav-item">
@@ -20,19 +20,29 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'create_warehouse' %}">
-            <i class="fas fa-plus me-2"></i> Create Warehouse
+        <a class="nav-link" href="#warehouseManagement" data-bs-toggle="collapse" role="button">
+            <i class="fas fa-warehouse me-2"></i> Warehouses
+            <i class="fas fa-chevron-down float-end mt-1"></i>
         </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="#addMemberTab" data-bs-toggle="tab">
-            <i class="fas fa-user-plus me-2"></i> Add Member
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="#usersTab" data-bs-toggle="tab">
-            <i class="fas fa-users me-2"></i> Users
-        </a>
+        <div class="collapse" id="warehouseManagement">
+            <ul class="nav flex-column ms-3 mt-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'create_warehouse' %}">
+                        <i class="fas fa-plus me-2"></i> Create Warehouse
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#viewWarehousesTab" data-bs-toggle="tab">
+                        <i class="fas fa-list me-2"></i> View All
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#assignWarehouseTab" data-bs-toggle="tab">
+                        <i class="fas fa-user-check me-2"></i> Assign Manager
+                    </a>
+                </li>
+            </ul>
+        </div>
     </li>
 </ul>
 {% endblock %}
@@ -222,28 +232,132 @@
             </div>
         </div>
     </div>
-</div>
 
-<div class="bg-white shadow-md rounded-lg p-6 mt-8">
-    <h2 class="text-2xl font-semibold mb-4">Add Warehouse Manager</h2>
-    <form method="post" action="{% url 'add_warehouse_manager' %}" class="space-y-4">
-        {% csrf_token %}
-        {{ user_form.as_p }}
-        {% if user_form.errors %}
-            <div class="text-red-500 text-sm">
-                <ul>
-                    {% for field, errors in user_form.errors.items %}
-                        {% for error in errors %}
-                            <li>{{ field|capfirst }}: {{ error }}</li>
-                        {% endfor %}
-                    {% endfor %}
-                </ul>
+    <!-- Assign Warehouse Tab -->
+    <div class="tab-pane fade" id="assignWarehouseTab">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-3">Assign Warehouse to Manager</h6>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Warehouse</th>
+                                    <th>Location</th>
+                                    <th>Current Manager</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for warehouse in warehouses %}
+                                <tr>
+                                    <td>{{ warehouse.name }}</td>
+                                    <td>{{ warehouse.location }}</td>
+                                    <td>
+                                        {% if warehouse.manager %}
+                                            {{ warehouse.manager.username }}
+                                        {% else %}
+                                            <span class="text-muted">Unassigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="POST" action="{% url 'assign_warehouse_manager' warehouse.id %}" class="d-inline">
+                                            {% csrf_token %}
+                                            <select name="manager_id" class="form-select form-select-sm d-inline-block w-auto me-2">
+                                                <option value="">Select Manager</option>
+                                                {% for manager in available_managers %}
+                                                    <option value="{{ manager.id }}">{{ manager.username }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                Assign
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No warehouses found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        {% endif %}
-        <button type="submit" class="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600">
-            Add Warehouse Manager
-        </button>
-    </form>
+        </div>
+    </div>
+
+    <!-- View Warehouses Tab -->
+    <div class="tab-pane fade" id="viewWarehousesTab">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="text-muted">All Warehouses</h6>
+                        <a href="{% url 'create_warehouse' %}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i> Add New Warehouse
+                        </a>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Location</th>
+                                    <th>Manager</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Products</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for warehouse in warehouses %}
+                                <tr>
+                                    <td>{{ warehouse.id }}</td>
+                                    <td>{{ warehouse.name }}</td>
+                                    <td>{{ warehouse.location }}</td>
+                                    <td>
+                                        {% if warehouse.manager %}
+                                            {{ warehouse.manager.username }}
+                                        {% else %}
+                                            <span class="text-muted">Unassigned</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if warehouse.handles_expiring %}
+                                            <span class="badge bg-warning">Expiring Products</span>
+                                        {% else %}
+                                            <span class="badge bg-info">Non-Expiring Products</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if warehouse.manager %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Pending Manager</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'warehouse_products' warehouse.id %}" class="btn btn-sm btn-info">
+                                            <i class="fas fa-box me-1"></i> View Products
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center">No warehouses found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
