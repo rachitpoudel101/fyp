@@ -64,4 +64,8 @@ urlpatterns = [
     # Profile URL
     path('profile/', views.profile_view, name='profile'),
     path('super-admin-profile/', views.super_admin_profile, name='super_admin_profile'),
+
+    # Password reset URLs
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('reset-password/<str:token>/', views.reset_password, name='reset_password'),
 ]

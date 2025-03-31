@@ -1038,3 +1038,58 @@ def warehouse_products(request, warehouse_id):
         'products': products
     }
     return render(request, 'warehouse_products.html', context)
+
+def forgot_password(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            user = CustomUser.objects.get(email=email)
+            # Generate password reset token
+            token = get_random_string(length=32)
+            user.reset_password_token = token
+            user.reset_password_expires = timezone.now() + timezone.timedelta(hours=24)
+            user.save()
+            
+            # Send reset email
+            reset_link = request.build_absolute_uri(
+                reverse('reset_password', args=[token])
+            )
+            send_mail(
+                'Reset Your Password',
+                f'Click the link to reset your password: {reset_link}\nThis link will expire in 24 hours.',
+                'your_email@example.com',
+                [user.email],
+            )
+            messages.success(request, 'Password reset link has been sent to your email.')
+            return redirect('login')
+        except CustomUser.DoesNotExist:
+            messages.error(request, 'No user found with this email address.')
+    return render(request, 'forgot_password.html')
+
+def reset_password(request, token):
+    try:
+        user = CustomUser.objects.get(
+            reset_password_token=token,
+            reset_password_expires__gt=timezone.now()
+        )
+        if request.method == 'POST':
+            password = request.POST.get('password')
+            confirm_password = request.POST.get('confirm_password')
+            
+            if password != confirm_password:
+                messages.error(request, 'Passwords do not match.')
+                return render(request, 'reset_password.html')
+            
+            user.set_password(password)
+            user.reset_password_token = None
+            user.reset_password_expires = None
+            user.save()
+            
+            messages.success(request, 'Your password has been reset successfully. You can now login.')
+            return redirect('login')
+            
+        return render(request, 'reset_password.html')
+        
+    except CustomUser.DoesNotExist:
+        messages.error(request, 'Invalid or expired reset link.')
+        return redirect('login')

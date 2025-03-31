@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.crypto import get_random_string
+from django.utils import timezone
 
 class Warehouse(models.Model):
     name = models.CharField(max_length=255)
@@ -9,7 +10,7 @@ class Warehouse(models.Model):
     handles_expiring = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.name} ({'Expiring' if self.handles_expiring else 'Non-Expiring'} Products)"
+        return f"{self.name} ({'Expiring' if this.handles_expiring else 'Non-Expiring'} Products)"
 
 class CustomUser(AbstractUser):
     ROLE_CHOICES = [
@@ -28,6 +29,8 @@ class CustomUser(AbstractUser):
     is_verified = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     created_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_users')
+    reset_password_token = models.CharField(max_length=32, null=True, blank=True)
+    reset_password_expires = models.DateTimeField(null=True, blank=True)
 
     def generate_verification_token(self):
         """Generate a new unique verification token."""
