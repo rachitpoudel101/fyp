@@ -44,6 +44,11 @@
             </ul>
         </div>
     </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#addUsersTab" data-bs-toggle="tab">
+            <i class="fas fa-user-plus me-2"></i> Add Users
+        </a>
+    </li>
 </ul>
 {% endblock %}
 
@@ -128,6 +133,8 @@
                                     <th>Username</th>
                                     <th>Email</th>
                                     <th>Status</th>
+                                    <th>Tags</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -143,10 +150,23 @@
                                             <span class="badge bg-danger">Inactive</span>
                                         {% endif %}
                                     </td>
+                                    <td>
+                                        {% for tag in manager.tags %}
+                                            <span class="badge bg-info me-1">{{ tag }}</span>
+                                        {% endfor %}
+                                        <button class="btn btn-sm btn-outline-primary" onclick="addTag({{ manager.id }})">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="editTags({{ manager.id }})">
+                                            <i class="fas fa-tags"></i> Edit Tags
+                                        </button>
+                                    </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="4" class="text-center">No warehouse managers found.</td>
+                                    <td colspan="6" class="text-center">No warehouse managers found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -169,6 +189,8 @@
                                     <th>Username</th>
                                     <th>Email</th>
                                     <th>Status</th>
+                                    <th>Tags</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -184,10 +206,23 @@
                                             <span class="badge bg-danger">Inactive</span>
                                         {% endif %}
                                     </td>
+                                    <td>
+                                        {% for tag in staff.tags %}
+                                            <span class="badge bg-info me-1">{{ tag }}</span>
+                                        {% endfor %}
+                                        <button class="btn btn-sm btn-outline-primary" onclick="addTag({{ staff.id }})">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="editTags({{ staff.id }})">
+                                            <i class="fas fa-tags"></i> Edit Tags
+                                        </button>
+                                    </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="4" class="text-center">No staff members found.</td>
+                                    <td colspan="6" class="text-center">No staff members found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -358,6 +393,45 @@
             </div>
         </div>
     </div>
+
+    <!-- Add Users Tab -->
+    <div class="tab-pane fade" id="addUsersTab">
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-3">Add New User</h6>
+                    <form id="addUserForm" method="POST" action="{% url 'add_user' %}">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Select Role</option>
+                                <option value="staff">Staff</option>
+                                <option value="warehouse_manager">Warehouse Manager</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password1" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="password1" name="password1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="password2" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="password2" name="password2" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Add User</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -407,7 +481,104 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
         });
     });
+
+    // Add User Form Submission
+    const addUserForm = document.getElementById('addUserForm');
+    if (addUserForm) {
+        addUserForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message and reset form
+                    const alert = `<div class="alert alert-success alert-dismissible fade show" role="alert">
+                        User added successfully!
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>`;
+                    document.getElementById('notifications').innerHTML = alert;
+                    addUserForm.reset();
+                } else {
+                    // Show error message
+                    const alert = `<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        ${data.error}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>`;
+                    document.getElementById('notifications').innerHTML = alert;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const alert = `<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    An error occurred while adding the user. Please try again.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`;
+                document.getElementById('notifications').innerHTML = alert;
+            });
+        });
+    }
 });
+
+function addTag(userId) {
+    const tag = prompt('Enter new tag:');
+    if (tag) {
+        fetch(`/api/add-tag/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ tag: tag })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+}
+
+function editTags(userId) {
+    // Implement tag editing modal/functionality here
+    const modal = document.getElementById('editTagsModal');
+    modal.querySelector('input[name="user_id"]').value = userId;
+    const modalInstance = new bootstrap.Modal(modal);
+    modalInstance.show();
+}
 </script>
+
+<!-- Add Tag Modal -->
+<div class="modal fade" id="editTagsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Tags</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editTagsForm">
+                    <input type="hidden" name="user_id">
+                    <div class="mb-3">
+                        <label class="form-label">Tags</label>
+                        <input type="text" class="form-control" name="tags" placeholder="Enter tags (comma-separated)">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="saveTags()">Save changes</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}

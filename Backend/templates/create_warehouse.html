@@ -43,16 +43,17 @@
     </div>
 </div>
 {% endblock %}
+
 {% block sidebar_menu %}
 <ul class="nav flex-column">
     <li class="nav-item">
-        <a class="nav-link active" href="{% url 'admin_dashboard' %}">
+        <a class="nav-link" href="{% url 'admin_dashboard' %}">
             <i class="fas fa-home me-2"></i> Dashboard
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link" href="{% url 'user_statistics' %}">
-            <i class="fas fa-cog me-2"></i> User
+            <i class="fas fa-users me-2"></i> User Management
         </a>
     </li>
     <li class="nav-item">
@@ -61,8 +62,28 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'create_warehouse' %}">
-            <i class="fas fa-plus me-2"></i> Create Warehouse
+        <a class="nav-link active" href="#warehouseManagement" data-bs-toggle="collapse" role="button">
+            <i class="fas fa-warehouse me-2"></i> Warehouses
+            <i class="fas fa-chevron-down float-end mt-1"></i>
+        </a>
+        <div class="collapse show" id="warehouseManagement">
+            <ul class="nav flex-column ms-3 mt-2">
+                <li class="nav-item">
+                    <a class="nav-link active" href="{% url 'create_warehouse' %}">
+                        <i class="fas fa-plus me-2"></i> Create Warehouse
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'admin_dashboard' %}#viewWarehousesTab">
+                        <i class="fas fa-list me-2"></i> View All
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'admin_dashboard' %}#addUsersTab">
+            <i class="fas fa-user-plus me-2"></i> Add Users
         </a>
     </li>
 </ul>

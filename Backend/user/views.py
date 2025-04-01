@@ -1,3 +1,4 @@
+from time import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
@@ -418,22 +419,58 @@ def product_management(request):
         return HttpResponseForbidden("You are not authorized to view this page")
     
     if request.method == "POST":
+        # Handle product deletion
         if 'delete_product_id' in request.POST:
             product_id = request.POST.get('delete_product_id')
-            product = get_object_or_404(Product, id=product_id)
-            product.delete()
-            return JsonResponse({'success': True})
-        
-        product_id = request.POST.get('product_id')
-        if product_id:
-            product = get_object_or_404(Product, id=product_id)
-            form = ProductForm(request.POST, request.FILES, instance=product)
-        else:
-            form = ProductForm(request.POST, request.FILES)
-        
-        if form.is_valid():
             try:
-                product = form.save(commit=False)
+                product = Product.objects.get(id=product_id)
+                product_name = product.name
+                product.delete()
+                messages.success(request, f"Product '{product_name}' was deleted successfully!")
+                return redirect('product_management')
+            except Product.DoesNotExist:
+                messages.error(request, "Product not found.")
+                return redirect('product_management')
+            except Exception as e:
+                messages.error(request, f"Error deleting product: {str(e)}")
+                return redirect('product_management')
+        
+        # Handle product update - FIXED VERSION
+        elif 'edit_product_id' in request.POST:
+            product_id = request.POST.get('edit_product_id')
+            try:
+                print(f"DEBUG: Updating product ID: {product_id}")
+                product = Product.objects.get(id=product_id)
+                
+                # Get form fields with validation
+                product.name = request.POST.get('edit_name', '').strip()
+                if not product.name:
+                    raise ValueError("Product name cannot be empty")
+                    
+                price = request.POST.get('edit_price', '')
+                if price:
+                    product.price = float(price)
+                
+                stock = request.POST.get('edit_stock', '')
+                if stock:
+                    product.stock = int(stock)
+                
+                product.description = request.POST.get('edit_description', '').strip()
+                
+                # Handle category
+                category_id = request.POST.get('edit_category')
+                if category_id:
+                    try:
+                        product.category = Category.objects.get(id=category_id)
+                    except Category.DoesNotExist:
+                        print(f"DEBUG: Category with ID {category_id} doesn't exist")
+                
+                # Handle expiry date
+                expires_date = request.POST.get('edit_expires')
+                if expires_date and expires_date.strip():
+                    product.expires = expires_date
+                else:
+                    product.expires = None
                 
                 # Find appropriate warehouse based on expiry
                 if product.expires:
@@ -456,30 +493,84 @@ def product_management(request):
                 product.warehouse = warehouse
                 product.save()
                 
+                # Log this action
                 ActivityLog.objects.create(
                     admin=request.user,
-                    action=f"{'Updated' if product_id else 'Added'} product {product.name}"
+                    action=f"Updated product {product.name} (ID: {product_id})"
                 )
                 
-                return JsonResponse({
-                    'success': True,
-                    'message': f"Product successfully {'updated' if product_id else 'added'}!"
-                })
+                messages.success(request, f"Product '{product.name}' was updated successfully!")
+                return redirect('product_management')
+                
+            except Product.DoesNotExist:
+                messages.error(request, "Product not found.")
+                return redirect('product_management')
+            except ValueError as e:
+                messages.error(request, str(e))
+                return redirect('product_management')
             except Exception as e:
+                print(f"DEBUG: Error updating product: {str(e)}")
+                messages.error(request, f"Error updating product: {str(e)}")
+                return redirect('product_management')
+                
+        # Handle product creation (existing code)
+        else:
+            product_id = request.POST.get('product_id')
+            if product_id:
+                product = get_object_or_404(Product, id=product_id)
+                form = ProductForm(request.POST, request.FILES, instance=product)
+            else:
+                form = ProductForm(request.POST, request.FILES)
+            
+            if form.is_valid():
+                try:
+                    product = form.save(commit=False)
+                    
+                    # Find appropriate warehouse based on expiry
+                    if product.expires:
+                        warehouse = Warehouse.objects.filter(handles_expiring=True).first()
+                        if not warehouse:
+                            warehouse = Warehouse.objects.create(
+                                name="Expiring Products Warehouse",
+                                location="Default Location",
+                                handles_expiring=True
+                            )
+                    else:
+                        warehouse = Warehouse.objects.filter(handles_expiring=False).first()
+                        if not warehouse:
+                            warehouse = Warehouse.objects.create(
+                                name="Non-Expiring Products Warehouse",
+                                location="Default Location",
+                                handles_expiring=False
+                            )
+                    
+                    product.warehouse = warehouse
+                    product.save()
+                    
+                    ActivityLog.objects.create(
+                        admin=request.user,
+                        action=f"{'Updated' if product_id else 'Added'} product {product.name}"
+                    )
+                    
+                    return JsonResponse({
+                        'success': True,
+                        'message': f"Product successfully {'updated' if product_id else 'added'}!"
+                    })
+                except Exception as e:
+                    return JsonResponse({
+                        'success': False,
+                        'error': str(e)
+                    })
+            else:
+                errors = {}
+                for field, error_list in form.errors.items():
+                    errors[field] = error_list[0]
+                
                 return JsonResponse({
                     'success': False,
-                    'error': str(e)
+                    'error': errors,
+                    'message': 'Please fill in all required fields correctly.'
                 })
-        else:
-            errors = {}
-            for field, error_list in form.errors.items():
-                errors[field] = error_list[0]
-            
-            return JsonResponse({
-                'success': False,
-                'error': errors,
-                'message': 'Please fill in all required fields correctly.'
-            })
 
     products = Product.objects.all().select_related('warehouse')
     categories = Category.objects.all()
@@ -597,37 +688,25 @@ def billing(request):
 
 @login_required
 def get_product_details(request, product_id):
+    """API endpoint to get product details for the edit form"""
     if request.user.role != 'admin':
         return HttpResponseForbidden("You are not authorized to perform this action")
     
     try:
         product = get_object_or_404(Product, id=product_id)
         data = {
-            'success': True,
-            'data': {
-                'id': product.id,
-                'name': product.name,
-                'category': product.category.id if product.category else None,
-                'category_name': product.category.name if product.category else None,
-                'price': str(product.price),
-                'stock': product.stock,
-                'description': product.description,
-                'expires': product.expires.isoformat() if product.expires else None,
-                'min_stock': product.min_stock,
-                'warehouse': product.warehouse.id if product.warehouse else None
-            }
+            'id': product.id,
+            'name': product.name,
+            'category': product.category.id if product.category else None,
+            'price': str(product.price),
+            'stock': product.stock,
+            'description': product.description or '',
+            'expires': product.expires.isoformat() if product.expires else None,
         }
         return JsonResponse(data)
-    except Product.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'Product not found'
-        }, status=404)
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
+        print(f"DEBUG: Error fetching product details: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 @login_required
 def resend_verification_email(request):
@@ -815,6 +894,7 @@ def add_staff(request):
                 user = form.save(commit=False)
                 user.created_by = request.user  # Set the creator
                 user.is_email_verified = False
+                user.tags = request.POST.getlist('tags')  # Get tags as list
                 user.save()
                 
                 # Generate verification token
@@ -846,6 +926,7 @@ def add_warehouse_manager(request):
                 user = form.save(commit=False)
                 user.created_by = request.user  # Set the creator
                 user.is_email_verified = False
+                user.tags = request.POST.getlist('tags')  # Get tags as list
                 user.save()
                 
                 # Generate verification token
@@ -1093,3 +1174,58 @@ def reset_password(request, token):
     except CustomUser.DoesNotExist:
         messages.error(request, 'Invalid or expired reset link.')
         return redirect('login')
+
+# Add a new dedicated view for product deletion
+@login_required
+def delete_product(request, product_id):
+    # Detailed debug logging
+    print(f"DELETE PRODUCT VIEW ACCESSED: product_id={product_id}, user={request.user.username}, role={request.user.role}")
+    
+    if request.user.role != 'admin':
+        print(f"UNAUTHORIZED: User {request.user.username} with role {request.user.role} attempted to delete product {product_id}")
+        messages.error(request, "You are not authorized to delete products")
+        return redirect('product_management')
+    
+    try:
+        # Get the product
+        product = Product.objects.get(id=product_id)
+        product_name = product.name
+        print(f"FOUND PRODUCT: {product_name} (ID: {product_id})")
+        
+        # Delete the product
+        product.delete()
+        print(f"PRODUCT DELETED: {product_name} (ID: {product_id})")
+        
+        # Log the activity
+        ActivityLog.objects.create(
+            admin=request.user,
+            action=f"Deleted product: {product_name} (ID: {product_id})"
+        )
+        
+        # Set success message
+        messages.success(request, f"Product '{product_name}' deleted successfully!")
+        
+        # For AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({"success": True, "message": f"Product '{product_name}' deleted successfully"})
+        
+        # For regular form submissions
+        return redirect('product_management')
+        
+    except Product.DoesNotExist:
+        print(f"PRODUCT NOT FOUND: ID {product_id}")
+        messages.error(request, "Product not found")
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({"error": "Product not found"}, status=404)
+        
+        return redirect('product_management')
+        
+    except Exception as e:
+        print(f"ERROR DELETING PRODUCT {product_id}: {str(e)}")
+        messages.error(request, f"Failed to delete product: {str(e)}")
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({"error": f"Failed to delete product: {str(e)}"}, status=500)
+        
+        return redirect('product_management')

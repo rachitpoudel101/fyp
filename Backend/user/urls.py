@@ -45,6 +45,7 @@ urlpatterns = [
     path('add-staff/', views.add_staff, name='add_staff'),  # Add staff URL
     path('assign-warehouse-manager/<int:warehouse_id>/', views.assign_warehouse_manager, name='assign_warehouse_manager'),
     path('warehouse/<int:warehouse_id>/products/', views.warehouse_products, name='warehouse_products'),
+    path('delete_product/<int:product_id>/', views.delete_product, name='delete_product'),
 
     # Add user URL
     path('add_user/', views.add_user, name='add_user'),
