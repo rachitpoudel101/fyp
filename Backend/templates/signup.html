@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 </head>
 <body class="bg-gradient-to-br from-indigo-800 via-blue-700 to-sky-600 min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-5xl bg-white/5 backdrop-blur-xl p-4 rounded-3xl shadow-2xl flex flex-col md:flex-row items-center gap-4 flip-container card-flip">
+    <div class="w-full max-w-5xl bg-white/5 backdrop-blur-xl p-4 rounded-3xl shadow-2xl flex flex-col md:flex-row items-center gap-4">
         <!-- Left side: Illustration -->
         <div class="w-full md:w-1/2 flex flex-col items-center justify-center p-2">
             <div class="w-full max-w-md">
@@ -32,7 +32,7 @@
 
         <!-- Right side: Signup Form -->
         <div class="w-full md:w-1/2">
-            <div class="signup-container bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-4 w-full max-w-md mx-auto relative overflow-hidden">
+            <div class="signup-container bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-4 w-full max-w-md mx-auto relative overflow-hidden flip-container card-flip">
                 <!-- Decorative elements -->
                 <div class="absolute -top-10 -right-10 w-24 h-24 bg-blue-500 rounded-full opacity-20"></div>
                 <div class="absolute -bottom-8 -left-8 w-32 h-32 bg-indigo-600 rounded-full opacity-20"></div>
@@ -86,7 +86,7 @@
     </div>
     
     <style>
-        /* Flip Animation Styles */
+        /* Improved Flip Animation Styles */
         .flip-container {
             perspective: 1000px;
         }
@@ -94,16 +94,16 @@
         .card-flip {
             transition: transform 0.8s;
             transform-style: preserve-3d;
+            position: relative;
         }
         
         .card-flip.flipped {
             transform: rotateY(180deg);
         }
         
-        /* Prevent scrolling */
-        html, body {
+        /* Prevent any layout shifts during animation */
+        body.animating {
             overflow: hidden;
-            height: 100%;
         }
         
         /* Make form more compact */
@@ -113,16 +113,27 @@
     </style>
     
     <script>
-        // Add flip animation when clicking login link
+        // Add improved flip animation when clicking login link
         document.addEventListener('DOMContentLoaded', function() {
             const loginLink = document.querySelector('a[href="{% url 'login' %}"]');
+            
             loginLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                const container = document.querySelector('.w-full.max-w-5xl');
-                container.classList.add('card-flip', 'flipped');
+                document.body.classList.add('animating');
+                
+                // Target only the signup form container instead of the whole card
+                const container = document.querySelector('.signup-container');
+                container.classList.add('card-flip');
+                
+                // Trigger animation with slight delay to ensure proper rendering
+                setTimeout(() => {
+                    container.classList.add('flipped');
+                }, 50);
+                
+                // Redirect after animation completes
                 setTimeout(() => {
                     window.location.href = "{% url 'login' %}";
-                }, 600);
+                }, 700);
             });
         });
     </script>

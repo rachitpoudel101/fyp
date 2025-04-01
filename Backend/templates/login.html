@@ -14,7 +14,22 @@
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 </head>
 <body class="bg-gradient-to-br from-indigo-800 via-blue-700 to-sky-600 min-h-screen flex items-center justify-center p-6">
-    <div class="w-full max-w-5xl bg-white/5 backdrop-blur-xl p-6 rounded-3xl shadow-2xl flex flex-col md:flex-row items-center gap-8 flip-container">
+    <!-- Error Message - Fixed at top right -->
+    {% if form.non_field_errors %}
+    <div id="error-notification" class="fixed top-4 right-4 z-50 bg-white border-l-4 border-red-500 text-red-700 p-2 rounded-md shadow-lg animate-bounce-once flex items-center space-x-2 max-w-md" style="display: none;">
+        <svg class="h-4 w-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <p class="text-xs font-medium truncate">Please enter a correct username and password. Note that both fields may be case-sensitive.</p>
+        <button onclick="document.getElementById('error-notification').style.display='none'" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
+            <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+    {% endif %}
+
+    <div class="w-full max-w-5xl bg-white/5 backdrop-blur-xl p-6 rounded-3xl shadow-2xl flex flex-col md:flex-row items-center gap-8">
         <!-- Left side: Illustration -->
         <div class="w-full md:w-1/2 flex flex-col items-center justify-center p-4">
             <div class="w-full max-w-md">
@@ -33,7 +48,7 @@
 
         <!-- Right side: Login Form -->
         <div class="w-full md:w-1/2">
-            <div class="login-container bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-8 w-full max-w-md mx-auto relative overflow-hidden">
+            <div class="login-container bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-8 w-full max-w-md mx-auto relative overflow-hidden flip-container card-flip">
                 <!-- Decorative elements -->
                 <div class="absolute -top-10 -right-10 w-24 h-24 bg-blue-500 rounded-full opacity-20"></div>
                 <div class="absolute -bottom-8 -left-8 w-32 h-32 bg-indigo-600 rounded-full opacity-20"></div>
@@ -43,21 +58,7 @@
                     <p class="text-gray-600 mt-2">Sign in to continue to Marline</p>
                 </div>
                 
-                <!-- Error Message (if any) - Integrated with form -->
-                {% if form.non_field_errors %}
-                    <div class="mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow-sm animate-pulse">
-                        <div class="flex">
-                            <div class="flex-shrink-0">
-                                <svg class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                            </div>
-                            <div class="ml-3">
-                                <p class="text-sm font-medium">Please enter a correct username and password. Note that both fields may be case-sensitive.</p>
-                            </div>
-                        </div>
-                    </div>
-                {% endif %}
+                <!-- Error message moved to top of page -->
                 
                 <form method="POST" class="space-y-6 relative z-10">
                     {% csrf_token %}
@@ -117,7 +118,16 @@
             animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
         
-        /* Flip Animation Styles */
+        @keyframes bounce-once {
+            0% { transform: translateY(-20px); opacity: 0; }
+            50% { transform: translateY(5px); }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .animate-bounce-once {
+            animation: bounce-once 0.5s ease-out forwards;
+        }
+        
+        /* Improved Flip Animation Styles */
         .flip-container {
             perspective: 1000px;
         }
@@ -125,24 +135,90 @@
         .card-flip {
             transition: transform 0.8s;
             transform-style: preserve-3d;
+            position: relative;
         }
         
         .card-flip.flipped {
             transform: rotateY(180deg);
         }
+        
+        /* Prevent any layout shifts during animation */
+        body.animating {
+            overflow: hidden;
+        }
+
+        /* Smaller compact error notification */
+        #error-notification {
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        
+        #error-notification p {
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     </style>
     
     <script>
-        // Add flip animation when clicking signup link
+        // Add auto-hide functionality to the error notification
         document.addEventListener('DOMContentLoaded', function() {
+            const errorNotification = document.getElementById('error-notification');
+            
+            // Check if this is a form submission (POST request) with errors
+            if (errorNotification && window.location.search.includes('error=true') || 
+                document.referrer === window.location.href) {
+                
+                // Show error only if we haven't shown it before for this session
+                if (!sessionStorage.getItem('errorShown') || 
+                    sessionStorage.getItem('lastSubmitTime') !== localStorage.getItem('lastSubmitTime')) {
+                    
+                    // Display the error notification
+                    errorNotification.style.display = 'flex';
+                    
+                    // Mark that we've shown the error for this session
+                    sessionStorage.setItem('errorShown', 'true');
+                    sessionStorage.setItem('lastSubmitTime', localStorage.getItem('lastSubmitTime'));
+                    
+                    // Auto-hide after 5 seconds
+                    setTimeout(() => {
+                        errorNotification.style.opacity = '0.9';
+                        errorNotification.style.transition = 'opacity 0.5s ease-out';
+                    }, 5000);
+                    
+                    setTimeout(() => {
+                        errorNotification.style.display = 'none';
+                    }, 5500);
+                }
+            }
+            
+            // Track form submissions
+            const loginForm = document.querySelector('form');
+            if (loginForm) {
+                loginForm.addEventListener('submit', function() {
+                    localStorage.setItem('lastSubmitTime', Date.now().toString());
+                });
+            }
+            
+            // Flip animation code
             const signupLink = document.querySelector('a[href="{% url 'signup' %}"]');
+            
             signupLink.addEventListener('click', function(e) {
                 e.preventDefault();
-                const container = document.querySelector('.w-full.max-w-5xl');
-                container.classList.add('card-flip', 'flipped');
+                document.body.classList.add('animating');
+                
+                // Target only the login form container instead of the whole card
+                const container = document.querySelector('.login-container');
+                container.classList.add('card-flip');
+                
+                // Trigger animation with slight delay to ensure proper rendering
+                setTimeout(() => {
+                    container.classList.add('flipped');
+                }, 50);
+                
+                // Redirect after animation completes
                 setTimeout(() => {
                     window.location.href = "{% url 'signup' %}";
-                }, 600);
+                }, 700);
             });
         });
     </script>
