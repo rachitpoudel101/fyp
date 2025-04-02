@@ -32,20 +32,15 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="#viewWarehousesTab" data-bs-toggle="tab">
+                    <a class="nav-link" href="{% url 'manage_warehouses' %}">
                         <i class="fas fa-list me-2"></i> View All
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#assignWarehouseTab" data-bs-toggle="tab">
-                        <i class="fas fa-user-check me-2"></i> Assign Manager
                     </a>
                 </li>
             </ul>
         </div>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="#addUsersTab" data-bs-toggle="tab">
+        <a class="nav-link" href="{% url 'add_user_page' %}">
             <i class="fas fa-user-plus me-2"></i> Add Users
         </a>
     </li>

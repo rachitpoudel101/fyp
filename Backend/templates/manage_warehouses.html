@@ -1,0 +1,275 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Manage Warehouses - Admin Panel{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'admin_dashboard' %}">
+            <i class="fas fa-home me-2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'user_statistics' %}">
+            <i class="fas fa-users me-2"></i> User Management
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'product_management' %}">
+            <i class="fas fa-box me-2"></i> Products
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="#warehouseManagement" data-bs-toggle="collapse" role="button">
+            <i class="fas fa-warehouse me-2"></i> Warehouses
+            <i class="fas fa-chevron-down float-end mt-1"></i>
+        </a>
+        <div class="collapse show" id="warehouseManagement">
+            <ul class="nav flex-column ms-3 mt-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'create_warehouse' %}">
+                        <i class="fas fa-plus me-2"></i> Create Warehouse
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="{% url 'manage_warehouses' %}">
+                        <i class="fas fa-list me-2"></i> View All
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'add_user_page' %}">
+            <i class="fas fa-user-plus me-2"></i> Add Users
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Warehouse Management</h1>
+    <p class="text-muted">Manage storage facilities and assign managers</p>
+</div>
+
+<!-- Notifications Section -->
+<div id="notifications">
+    {% if messages %}
+    <div class="alert-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">Warehouses</h5>
+                <a href="{% url 'create_warehouse' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Add New Warehouse
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Location</th>
+                                <th>Manager</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for warehouse in warehouses %}
+                            <tr>
+                                <td>{{ warehouse.id }}</td>
+                                <td>{{ warehouse.name }}</td>
+                                <td>{{ warehouse.location }}</td>
+                                <td>
+                                    {% if warehouse.manager %}
+                                        {{ warehouse.manager.username }}
+                                    {% else %}
+                                        <span class="text-muted">Unassigned</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if warehouse.manager %}
+                                        <span class="badge bg-success">Active</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">Pending Manager</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            Actions
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'edit_warehouse' warehouse.id %}">
+                                                    <i class="fas fa-edit me-2"></i>Edit
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'warehouse_products' warehouse.id %}">
+                                                    <i class="fas fa-box me-2"></i>View Products
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button type="button" class="dropdown-item text-danger" 
+                                                        onclick="confirmDelete({{ warehouse.id }}, '{{ warehouse.name }}')">
+                                                    <i class="fas fa-trash me-2"></i>Delete
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">No warehouses found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Manager Assignment Card -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Assign Managers</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Warehouse</th>
+                                <th>Current Manager</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for warehouse in warehouses %}
+                            <tr>
+                                <td>{{ warehouse.name }}</td>
+                                <td>
+                                    {% if warehouse.manager %}
+                                        {{ warehouse.manager.username }}
+                                    {% else %}
+                                        <span class="text-muted">Unassigned</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form method="POST" action="{% url 'assign_warehouse_manager' warehouse.id %}" class="d-flex align-items-center">
+                                        {% csrf_token %}
+                                        <select name="manager_id" class="form-select form-select-sm me-2">
+                                            <option value="">Select Manager</option>
+                                            {% for manager in available_managers %}
+                                                <option value="{{ manager.id }}">{{ manager.username }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-user-check"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center">No warehouses found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Warehouse Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded">
+                            <h6 class="text-muted">Total Warehouses</h6>
+                            <h2 class="mb-0">{{ warehouses|length }}</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded">
+                            <h6 class="text-muted">Active Warehouses</h6>
+                            <h2 class="mb-0">{{ active_warehouses|length }}</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded">
+                            <h6 class="text-muted">Total Products</h6>
+                            <h2 class="mb-0">{{ total_products }}</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded">
+                            <h6 class="text-muted">Managers</h6>
+                            <h2 class="mb-0">{{ available_managers|length }}</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteWarehouseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Warehouse</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the warehouse <strong id="warehouseName"></strong>?</p>
+                <p class="text-danger">This action cannot be undone and may impact products stored in this warehouse.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteWarehouseForm" method="POST">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete Warehouse</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function confirmDelete(warehouseId, warehouseName) {
+        const modal = new bootstrap.Modal(document.getElementById('deleteWarehouseModal'));
+        document.getElementById('warehouseName').textContent = warehouseName;
+        document.getElementById('deleteWarehouseForm').action = "{% url 'delete_warehouse' 0 %}".replace('0', warehouseId);
+        modal.show();
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Edit Warehouse{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'admin_dashboard' %}">
+            <i class="fas fa-home me-2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'user_statistics' %}">
+            <i class="fas fa-users me-2"></i> User Management
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'product_management' %}">
+            <i class="fas fa-box me-2"></i> Products
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="#warehouseManagement" data-bs-toggle="collapse" role="button">
+            <i class="fas fa-warehouse me-2"></i> Warehouses
+            <i class="fas fa-chevron-down float-end mt-1"></i>
+        </a>
+        <div class="collapse show" id="warehouseManagement">
+            <ul class="nav flex-column ms-3 mt-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'create_warehouse' %}">
+                        <i class="fas fa-plus me-2"></i> Create Warehouse
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'manage_warehouses' %}">
+                        <i class="fas fa-list me-2"></i> View All
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'add_user_page' %}">
+            <i class="fas fa-user-plus me-2"></i> Add Users
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow border-0 rounded-lg">
+                <div class="card-header bg-primary bg-gradient text-white py-3">
+                    <h4 class="mb-0"><i class="fas fa-edit me-2"></i>Edit Warehouse</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row mb-4">
+                        <div class="col-md-7">
+                            <form method="POST" action="{% url 'edit_warehouse' warehouse.id %}" class="needs-validation" novalidate>
+                                {% csrf_token %}
+                                
+                                <!-- Notification Messages -->
+                                {% if messages %}
+                                    {% for message in messages %}
+                                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                            {{ message }}
+                                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                                
+                                <div class="form-group mb-4">
+                                    <label for="warehouse_name" class="form-label fw-bold"><i class="fas fa-tag me-2"></i>Warehouse Name</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="fas fa-building"></i></span>
+                                        <input type="text" class="form-control form-control-lg border-start-0" id="warehouse_name" name="warehouse_name" value="{{ warehouse.name }}" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group mb-4">
+                                    <label for="location" class="form-label fw-bold"><i class="fas fa-map-marker-alt me-2"></i>Location</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="fas fa-location-arrow"></i></span>
+                                        <input type="text" class="form-control form-control-lg border-start-0" id="location" name="location" value="{{ warehouse.location }}" required>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group mb-4">
+                                    <label for="handles_expiring" class="form-label fw-bold"><i class="fas fa-clock me-2"></i>Handles Expiring Products</label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="handles_expiring" name="handles_expiring" {% if warehouse.handles_expiring %}checked{% endif %}>
+                                        <label class="form-check-label" for="handles_expiring">
+                                            This warehouse handles products with expiry dates
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between mt-4">
+                                    <button type="submit" class="btn btn-primary btn-lg px-5">
+                                        <i class="fas fa-save me-2"></i>Update Warehouse
+                                    </button>
+                                    <a href="{% url 'manage_warehouses' %}" class="btn btn-outline-secondary btn-lg">
+                                        <i class="fas fa-times me-2"></i>Cancel
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-5 d-none d-md-block">
+                            <div class="text-center py-4">
+                                <i class="fas fa-warehouse text-primary" style="font-size: 8rem; opacity: 0.7;"></i>
+                                <div class="mt-4">
+                                    <h5 class="text-muted">Warehouse Management System</h5>
+                                    <p class="text-secondary">Update warehouse information as needed to ensure accurate inventory management.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

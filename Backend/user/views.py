@@ -1229,3 +1229,60 @@ def delete_product(request, product_id):
             return JsonResponse({"error": f"Failed to delete product: {str(e)}"}, status=500)
         
         return redirect('product_management')
+
+@login_required
+def add_user_page(request):
+    """View for rendering the add user page template."""
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    return render(request, 'add_user.html')
+
+@login_required
+def edit_warehouse(request, warehouse_id):
+    """View function to edit a warehouse's details"""
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id)
+    
+    if request.method == 'POST':
+        form = WarehouseForm(request.POST, instance=warehouse)
+        if form.is_valid():
+            form.save()
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Updated warehouse: {warehouse.name}"
+            )
+            messages.success(request, f'Warehouse "{warehouse.name}" updated successfully!')
+            return redirect('manage_warehouses')
+    else:
+        form = WarehouseForm(instance=warehouse)
+    
+    return render(request, 'edit_warehouse.html', {'form': form, 'warehouse': warehouse})
+
+@login_required
+def delete_warehouse(request, warehouse_id):
+    """View function to delete a warehouse"""
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    warehouse = get_object_or_404(Warehouse, id=warehouse_id)
+    
+    if request.method == 'POST':
+        warehouse_name = warehouse.name
+        try:
+            warehouse.delete()
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Deleted warehouse: {warehouse_name}"
+            )
+            messages.success(request, f'Warehouse "{warehouse_name}" deleted successfully!')
+        except Exception as e:
+            messages.error(request, f'Error deleting warehouse: {str(e)}')
+        
+        return redirect('manage_warehouses')
+    
+    return render(request, 'delete_warehouse.html', {'warehouse': warehouse})

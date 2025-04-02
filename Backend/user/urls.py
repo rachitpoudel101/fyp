@@ -41,14 +41,17 @@ urlpatterns = [
     # Warehouse management URLs
     path('create_warehouse/', views.create_warehouse, name='create_warehouse'),  # Create warehouse (Admin)
     path('manage_warehouses/', views.manage_warehouses, name='manage_warehouses'),  # Manage warehouses (Admin)
+    path('edit_warehouse/<int:warehouse_id>/', views.edit_warehouse, name='edit_warehouse'),  # Add this line
+    path('delete-warehouse/<int:warehouse_id>/', views.delete_warehouse, name='delete_warehouse'),  # Add this line
     path('add-warehouse-manager/', views.add_warehouse_manager, name='add_warehouse_manager'),  # Add warehouse manager URL
     path('add-staff/', views.add_staff, name='add_staff'),  # Add staff URL
     path('assign-warehouse-manager/<int:warehouse_id>/', views.assign_warehouse_manager, name='assign_warehouse_manager'),
     path('warehouse/<int:warehouse_id>/products/', views.warehouse_products, name='warehouse_products'),
     path('delete_product/<int:product_id>/', views.delete_product, name='delete_product'),
 
-    # Add user URL
-    path('add_user/', views.add_user, name='add_user'),
+    # Add user URLs
+    path('add_user/', views.add_user, name='add_user'),  # Existing API endpoint
+    path('add_user_page/', views.add_user_page, name='add_user_page'),  # New page view
     path('add_admin/', views.add_admin, name='add_admin'),  # Add admin URL
 
     # New admin approval and verification URLs
