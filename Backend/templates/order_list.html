@@ -1,70 +1,301 @@
+{% extends "base_customer.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Management System</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link href="{% static 'css/order_list.css' %}" rel="stylesheet">
-</head>
-<body>
-    <header>
-        <div class="container">
-            <h1>Order Management System</h1>
-            <nav>
-                <ul>
-                    <li><a href="{% url 'order_list' %}">Orders</a></li>
-                    <li><a href="{% url 'billing' %}">Billing</a></li>
-                    <li><a href="{% url 'logout' %}">Logout</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
-    <div class="container">
-        <div class="card">
-            <h2>Order List</h2>
-            <div class="card-content">
-                <ul>
-                    {% for order in orders %}
-                        <li><a href="{% url 'order_detail' order.id %}">{{ order.order_number }}</a> - {{ order.status }}</li>
-                    {% endfor %}
-                </ul>
+
+{% block title %}My Orders - Marline{% endblock %}
+
+{% block page_title %}My Orders{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+    <!-- Order List Section -->
+    <div class="bg-white rounded-xl shadow-soft p-6 animate-fade-in">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                    <i class="fas fa-clipboard-list text-primary-500 mr-2"></i>
+                    My Orders
+                </h2>
+                <p class="text-gray-500 text-sm mt-1">Track and manage all your orders</p>
+            </div>
+            <div class="mt-4 md:mt-0 flex flex-wrap gap-2">
+                <a href="#place-order" class="inline-flex items-center px-3 py-2 bg-primary-600 text-sm text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+                    <i class="fas fa-plus mr-1.5"></i> New Order
+                </a>
+                <button class="inline-flex items-center px-3 py-2 bg-gray-100 text-sm text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                    <i class="fas fa-filter mr-1.5"></i> Filter
+                </button>
             </div>
         </div>
-        {% if user.role == 'customer' %}
-        <div class="card">
-            <h2>Available Products</h2>
-            <div class="card-content">
-                <ul>
-                    {% for product in products %}
-                        <li>{{ product.name }} - ${{ product.price }} - Stock: {{ product.stock }}</li>
-                    {% endfor %}
-                </ul>
+
+        {% if orders %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Number</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-100">
+                        {% for order in orders %}
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-shopping-bag text-primary-600"></i>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">{{ order.order_number }}</div>
+                                        <div class="text-xs text-gray-500">#{{ order.id }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2.5 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full items-center
+                                    {% if order.status == 'pending' %}bg-yellow-100 text-yellow-800
+                                    {% elif order.status == 'processing' %}bg-blue-100 text-blue-800
+                                    {% elif order.status == 'shipped' %}bg-indigo-100 text-indigo-800
+                                    {% elif order.status == 'delivered' %}bg-green-100 text-green-800
+                                    {% elif order.status == 'cancelled' %}bg-red-100 text-red-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    <span class="w-1.5 h-1.5 mr-1.5 rounded-full 
+                                        {% if order.status == 'pending' %}bg-yellow-500
+                                        {% elif order.status == 'processing' %}bg-blue-500
+                                        {% elif order.status == 'shipped' %}bg-indigo-500
+                                        {% elif order.status == 'delivered' %}bg-green-500
+                                        {% elif order.status == 'cancelled' %}bg-red-500
+                                        {% else %}bg-gray-500{% endif %}">
+                                    </span>
+                                    {{ order.status|title }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">{{ order.created_at|date:"M d, Y" }}</div>
+                                <div class="text-xs text-gray-500">{{ order.created_at|time:"h:i A" }}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                ${{ order.total_amount|floatformat:2 }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <div class="flex space-x-2">
+                                    <a href="{% url 'order_detail' order.id %}" class="text-primary-600 hover:text-primary-800 px-2 py-1 rounded hover:bg-primary-50 transition-colors flex items-center">
+                                        <i class="fas fa-eye mr-1.5"></i> View
+                                    </a>
+                                    <button class="text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-50 transition-colors flex items-center">
+                                        <i class="fas fa-print mr-1.5"></i> Receipt
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-16 border border-dashed border-gray-300 rounded-lg">
+                <div class="bg-gray-100 w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center">
+                    <i class="fas fa-clipboard-list text-gray-400 text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-medium text-gray-900 mb-2">No Orders Yet</h3>
+                <p class="text-gray-500 max-w-md mx-auto mb-6">You haven't placed any orders yet. Browse our products and place your first order.</p>
+                <a href="#place-order" class="inline-flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-medium rounded-lg shadow-sm transition-colors">
+                    <i class="fas fa-shopping-cart mr-2"></i> Place Your First Order
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if user.role == 'customer' %}
+    <!-- Available Products Section -->
+    <div class="bg-white rounded-xl shadow-soft p-6 animate-fade-in" id="products-section">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                    <i class="fas fa-box-open text-primary-500 mr-2"></i>
+                    Available Products
+                </h2>
+                <p class="text-gray-500 text-sm mt-1">Browse our catalog of available products</p>
+            </div>
+            <div class="mt-4 md:mt-0">
+                <div class="relative">
+                    <input type="text" placeholder="Search products..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500 w-full">
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
             </div>
         </div>
-        <div class="order-form">
-            <h2>Place an Order</h2>
-            <form method="post" action="{% url 'create_order' %}">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label for="product">Product:</label>
-                    <select name="product" id="product">
+        
+        {% if products %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {% for product in products %}
+                <div class="border rounded-xl p-4 hover:shadow-md transition-all bg-white group relative card-hover">
+                    <!-- Quick action buttons that appear on hover -->
+                    <div class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button class="bg-white rounded-full p-2 shadow-md hover:bg-gray-100 transition-colors" title="Add to wishlist">
+                            <i class="far fa-heart text-red-500"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- Product image -->
+                    <div class="h-36 flex items-center justify-center bg-gray-50 rounded-lg mb-4 overflow-hidden group-hover:bg-gray-100 transition-colors">
+                        {% if product.image %}
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}" class="max-h-32 max-w-full object-contain">
+                        {% else %}
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="fas fa-box text-gray-300 text-5xl mb-2"></i>
+                                <span class="text-xs text-gray-400">No image available</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Product details -->
+                    <div>
+                        <h3 class="font-medium text-lg text-gray-900">{{ product.name }}</h3>
+                        
+                        <div class="mt-1 mb-2">
+                            {% if product.category %}
+                                <span class="inline-block bg-gray-100 text-gray-600 rounded-full px-2 py-0.5 text-xs">
+                                    {{ product.category.name }}
+                                </span>
+                            {% endif %}
+                        </div>
+                        
+                        <p class="text-gray-500 text-sm mb-3 line-clamp-2 h-10">
+                            {{ product.description|default:"No description available" }}
+                        </p>
+                        
+                        <div class="flex justify-between items-center mt-4">
+                            <span class="text-xl font-bold text-primary-600">${{ product.price }}</span>
+                            <div class="flex items-center">
+                                {% if product.stock > 10 %}
+                                <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-lg flex items-center">
+                                    <i class="fas fa-check-circle mr-1"></i> In Stock
+                                </span>
+                                {% elif product.stock > 0 %}
+                                <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-lg flex items-center">
+                                    <i class="fas fa-exclamation-circle mr-1"></i> Low Stock ({{ product.stock }})
+                                </span>
+                                {% else %}
+                                <span class="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-lg flex items-center">
+                                    <i class="fas fa-times-circle mr-1"></i> Out of Stock
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-8">
+                <div class="bg-gray-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">
+                    <i class="fas fa-box-open text-gray-400 text-2xl"></i>
+                </div>
+                <p class="text-gray-500">No products available at the moment.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Place Order Form -->
+    <div class="bg-white rounded-xl shadow-soft p-6 animate-fade-in" id="place-order">
+        <div class="flex items-center mb-6">
+            <div class="bg-primary-100 p-3 rounded-full mr-3">
+                <i class="fas fa-cart-plus text-primary-600 text-xl"></i>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">Place an Order</h2>
+                <p class="text-gray-500 text-sm">Select a product and quantity to place your order</p>
+            </div>
+        </div>
+        
+        <form method="post" action="{% url 'create_order' %}" class="space-y-6">
+            {% csrf_token %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="product" class="block text-sm font-medium text-gray-700 mb-2">Product:</label>
+                    <select name="product" id="product" class="rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 focus:ring-opacity-50 block w-full">
                         <option value="">Select a product</option>
                         {% for product in products %}
-                            <option value="{{ product.id }}">{{ product.name }}</option>
+                            {% if product.stock > 0 %}
+                            <option value="{{ product.id }}" data-price="{{ product.price }}" data-stock="{{ product.stock }}">
+                                {{ product.name }} - ${{ product.price }} ({{ product.stock }} in stock)
+                            </option>
+                            {% endif %}
                         {% endfor %}
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="quantity">Quantity:</label>
-                    <input type="number" name="quantity" id="quantity" min="1" required>
+                
+                <div>
+                    <label for="quantity" class="block text-sm font-medium text-gray-700 mb-2">Quantity:</label>
+                    <input type="number" name="quantity" id="quantity" min="1" max="100" value="1" required
+                           class="rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring focus:ring-primary-200 focus:ring-opacity-50 block w-full">
+                    <div class="text-xs text-gray-500 mt-1">
+                        Maximum available: <span id="max-stock">--</span>
+                    </div>
                 </div>
-                <button type="submit">Order</button>
-            </form>
-        </div>
-        {% endif %}
+            </div>
+            
+            <div class="bg-gray-50 p-4 rounded-lg flex flex-col md:flex-row justify-between items-center">
+                <div>
+                    <p class="text-sm text-gray-500">Order Summary:</p>
+                    <p class="text-lg font-medium text-gray-900" id="total-price">Total: $0.00</p>
+                </div>
+                <button type="submit" 
+                        class="mt-3 md:mt-0 inline-flex justify-center items-center py-3 px-6 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors">
+                    <i class="fas fa-shopping-cart mr-2"></i> Place Order
+                </button>
+            </div>
+        </form>
     </div>
-    <script src="{% static 'js/order_list.js' %}"></script>
-</body>
-</html>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const productSelect = document.getElementById('product');
+        const quantityInput = document.getElementById('quantity');
+        const totalPriceElement = document.getElementById('total-price');
+        const maxStockElement = document.getElementById('max-stock');
+        
+        function updateTotalPrice() {
+            const selectedOption = productSelect.options[productSelect.selectedIndex];
+            if (selectedOption.value === '') {
+                totalPriceElement.textContent = 'Total: $0.00';
+                maxStockElement.textContent = '--';
+                return;
+            }
+            
+            const price = parseFloat(selectedOption.dataset.price || 0);
+            const stock = parseInt(selectedOption.dataset.stock || 0);
+            const quantity = parseInt(quantityInput.value) || 1;
+            
+            // Update max available
+            maxStockElement.textContent = stock;
+            
+            // Enforce max quantity
+            if (quantity > stock) {
+                quantityInput.value = stock;
+            }
+            
+            // Calculate total price
+            const total = price * quantity;
+            totalPriceElement.textContent = `Total: $${total.toFixed(2)}`;
+        }
+        
+        productSelect.addEventListener('change', updateTotalPrice);
+        quantityInput.addEventListener('input', updateTotalPrice);
+        
+        // Card animations
+        const cards = document.querySelectorAll('.card-hover');
+        cards.forEach((card, index) => {
+            setTimeout(() => {
+                card.classList.add('animate-slide-in');
+            }, index * 50);
+        });
+    });
+</script>
+{% endblock %}

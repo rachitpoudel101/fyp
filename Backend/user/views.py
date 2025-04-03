@@ -1,4 +1,4 @@
-from time import timezone
+from django.utils import timezone  # Correct timezone import
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
@@ -190,11 +190,41 @@ def dashboard(request):
     elif request.user.role == 'warehouse_manager':
         return redirect('warehouse_dashboard')
     elif request.user.role == 'customer':
-        return redirect('order_list')
+        return redirect('customer_dashboard')  # Changed to redirect to customer dashboard
     else:
         return HttpResponseForbidden("You do not have permission to view this page.")
 
-# ...existing code...
+# Add the new customer dashboard view
+@login_required
+def customer_dashboard(request):
+    if request.user.role != 'customer':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get customer's orders
+    orders = Order.objects.filter(customer=request.user).order_by('-created_at')
+    recent_orders = orders[:5]  # Get 5 most recent orders
+    
+    # Calculate statistics
+    total_orders = orders.count()
+    total_spent = orders.aggregate(Sum('total_amount'))['total_amount__sum'] or 0
+    
+    # Get orders by status
+    pending_orders = orders.filter(status='pending').count()
+    delivered_orders = orders.filter(status='delivered').count()
+    
+    # Get some recommended products (just showing available products for now)
+    recommended_products = Product.objects.filter(stock__gt=0)[:6]
+    
+    context = {
+        'recent_orders': recent_orders,
+        'total_orders': total_orders,
+        'total_spent': total_spent,
+        'pending_orders': pending_orders,
+        'delivered_orders': delivered_orders,
+        'recommended_products': recommended_products,
+    }
+    
+    return render(request, 'customer_dashboard.html', context)
 
 @login_required
 def admin_dashboard(request):
@@ -541,9 +571,7 @@ def product_management(request):
                         if not warehouse:
                             warehouse = Warehouse.objects.create(
                                 name="Non-Expiring Products Warehouse",
-                                location="Default Location",
-                                handles_expiring=False
-                            )
+                                location="Default Location",handles_expiring=False())
                     
                     product.warehouse = warehouse
                     product.save()

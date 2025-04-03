@@ -14,6 +14,7 @@ urlpatterns = [
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),  # Admin dashboard
     path('warehouse-dashboard/', views.warehouse_dashboard, name='warehouse_dashboard'),  # Warehouse dashboard
     path('super_admin_dashboard/', views.super_admin_dashboard, name='super_admin_dashboard'),  # Super Admin dashboard
+    path('customer/dashboard/', views.customer_dashboard, name='customer_dashboard'),  # Customer dashboard
 
     # Inventory and orders management URLs
     path('inventory/', views.inventory, name='inventory'),  # Inventory management (Admin/Warehouse)
