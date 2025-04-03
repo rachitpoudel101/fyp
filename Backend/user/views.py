@@ -402,9 +402,10 @@ def user_statistics(request):
     # Get all users with their creators (admins)
     users = CustomUser.objects.select_related('created_by').all().order_by('role')
     
-    # Filter users based on role and created_by
+    # Get ALL warehouse managers and staff members regardless of created_by field
+    # This ensures we see all warehouse managers in the system
     warehouse_managers = CustomUser.objects.filter(role='warehouse_manager')
-    staff_members = CustomUser.objects.filter(role='staff')
+    staff_members = CustomUser.objects.filter(role='staff', created_by=request.user)
     
     context = {
         'users': users,

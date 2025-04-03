@@ -50,6 +50,10 @@
 {% block content %}
 <div class="container mt-4">
     <h2>User Management</h2>
+    
+    <!-- Current User Information -->
+    <h3 class="mt-4">Your Account Information</h3>
+    <p class="text-muted">This section shows information about your account.</p>
     <div class="table-responsive">
         <table class="table table-striped">
             <thead>
@@ -58,39 +62,30 @@
                     <th>Username</th>
                     <th>Email</th>
                     <th>Role</th>
-                    <th>Added By</th>
                     <th>Status</th>
                 </tr>
             </thead>
             <tbody>
-                {% for user in users %}
                 <tr>
-                    <td>{{ user.id }}</td>
-                    <td>{{ user.username }}</td>
-                    <td>{{ user.email }}</td>
-                    <td>{{ user.get_role_display }}</td>
+                    <td>{{ request.user.id }}</td>
+                    <td>{{ request.user.username }}</td>
+                    <td>{{ request.user.email }}</td>
+                    <td>{{ request.user.get_role_display }}</td>
                     <td>
-                        {% if user.created_by %}
-                            {{ user.created_by.username }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if user.is_active %}
+                        {% if request.user.is_active %}
                             <span class="badge bg-success">Active</span>
                         {% else %}
                             <span class="badge bg-danger">Inactive</span>
                         {% endif %}
                     </td>
                 </tr>
-                {% endfor %}
             </tbody>
         </table>
     </div>
 
     <!-- Warehouse Managers Section -->
-    <h3 class="mt-5">Warehouse Managers</h3>
+    <h3 class="mt-5">Your Warehouse Managers</h3>
+    <p class="text-muted">Only showing warehouse managers created by you ({{ request.user.username }}).</p>
     <div class="table-responsive">
         <table class="table table-striped">
             <thead>
@@ -108,13 +103,7 @@
                     <td>{{ manager.id }}</td>
                     <td>{{ manager.username }}</td>
                     <td>{{ manager.email }}</td>
-                    <td>
-                        {% if manager.created_by %}
-                            {{ manager.created_by.username }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
+                    <td>{{ request.user.username }}</td>
                     <td>
                         {% if manager.is_active %}
                             <span class="badge bg-success">Active</span>
@@ -133,7 +122,8 @@
     </div>
 
     <!-- Staff Members Section -->
-    <h3 class="mt-5">Staff Members</h3>
+    <h3 class="mt-5">Your Staff Members</h3>
+    <p class="text-muted">Only showing staff members created by you ({{ request.user.username }}).</p>
     <div class="table-responsive">
         <table class="table table-striped">
             <thead>
@@ -173,6 +163,13 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+    
+    <!-- Add button to create new users -->
+    <div class="mt-4">
+        <a href="{% url 'add_user_page' %}" class="btn btn-primary">
+            <i class="fas fa-user-plus me-2"></i> Add New User
+        </a>
     </div>
 </div>
 {% endblock %}
