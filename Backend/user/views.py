@@ -571,7 +571,9 @@ def product_management(request):
                         if not warehouse:
                             warehouse = Warehouse.objects.create(
                                 name="Non-Expiring Products Warehouse",
-                                location="Default Location",handles_expiring=False())
+                                location="Default Location",
+                                handles_expiring=False
+                            )
                     
                     product.warehouse = warehouse
                     product.save()
@@ -652,7 +654,12 @@ def update_product(request, product_id):
 
 @login_required
 def add_category(request):
+    # Debug information
+    print(f"ADD CATEGORY VIEW ACCESSED: user={request.user.username}, role={request.user.role}")
+    print(f"REQUEST METHOD: {request.method}")
+    
     if request.user.role != 'admin':
+        print(f"UNAUTHORIZED: User {request.user.username} with role {request.user.role} attempted to add category")
         return JsonResponse({
             'success': False,
             'error': 'Only admin users can add categories'
@@ -665,17 +672,24 @@ def add_category(request):
         }, status=405)
 
     try:
+        # Print POST data for debugging
+        print("POST DATA:", request.POST)
+        
         name = request.POST.get('name', '').strip()
         description = request.POST.get('description', '').strip()
         
+        print(f"CATEGORY DATA - Name: '{name}', Description: '{description}'")
+        
         if not name:
+            print("ERROR: Category name is empty")
             return JsonResponse({
                 'success': False,
                 'error': 'Category name cannot be empty'
             }, status=400)
 
-        # Case-insensitive check for existing category
-        if Category.objects.filter(name__iexact(name)).exists():
+        # Case-insensitive check for existing category - FIX THE SYNTAX HERE
+        if Category.objects.filter(name__iexact=name).exists():  # Corrected syntax
+            print(f"ERROR: Category '{name}' already exists")
             return JsonResponse({
                 'success': False,
                 'error': f'Category "{name}" already exists'
@@ -686,6 +700,8 @@ def add_category(request):
             name=name,
             description=description if description else None
         )
+        
+        print(f"CATEGORY CREATED: ID={category.id}, Name='{category.name}'")
         
         # Log the activity
         ActivityLog.objects.create(
@@ -704,7 +720,9 @@ def add_category(request):
         })
 
     except Exception as e:
-        print(f"Error adding category: {str(e)}")
+        print(f"ERROR ADDING CATEGORY: {str(e)}")
+        import traceback
+        traceback.print_exc()  # This will print the full stack trace
         return JsonResponse({
             'success': False,
             'error': str(e)

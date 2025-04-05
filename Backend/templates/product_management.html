@@ -140,9 +140,9 @@
                 <h5 class="modal-title">Add New Category</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <form id="categoryForm">
-                    {% csrf_token %}
+            <form id="categoryForm" action="{% url 'add_category' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
                     <div class="mb-3">
                         <label for="categoryName" class="form-label">Category Name</label>
                         <input type="text" class="form-control" id="categoryName" name="name" required>
@@ -151,12 +151,12 @@
                         <label for="categoryDescription" class="form-label">Description</label>
                         <textarea class="form-control" id="categoryDescription" name="description"></textarea>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="addCategory()">Save Category</button>
-            </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveCategoryBtn">Save Category</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -221,7 +221,119 @@
 
 {% block scripts %}
 <script>
+    // Define addCategory function
+    function addCategory() {
+        console.log("Add Category function called");
+        
+        // Get the form and form data
+        const categoryForm = document.getElementById('categoryForm');
+        const formData = new FormData(categoryForm);
+        
+        // Log the form data for debugging
+        console.log("Category name:", formData.get('name'));
+        console.log("Category description:", formData.get('description'));
+        
+        // Get the CSRF token from the form
+        const csrftoken = categoryForm.querySelector('[name=csrfmiddlewaretoken]').value;
+        console.log("CSRF Token:", csrftoken);
+
+        // Send the request with proper headers
+        fetch('{% url "add_category" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(response => {
+            console.log("Response status:", response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log("Response data:", data);
+            
+            if (data.success) {
+                // Add new category to the table
+                const categoriesTable = document.querySelector('#categories table tbody');
+                const newRow = categoriesTable.insertRow();
+                newRow.innerHTML = `
+                    <td>${data.category.name}</td>  
+                    <td>${data.category.description || ''}</td>
+                    <td>0</td>
+                `;
+                
+                // Add to product form category dropdown
+                const categorySelect = document.querySelector('#id_category');
+                if (categorySelect) {
+                    const option = new Option(data.category.name, data.category.id);
+                    categorySelect.add(option);
+                }
+                
+                // Also add to edit form dropdown
+                const editCategorySelect = document.getElementById('edit_category');
+                if (editCategorySelect) {
+                    const option = new Option(data.category.name, data.category.id);
+                    editCategorySelect.add(option);
+                }
+                
+                // Clear the form
+                categoryForm.reset();
+                
+                // Close modal and show success message
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addCategoryModal'));
+                if (modal) modal.hide();
+                alert(data.message);
+                
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to add category. Please check the console for details.');
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        console.log("DOM fully loaded");
+        
+        // Add event listener to the save category button
+        const saveCategoryBtn = document.getElementById('saveCategoryBtn');
+        if (saveCategoryBtn) {
+            console.log("Save Category button found");
+            saveCategoryBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log("Save Category button clicked");
+                addCategory();
+            });
+        } else {
+            console.error("Save Category button not found!");
+        }
+        
+        // Add direct form submission listener as backup
+        const categoryForm = document.getElementById('categoryForm');
+        if (categoryForm) {
+            categoryForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                console.log("Category form submitted");
+                addCategory();
+            });
+        }
+
+        // Fix for ARIA accessibility issue with modals
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.addEventListener('hidden.bs.modal', function () {
+                // Remove aria-hidden when modal is closed
+                document.querySelectorAll('[aria-hidden="true"]').forEach(el => {
+                    if (!el.classList.contains('modal')) {
+                        el.removeAttribute('aria-hidden');
+                    }
+                });
+            });
+        });
+
         // Product Form Handling
         const addProductModal = new bootstrap.Modal(document.getElementById('addProductModal'));
         const addProductForm = document.getElementById('addProductForm');
@@ -253,10 +365,6 @@
                 });
             });
         }
-
-        // Category Form Handling
-        const addCategoryModal = new bootstrap.Modal(document.getElementById('addCategoryModal'));
-        const categoryForm = document.getElementById('categoryForm');
 
         // SIMPLER EDIT PRODUCT FUNCTIONALITY
         document.querySelectorAll('.edit-product').forEach(button => {
@@ -317,50 +425,6 @@
             });
         });
     });
-
-    // Helper Functions
-    function addCategory() {
-        const formData = new FormData(document.getElementById('categoryForm'));
-        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-        fetch('{% url "add_category" %}', {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': csrftoken,
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Add new category to the table
-                const categoriesTable = document.querySelector('#categories table tbody');
-                const newRow = categoriesTable.insertRow();
-                newRow.innerHTML = `
-                    <td>${data.category.name}</td>
-                    <td>${data.category.description || ''}</td>
-                    <td>0</td>
-                `;
-                
-                // Add to product form category dropdown
-                const categorySelect = document.querySelector('#id_category');
-                if (categorySelect) {
-                    const option = new Option(data.category.name, data.category.id);
-                    categorySelect.add(option);
-                }
-                
-                // Close modal and show success message
-                bootstrap.Modal.getInstance(document.getElementById('addCategoryModal')).hide();
-                alert(data.message);
-            } else {
-                alert(data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Failed to add category. Please try again.');
-        });
-    }
 
     // Helper function to get CSRF token from cookie
     function getCookie(name) {
