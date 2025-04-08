@@ -37,6 +37,9 @@ urlpatterns = [
     path('product_management/', views.product_management, name='product_management'),  # Product management (Admin)
     path('update-product/<int:product_id>/', views.update_product, name='update_product'),
     path('add-category/', views.add_category, name='add_category'),
+    path('edit-category/<int:category_id>/', views.edit_category, name='edit_category'),
+    path('delete-category/<int:category_id>/', views.delete_category, name='delete_category'),
+    path('manage-categories/', views.manage_categories, name='manage_categories'),
     path('billing/', views.billing, name='billing'),  # Billing management (Admin)
 
     # Warehouse management URLs

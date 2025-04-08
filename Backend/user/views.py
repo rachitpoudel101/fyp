@@ -1333,3 +1333,86 @@ def delete_warehouse(request, warehouse_id):
         return redirect('manage_warehouses')
     
     return render(request, 'delete_warehouse.html', {'warehouse': warehouse})
+
+@login_required
+def edit_category(request, category_id):
+    """View function to edit a category"""
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    category = get_object_or_404(Category, id=category_id)
+    
+    if request.method == 'POST':
+        try:
+            name = request.POST.get('name', '').strip()
+            description = request.POST.get('description', '').strip()
+            
+            if not name:
+                messages.error(request, "Category name cannot be empty")
+                return redirect('product_management')
+                
+            # Check if another category with this name exists (excluding current category)
+            if Category.objects.filter(name__iexact=name).exclude(id=category_id).exists():
+                messages.error(request, f'Category "{name}" already exists')
+                return redirect('product_management')
+                
+            # Update category
+            category.name = name
+            category.description = description
+            category.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Updated category: {category.name}"
+            )
+            
+            messages.success(request, f'Category "{category.name}" updated successfully!')
+            return redirect('product_management')
+            
+        except Exception as e:
+            messages.error(request, f'Error updating category: {str(e)}')
+            return redirect('product_management')
+    
+    return redirect('product_management')
+
+@login_required
+def delete_category(request, category_id):
+    """View function to delete a category"""
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    category = get_object_or_404(Category, id=category_id)
+    
+    if request.method == 'POST':
+        category_name = category.name
+        try:
+            # Check if products are associated with this category
+            if Product.objects.filter(category=category).exists():
+                messages.error(request, f'Cannot delete category "{category_name}" because it has products associated with it.')
+                return redirect('product_management')
+                
+            category.delete()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Deleted category: {category_name}"
+            )
+            
+            messages.success(request, f'Category "{category_name}" deleted successfully!')
+        except Exception as e:
+            messages.error(request, f'Error deleting category: {str(e)}')
+        
+        return redirect('product_management')
+    
+    return redirect('product_management')
+
+@login_required
+def manage_categories(request):
+    """View function to list all categories"""
+    if request.user.role != 'admin':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    categories = Category.objects.all()
+    return render(request, 'manage_categories.html', {'categories': categories})
