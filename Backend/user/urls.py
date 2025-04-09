@@ -76,4 +76,17 @@ urlpatterns = [
     # Password reset URLs
     path('forgot-password/', views.forgot_password, name='forgot_password'),
     path('reset-password/<str:token>/', views.reset_password, name='reset_password'),
+
+    # Cart URLs
+    path('cart/', views.view_cart, name='view_cart'),
+    path('cart/add/', views.add_to_cart, name='add_to_cart'),
+    path('cart/update/', views.update_cart_item, name='update_cart_item'),
+    path('cart/remove/', views.remove_from_cart, name='remove_from_cart'),
+    path('cart/clear/', views.clear_cart, name='clear_cart'),
+    
+    # Wishlist URLs
+    path('wishlist/', views.view_wishlist, name='view_wishlist'),
+    path('wishlist/add/', views.add_to_wishlist, name='add_to_wishlist'),
+    path('wishlist/remove/', views.remove_from_wishlist, name='remove_from_wishlist'),
+    path('wishlist/move-to-cart/', views.move_to_cart, name='move_to_cart'),
 ]

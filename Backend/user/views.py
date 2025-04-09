@@ -7,13 +7,14 @@ from django.contrib.auth.decorators import login_required
 from Inventory.models import Order, OrderItem, Product, Category
 from Inventory.forms import CategoryForm, ProductForm, OrderForm
 from .forms import CustomUserCreationForm, WarehouseForm, StaffCreationForm
-from .models import CustomUser, Warehouse, ActivityLog  # Add ActivityLog to the importser, Warehouse
+from .models import CustomUser, Warehouse, ActivityLog, Cart, CartItem, Wishlist, WishlistItem  # Add ActivityLog to the importser, Warehouse
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.urls import reverse
 import uuid
 from django.db.models import Sum, Q, F
 from django.contrib import messages  # Import for user notifications
+from django.views.decorators.http import require_POST, require_http_methods
 
 def verify_email(request, token):
     try:
@@ -417,10 +418,24 @@ def order_list(request):
     if request.user.role == 'customer':
         orders = Order.objects.filter(customer=request.user)
         products = Product.objects.all()
-        return render(request, 'order_list.html', {'orders': orders, 'products': products})
+        
+        # Get or create cart and wishlist for displaying counts
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
+        
+        context = {
+            'orders': orders,
+            'products': products,
+            'cart': cart,
+            'wishlist': wishlist
+        }
+        
+        return render(request, 'order_list.html', context)
+    
     elif request.user.role == 'warehouse_manager':
         orders = Order.objects.all()
         return render(request, 'order_list.html', {'orders': orders})
+    
     else:
         return HttpResponseForbidden("You are not authorized to view this page")
 
@@ -1416,3 +1431,342 @@ def manage_categories(request):
     
     categories = Category.objects.all()
     return render(request, 'manage_categories.html', {'categories': categories})
+
+# Cart Views
+@login_required
+def view_cart(request):
+    """View to display the user's cart contents"""
+    # Get or create cart for the user
+    cart, created = Cart.objects.get_or_create(user=request.user)
+    
+    # Calculate total price
+    total_price = sum(item.product.price * item.quantity for item in cart.items.all())
+    
+    context = {
+        'cart': cart,
+        'cart_items': cart.items.all().select_related('product'),
+        'total_price': total_price
+    }
+    
+    return render(request, 'cart.html', context)
+
+@login_required
+@require_POST
+def add_to_cart(request):
+    """View to add a product to the user's cart"""
+    product_id = request.POST.get('product_id')
+    quantity = int(request.POST.get('quantity', 1))
+    
+    if not product_id:
+        return JsonResponse({'success': False, 'message': 'Product ID is required'}, status=400)
+    
+    try:
+        product = Product.objects.get(id=product_id)
+        
+        # Check if there's enough stock
+        if product.stock < quantity:
+            return JsonResponse({
+                'success': False, 
+                'message': f'Not enough stock available. Only {product.stock} available.'
+            }, status=400)
+        
+        # Get or create the user's cart
+        cart, created = Cart.objects.get_or_create(user=request.user)
+        
+        # Check if product already exists in cart
+        cart_item, item_created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            defaults={'quantity': quantity}
+        )
+        
+        # If item already existed, update quantity
+        if not item_created:
+            cart_item.quantity = F('quantity') + quantity
+            cart_item.save()
+            cart_item.refresh_from_db()
+        
+        # Calculate new cart totals
+        total_items = cart.total_items
+        total_price = cart.total_price
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Added {quantity} {product.name} to your cart',
+            'cart_total_items': total_items,
+            'cart_total_price': total_price,
+            'item_quantity': cart_item.quantity,
+            'item_subtotal': cart_item.subtotal
+        })
+    
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Product not found'}, status=404)
+    
+    except Exception as e:
+        print(f"ERROR in add_to_cart: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@require_POST
+def update_cart_item(request):
+    """View to update the quantity of an item in the cart"""
+    cart_item_id = request.POST.get('cart_item_id')
+    new_quantity = int(request.POST.get('quantity', 1))
+    
+    if not cart_item_id:
+        return JsonResponse({'success': False, 'message': 'Cart item ID is required'}, status=400)
+    
+    try:
+        cart_item = CartItem.objects.get(id=cart_item_id, cart__user=request.user)
+        
+        if new_quantity <= 0:
+            # If quantity is 0 or less, remove the item
+            cart_item.delete()
+            message = 'Item removed from cart'
+        else:
+            # Check if there's enough stock
+            if cart_item.product.stock < new_quantity:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Not enough stock available. Only {cart_item.product.stock} available.'
+                }, status=400)
+            
+            # Update the quantity
+            cart_item.quantity = new_quantity
+            cart_item.save()
+            message = 'Cart updated successfully'
+        
+        # Get new cart totals
+        cart = request.user.cart
+        total_items = cart.total_items
+        total_price = cart.total_price
+        
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'cart_total_items': total_items,
+            'cart_total_price': total_price,
+            'item_subtotal': getattr(cart_item, 'subtotal', 0)
+        })
+    
+    except CartItem.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Cart item not found'}, status=404)
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@require_POST
+def remove_from_cart(request):
+    """View to remove an item from the cart"""
+    cart_item_id = request.POST.get('cart_item_id')
+    
+    if not cart_item_id:
+        return JsonResponse({'success': False, 'message': 'Cart item ID is required'}, status=400)
+    
+    try:
+        cart_item = CartItem.objects.get(id=cart_item_id, cart__user=request.user)
+        product_name = cart_item.product.name
+        cart_item.delete()
+        
+        # Get new cart totals
+        cart = request.user.cart
+        total_items = cart.total_items
+        total_price = cart.total_price
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{product_name} removed from your cart',
+            'cart_total_items': total_items,
+            'cart_total_price': total_price
+        })
+    
+    except CartItem.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Cart item not found'}, status=404)
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@require_POST
+def clear_cart(request):
+    """View to remove all items from the cart"""
+    try:
+        if hasattr(request.user, 'cart'):
+            request.user.cart.items.all().delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Cart cleared successfully',
+            'cart_total_items': 0,
+            'cart_total_price': 0
+        })
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+# Wishlist Views
+@login_required
+def view_wishlist(request):
+    """View to display the user's wishlist contents"""
+    # Get or create wishlist for the user
+    wishlist, created = Wishlist.objects.get_or_create(user=request.user)
+    
+    context = {
+        'wishlist': wishlist,
+        'wishlist_items': wishlist.items.all().select_related('product')
+    }
+    
+    return render(request, 'wishlist.html', context)
+
+@login_required
+@require_POST
+def add_to_wishlist(request):
+    """View to add a product to the user's wishlist"""
+    product_id = request.POST.get('product_id')
+    
+    if not product_id:
+        return JsonResponse({'success': False, 'message': 'Product ID is required'}, status=400)
+    
+    try:
+        product = Product.objects.get(id=product_id)
+        
+        # Get or create the user's wishlist
+        wishlist, created = Wishlist.objects.get_or_create(user=request.user)
+        
+        # Check if product already exists in wishlist
+        _, item_created = WishlistItem.objects.get_or_create(
+            wishlist=wishlist,
+            product=product
+        )
+        
+        # Success message based on whether item was added or already existed
+        message = f'Added {product.name} to your wishlist' if item_created else f'{product.name} is already in your wishlist'
+        
+        # Get total wishlist items
+        total_items = wishlist.items.count()
+        
+        return JsonResponse({
+            'success': True,
+            'message': message,
+            'wishlist_total_items': total_items,
+            'added': item_created
+        })
+    
+    except Product.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Product not found'}, status=404)
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@require_POST
+def remove_from_wishlist(request):
+    """View to remove an item from the wishlist"""
+    wishlist_item_id = request.POST.get('wishlist_item_id')
+    
+    if not wishlist_item_id:
+        return JsonResponse({'success': False, 'message': 'Wishlist item ID is required'}, status=400)
+    
+    try:
+        wishlist_item = WishlistItem.objects.get(id=wishlist_item_id, wishlist__user=request.user)
+        product_name = wishlist_item.product.name
+        wishlist_item.delete()
+        
+        # Get total wishlist items
+        total_items = request.user.wishlist.items.count()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{product_name} removed from your wishlist',
+            'wishlist_total_items': total_items
+        })
+    
+    except WishlistItem.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Wishlist item not found'}, status=404)
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+@require_POST
+def move_to_cart(request):
+    """View to move an item from the wishlist to the cart"""
+    wishlist_item_id = request.POST.get('wishlist_item_id')
+    quantity = int(request.POST.get('quantity', 1))
+    
+    if not wishlist_item_id:
+        return JsonResponse({'success': False, 'message': 'Wishlist item ID is required'}, status=400)
+    
+    try:
+        # Get the wishlist item
+        wishlist_item = WishlistItem.objects.get(id=wishlist_item_id, wishlist__user=request.user)
+        product = wishlist_item.product
+        
+        # Check if there's enough stock
+        if product.stock < quantity:
+            return JsonResponse({
+                'success': False,
+                'message': f'Not enough stock available. Only {product.stock} available.'
+            }, status=400)
+        
+        # Get or create the cart
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        
+        # Add to cart or update if already exists
+        cart_item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            defaults={'quantity': quantity}
+        )
+        
+        if not created:
+            cart_item.quantity = F('quantity') + quantity
+            cart_item.save()
+        
+        # Remove from wishlist
+        wishlist_item.delete()
+        
+        # Get updated counts
+        wishlist_count = request.user.wishlist.items.count()
+        cart_count = cart.items.count()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Moved {product.name} from wishlist to cart',
+            'wishlist_total_items': wishlist_count,
+            'cart_total_items': cart_count
+        })
+    
+    except WishlistItem.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'Wishlist item not found'}, status=404)
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+# Modify the existing order_list view to include cart and wishlist counts
+@login_required
+def order_list(request):
+    if request.user.role == 'customer':
+        orders = Order.objects.filter(customer=request.user)
+        products = Product.objects.all()
+        
+        # Get or create cart and wishlist for displaying counts
+        cart, _ = Cart.objects.get_or_create(user=request.user)
+        wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
+        
+        context = {
+            'orders': orders,
+            'products': products,
+            'cart': cart,
+            'wishlist': wishlist
+        }
+        
+        return render(request, 'order_list.html', context)
+    
+    elif request.user.role == 'warehouse_manager':
+        orders = Order.objects.all()
+        return render(request, 'order_list.html', {'orders': orders})
+    
+    else:
+        return HttpResponseForbidden("You are not authorized to view this page")

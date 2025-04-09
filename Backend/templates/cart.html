@@ -1,0 +1,385 @@
+{% extends "base_customer.html" %}
+{% load static %}
+
+{% block title %}Shopping Cart - Marline{% endblock %}
+
+{% block page_title %}Shopping Cart{% endblock %}
+
+{% block content %}
+<div class="space-y-8 animate-fade-in">
+    <!-- Cart Navigation -->
+    <div class="flex items-center justify-between bg-white p-4 rounded-xl shadow-soft mb-6">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'order_list' %}" class="flex items-center text-gray-600 hover:text-primary-600 transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i>
+                <span>Continue Shopping</span>
+            </a>
+            <div class="text-gray-400">|</div>
+            <a href="{% url 'view_wishlist' %}" class="flex items-center text-pink-600 hover:text-pink-700 transition-colors">
+                <i class="fas fa-heart mr-2"></i>
+                <span>Wishlist</span>
+                <span id="wishlist-count" class="ml-1 bg-pink-100 text-pink-600 rounded-full px-2 text-xs font-bold">
+                    {{ request.user.wishlist.items.count|default:"0" }}
+                </span>
+            </a>
+        </div>
+        <button id="clear-cart" class="text-red-600 hover:text-red-800 flex items-center text-sm transition-colors">
+            <i class="fas fa-trash-alt mr-1"></i> Clear Cart
+        </button>
+    </div>
+
+    <!-- Cart Content -->
+    <div class="bg-white rounded-xl shadow-soft overflow-hidden">
+        <div class="border-b border-gray-200 p-6">
+            <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                <i class="fas fa-shopping-cart text-primary-500 mr-3"></i>
+                Your Shopping Cart
+                <span id="cart-count" class="ml-2 bg-primary-100 text-primary-800 rounded-full px-2 py-0.5 text-sm">
+                    {{ cart.total_items }} item{{ cart.total_items|pluralize }}
+                </span>
+            </h2>
+        </div>
+
+        <div id="cart-items-container" class="divide-y divide-gray-200">
+            {% if cart_items %}
+                {% for item in cart_items %}
+                <div class="cart-item p-6 flex flex-col sm:flex-row items-center justify-between" data-item-id="{{ item.id }}">
+                    <div class="flex flex-col sm:flex-row items-center mb-4 sm:mb-0">
+                        <!-- Product Image -->
+                        <div class="flex-shrink-0 w-20 h-20 bg-gray-50 rounded-lg flex items-center justify-center overflow-hidden mr-0 sm:mr-4 mb-3 sm:mb-0">
+                            {% if item.product.image %}
+                                <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="max-h-16 max-w-full object-contain">
+                            {% else %}
+                                <i class="fas fa-box text-gray-300 text-3xl"></i>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Product Details -->
+                        <div class="text-center sm:text-left">
+                            <h3 class="font-medium text-lg text-gray-900">{{ item.product.name }}</h3>
+                            <div class="text-sm text-gray-500 mb-2">
+                                {% if item.product.category %}
+                                    <span>{{ item.product.category.name }}</span>
+                                {% endif %}
+                                <span class="mx-2">•</span>
+                                <span>ID: #{{ item.product.id }}</span>
+                            </div>
+                            <div class="text-primary-600 font-medium">${{ item.product.price }}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quantity & Controls -->
+                    <div class="flex items-center space-x-6">
+                        <div class="flex items-center">
+                            <button class="decrement-quantity bg-gray-100 hover:bg-gray-200 text-gray-800 w-8 h-8 rounded-l-lg flex items-center justify-center transition-colors">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <input type="number" value="{{ item.quantity }}" min="1" max="{{ item.product.stock }}" 
+                                   class="item-quantity h-8 w-12 border-none text-center focus:ring-0 bg-gray-50" 
+                                   data-item-id="{{ item.id }}" data-price="{{ item.product.price }}">
+                            <button class="increment-quantity bg-gray-100 hover:bg-gray-200 text-gray-800 w-8 h-8 rounded-r-lg flex items-center justify-center transition-colors">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center space-x-3">
+                            <div class="text-lg font-semibold text-gray-900 w-24 text-right item-subtotal">
+                                ${{ item.subtotal }}
+                            </div>
+                            <button class="remove-item text-red-600 hover:text-red-800 transition-colors">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="py-16 text-center">
+                    <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
+                        <i class="fas fa-shopping-cart text-gray-400 text-4xl"></i>
+                    </div>
+                    <h3 class="text-xl font-medium text-gray-900 mb-2">Your cart is empty</h3>
+                    <p class="text-gray-500 max-w-md mx-auto mb-8">Looks like you haven't added any products to your cart yet.</p>
+                    <a href="{% url 'order_list' %}" class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+                        <i class="fas fa-shopping-bag mr-2"></i> Start Shopping
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+        
+        {% if cart_items %}
+        <!-- Cart Summary -->
+        <div class="bg-gray-50 p-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                <div class="mb-4 sm:mb-0">
+                    <h3 class="text-gray-700 font-medium mb-1">Order Summary</h3>
+                    <p class="text-sm text-gray-500">Prices are inclusive of all taxes</p>
+                </div>
+                
+                <div class="bg-white p-4 rounded-lg shadow-sm w-full sm:w-auto">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-gray-600">Subtotal ({{ cart.total_items }} items):</span>
+                        <span class="font-medium text-gray-900" id="cart-subtotal">${{ total_price }}</span>
+                    </div>
+                    <div class="flex justify-between mb-2 text-sm text-gray-500">
+                        <span>Shipping:</span>
+                        <span>Calculated at checkout</span>
+                    </div>
+                    <div class="border-t border-gray-200 my-2 pt-2 flex justify-between text-lg font-bold">
+                        <span>Total:</span>
+                        <span class="text-primary-600" id="cart-total">${{ total_price }}</span>
+                    </div>
+                    <a href="#" class="block w-full bg-primary-600 hover:bg-primary-700 text-white text-center py-2 px-4 rounded-lg transition-colors mt-4">
+                        Proceed to Checkout
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast-notification" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg opacity-0 transition-opacity duration-300 flex items-center z-50">
+    <i class="fas fa-info-circle mr-2"></i>
+    <span id="toast-message">Message here</span>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast-notification');
+            const toastMessage = document.getElementById('toast-message');
+            
+            // Set message
+            toastMessage.textContent = message;
+            
+            // Set color based on type
+            if (type === 'success') {
+                toast.className = toast.className.replace(/bg-\w+-\d+/g, 'bg-green-600');
+            } else if (type === 'error') {
+                toast.className = toast.className.replace(/bg-\w+-\d+/g, 'bg-red-600');
+            } else if (type === 'info') {
+                toast.className = toast.className.replace(/bg-\w+-\d+/g, 'bg-blue-600');
+            }
+            
+            // Show toast
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            
+            // Hide toast after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        // Update cart totals
+        function updateCartTotals() {
+            let subtotal = 0;
+            document.querySelectorAll('.cart-item').forEach(item => {
+                const quantity = parseInt(item.querySelector('.item-quantity').value);
+                const price = parseFloat(item.querySelector('.item-quantity').dataset.price);
+                subtotal += quantity * price;
+            });
+            
+            document.getElementById('cart-subtotal').textContent = `$${subtotal.toFixed(2)}`;
+            document.getElementById('cart-total').textContent = `$${subtotal.toFixed(2)}`;
+        }
+
+        // Increment quantity
+        document.querySelectorAll('.increment-quantity').forEach(button => {
+            button.addEventListener('click', function() {
+                const input = this.parentNode.querySelector('.item-quantity');
+                const currentValue = parseInt(input.value);
+                const maxValue = parseInt(input.getAttribute('max'));
+                
+                if (currentValue < maxValue) {
+                    input.value = currentValue + 1;
+                    updateItemQuantity(input);
+                } else {
+                    showToast(`Only ${maxValue} items available in stock`, 'info');
+                }
+            });
+        });
+
+        // Decrement quantity
+        document.querySelectorAll('.decrement-quantity').forEach(button => {
+            button.addEventListener('click', function() {
+                const input = this.parentNode.querySelector('.item-quantity');
+                const currentValue = parseInt(input.value);
+                
+                if (currentValue > 1) {
+                    input.value = currentValue - 1;
+                    updateItemQuantity(input);
+                } else {
+                    // If trying to set to 0, ask if they want to remove
+                    if (confirm('Remove this item from your cart?')) {
+                        const itemId = input.dataset.itemId;
+                        removeCartItem(itemId);
+                    }
+                }
+            });
+        });
+
+        // Quantity input change
+        document.querySelectorAll('.item-quantity').forEach(input => {
+            input.addEventListener('change', function() {
+                updateItemQuantity(this);
+            });
+        });
+
+        // Update item quantity via AJAX
+        function updateItemQuantity(input) {
+            const itemId = input.dataset.itemId;
+            const quantity = parseInt(input.value);
+            const price = parseFloat(input.dataset.price);
+            
+            fetch('{% url 'update_cart_item' %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: `cart_item_id=${itemId}&quantity=${quantity}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update item subtotal
+                    const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
+                    cartItem.querySelector('.item-subtotal').textContent = `$${data.item_subtotal.toFixed(2)}`;
+                    
+                    // Update cart totals
+                    document.getElementById('cart-subtotal').textContent = `$${data.cart_total_price.toFixed(2)}`;
+                    document.getElementById('cart-total').textContent = `$${data.cart_total_price.toFixed(2)}`;
+                    
+                    // Update cart count
+                    document.getElementById('cart-count').textContent = `${data.cart_total_items} item${data.cart_total_items !== 1 ? 's' : ''}`;
+                    
+                    showToast('Cart updated', 'success');
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Failed to update cart', 'error');
+            });
+        }
+
+        // Remove item from cart
+        document.querySelectorAll('.remove-item').forEach(button => {
+            button.addEventListener('click', function() {
+                const cartItem = this.closest('.cart-item');
+                const itemId = cartItem.dataset.itemId;
+                removeCartItem(itemId);
+            });
+        });
+
+        function removeCartItem(itemId) {
+            fetch('{% url 'remove_from_cart' %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: `cart_item_id=${itemId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove item from DOM
+                    const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
+                    cartItem.remove();
+                    
+                    // Update cart totals
+                    document.getElementById('cart-subtotal').textContent = `$${data.cart_total_price.toFixed(2)}`;
+                    document.getElementById('cart-total').textContent = `$${data.cart_total_price.toFixed(2)}`;
+                    
+                    // Update cart count
+                    document.getElementById('cart-count').textContent = `${data.cart_total_items} item${data.cart_total_items !== 1 ? 's' : ''}`;
+                    
+                    // Show empty cart message if no items left
+                    if (data.cart_total_items === 0) {
+                        document.getElementById('cart-items-container').innerHTML = `
+                            <div class="py-16 text-center">
+                                <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
+                                    <i class="fas fa-shopping-cart text-gray-400 text-4xl"></i>
+                                </div>
+                                <h3 class="text-xl font-medium text-gray-900 mb-2">Your cart is empty</h3>
+                                <p class="text-gray-500 max-w-md mx-auto mb-8">Looks like you haven't added any products to your cart yet.</p>
+                                <a href="{% url 'order_list' %}" class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+                                    <i class="fas fa-shopping-bag mr-2"></i> Start Shopping
+                                </a>
+                            </div>
+                        `;
+                        
+                        // Hide summary
+                        document.querySelector('.bg-gray-50').remove();
+                    }
+                    
+                    showToast(data.message, 'success');
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Failed to remove item', 'error');
+            });
+        }
+
+        // Clear cart
+        document.getElementById('clear-cart').addEventListener('click', function() {
+            if (confirm('Are you sure you want to clear your cart?')) {
+                fetch('{% url 'clear_cart' %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show empty cart
+                        document.getElementById('cart-items-container').innerHTML = `
+                            <div class="py-16 text-center">
+                                <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
+                                    <i class="fas fa-shopping-cart text-gray-400 text-4xl"></i>
+                                </div>
+                                <h3 class="text-xl font-medium text-gray-900 mb-2">Your cart is empty</h3>
+                                <p class="text-gray-500 max-w-md mx-auto mb-8">Looks like you haven't added any products to your cart yet.</p>
+                                <a href="{% url 'order_list' %}" class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+                                    <i class="fas fa-shopping-bag mr-2"></i> Start Shopping
+                                </a>
+                            </div>
+                        `;
+                        
+                        // Hide summary
+                        const summarySection = document.querySelector('.bg-gray-50');
+                        if (summarySection) {
+                            summarySection.remove();
+                        }
+                        
+                        // Update cart count
+                        document.getElementById('cart-count').textContent = '0 items';
+                        
+                        showToast(data.message, 'success');
+                    } else {
+                        showToast(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Failed to clear cart', 'error');
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}
