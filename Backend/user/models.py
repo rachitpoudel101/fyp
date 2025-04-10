@@ -83,7 +83,10 @@ class CartItem(models.Model):
     
     @property
     def subtotal(self):
-        return self.product.price * self.quantity
+        """Calculate the subtotal for this cart item"""
+        if self.product and self.product.price is not None and self.quantity is not None:
+            return float(self.product.price * self.quantity)
+        return 0.0
 
 class Wishlist(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='wishlist')

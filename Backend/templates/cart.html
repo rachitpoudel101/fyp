@@ -129,8 +129,11 @@
                         <span>Total:</span>
                         <span class="text-primary-600" id="cart-total">${{ total_price }}</span>
                     </div>
-                    <a href="#" class="block w-full bg-primary-600 hover:bg-primary-700 text-white text-center py-2 px-4 rounded-lg transition-colors mt-4">
+                    <a href="{% url 'checkout' %}" id="checkout-button" class="block w-full bg-primary-600 hover:bg-primary-700 text-white text-center py-2 px-4 rounded-lg transition-colors mt-4">
                         Proceed to Checkout
+                    </a>
+                    <a href="{% url 'order_list' %}" class="block w-full text-center text-primary-600 hover:text-primary-800 mt-2 text-sm">
+                        Continue Shopping
                     </a>
                 </div>
             </div>
@@ -197,12 +200,20 @@
                 const currentValue = parseInt(input.value);
                 const maxValue = parseInt(input.getAttribute('max'));
                 
+                // Disable the button temporarily to prevent multiple clicks
+                this.disabled = true;
+                
                 if (currentValue < maxValue) {
                     input.value = currentValue + 1;
                     updateItemQuantity(input);
                 } else {
                     showToast(`Only ${maxValue} items available in stock`, 'info');
                 }
+                
+                // Re-enable the button after a short delay
+                setTimeout(() => {
+                    this.disabled = false;
+                }, 500);
             });
         });
 
@@ -212,6 +223,9 @@
                 const input = this.parentNode.querySelector('.item-quantity');
                 const currentValue = parseInt(input.value);
                 
+                // Disable the button temporarily to prevent multiple clicks
+                this.disabled = true;
+                
                 if (currentValue > 1) {
                     input.value = currentValue - 1;
                     updateItemQuantity(input);
@@ -219,16 +233,49 @@
                     // If trying to set to 0, ask if they want to remove
                     if (confirm('Remove this item from your cart?')) {
                         const itemId = input.dataset.itemId;
-                        removeCartItem(itemId);
+                        removeCartItem(itemId, true); // Pass true to redirect to dashboard
                     }
                 }
+                
+                // Re-enable the button after a short delay
+                setTimeout(() => {
+                    this.disabled = false;
+                }, 500);
             });
         });
 
         // Quantity input change
         document.querySelectorAll('.item-quantity').forEach(input => {
             input.addEventListener('change', function() {
-                updateItemQuantity(this);
+                // Validate the input
+                let value = parseInt(this.value);
+                const maxValue = parseInt(this.getAttribute('max'));
+                const prevValue = parseInt(this.getAttribute('data-prev-value') || 1);
+                
+                if (isNaN(value) || value < 1) {
+                    value = 1;
+                    this.value = 1;
+                } else if (value > maxValue) {
+                    value = maxValue;
+                    this.value = maxValue;
+                    showToast(`Only ${maxValue} items available in stock`, 'info');
+                }
+                
+                // Save current valid value as previous value
+                this.setAttribute('data-prev-value', this.value);
+                
+                // Update cart only if value has changed
+                if (value !== prevValue) {
+                    updateItemQuantity(this);
+                }
+            });
+            
+            // Store initial value
+            input.setAttribute('data-prev-value', input.value);
+            
+            // Add focus event to store the value before change
+            input.addEventListener('focus', function() {
+                this.setAttribute('data-prev-value', this.value);
             });
         });
 
@@ -238,6 +285,13 @@
             const quantity = parseInt(input.value);
             const price = parseFloat(input.dataset.price);
             
+            // Show a loading indicator
+            const cartItem = input.closest('.cart-item');
+            const subtotalElement = cartItem ? cartItem.querySelector('.item-subtotal') : null;
+            if (subtotalElement) {
+                subtotalElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            }
+            
             fetch('{% url 'update_cart_item' %}', {
                 method: 'POST',
                 headers: {
@@ -246,28 +300,69 @@
                 },
                 body: `cart_item_id=${itemId}&quantity=${quantity}`
             })
-            .then(response => response.json())
+            .then(response => {
+                // Check if the response is OK (status in the range 200-299)
+                if (!response.ok) {
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.message || 'Server error');
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    // Update item subtotal
-                    const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
-                    cartItem.querySelector('.item-subtotal').textContent = `$${data.item_subtotal.toFixed(2)}`;
+                    // Update item subtotal - FIXED: Handle the subtotal value correctly whether it's string or number
+                    if (subtotalElement) {
+                        const subtotal = parseFloat(data.item_subtotal);
+                        if (!isNaN(subtotal)) {
+                            subtotalElement.textContent = `$${subtotal.toFixed(2)}`;
+                        } else {
+                            subtotalElement.textContent = `$${data.item_subtotal}`;
+                        }
+                    }
                     
-                    // Update cart totals
-                    document.getElementById('cart-subtotal').textContent = `$${data.cart_total_price.toFixed(2)}`;
-                    document.getElementById('cart-total').textContent = `$${data.cart_total_price.toFixed(2)}`;
+                    // Update cart totals - FIXED: Convert to float for safe handling
+                    const totalPrice = parseFloat(data.cart_total_price);
+                    document.getElementById('cart-subtotal').textContent = `$${totalPrice.toFixed(2)}`;
+                    document.getElementById('cart-total').textContent = `$${totalPrice.toFixed(2)}`;
                     
                     // Update cart count
                     document.getElementById('cart-count').textContent = `${data.cart_total_items} item${data.cart_total_items !== 1 ? 's' : ''}`;
                     
-                    showToast('Cart updated', 'success');
+                    // Handle redirect if needed
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    } else {
+                        showToast('Cart updated', 'success');
+                    }
                 } else {
-                    showToast(data.message, 'error');
+                    // Reset the input to previous value if there was an error
+                    if (data.available_stock !== undefined) {
+                        input.value = Math.min(quantity - 1, data.available_stock);
+                        showToast(`Only ${data.available_stock} items available in stock`, 'error');
+                    } else {
+                        showToast(data.message || 'Failed to update cart', 'error');
+                    }
+                    
+                    // Reset subtotal display if needed
+                    if (subtotalElement) {
+                        const originalSubtotal = price * parseInt(input.value);
+                        subtotalElement.textContent = `$${originalSubtotal.toFixed(2)}`;
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showToast('Failed to update cart', 'error');
+                showToast(error.message || 'Failed to update cart', 'error');
+                
+                // Reset subtotal display on error
+                if (subtotalElement) {
+                    const originalSubtotal = price * parseInt(input.value);
+                    subtotalElement.textContent = `$${originalSubtotal.toFixed(2)}`;
+                }
+                
+                // Reset the input to a safe value
+                input.value = Math.max(1, quantity - 1);
             });
         }
 
@@ -280,21 +375,29 @@
             });
         });
 
-        function removeCartItem(itemId) {
+        function removeCartItem(itemId, redirectToDashboard = false) {
             fetch('{% url 'remove_from_cart' %}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
-                body: `cart_item_id=${itemId}`
+                body: `cart_item_id=${itemId}&redirect_to_dashboard=${redirectToDashboard}`
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    // If redirect URL is provided, navigate to it
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                        return;
+                    }
+                    
                     // Remove item from DOM
                     const cartItem = document.querySelector(`.cart-item[data-item-id="${itemId}"]`);
-                    cartItem.remove();
+                    if (cartItem) {
+                        cartItem.remove();
+                    }
                     
                     // Update cart totals
                     document.getElementById('cart-subtotal').textContent = `$${data.cart_total_price.toFixed(2)}`;
@@ -319,7 +422,10 @@
                         `;
                         
                         // Hide summary
-                        document.querySelector('.bg-gray-50').remove();
+                        const summarySection = document.querySelector('.bg-gray-50');
+                        if (summarySection) {
+                            summarySection.remove();
+                        }
                     }
                     
                     showToast(data.message, 'success');
@@ -334,52 +440,84 @@
         }
 
         // Clear cart
-        document.getElementById('clear-cart').addEventListener('click', function() {
-            if (confirm('Are you sure you want to clear your cart?')) {
-                fetch('{% url 'clear_cart' %}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Show empty cart
-                        document.getElementById('cart-items-container').innerHTML = `
-                            <div class="py-16 text-center">
-                                <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <i class="fas fa-shopping-cart text-gray-400 text-4xl"></i>
-                                </div>
-                                <h3 class="text-xl font-medium text-gray-900 mb-2">Your cart is empty</h3>
-                                <p class="text-gray-500 max-w-md mx-auto mb-8">Looks like you haven't added any products to your cart yet.</p>
-                                <a href="{% url 'order_list' %}" class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
-                                    <i class="fas fa-shopping-bag mr-2"></i> Start Shopping
-                                </a>
-                            </div>
-                        `;
-                        
-                        // Hide summary
-                        const summarySection = document.querySelector('.bg-gray-50');
-                        if (summarySection) {
-                            summarySection.remove();
+        const clearCartButton = document.getElementById('clear-cart');
+        if (clearCartButton) {
+            clearCartButton.addEventListener('click', function() {
+                if (confirm('Are you sure you want to clear your cart?')) {
+                    fetch('{% url 'clear_cart' %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRFToken': '{{ csrf_token }}'
                         }
-                        
-                        // Update cart count
-                        document.getElementById('cart-count').textContent = '0 items';
-                        
-                        showToast(data.message, 'success');
-                    } else {
-                        showToast(data.message, 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('Failed to clear cart', 'error');
-                });
-            }
-        });
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Show empty cart
+                            document.getElementById('cart-items-container').innerHTML = `
+                                <div class="py-16 text-center">
+                                    <div class="w-24 h-24 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center">
+                                        <i class="fas fa-shopping-cart text-gray-400 text-4xl"></i>
+                                    </div>
+                                    <h3 class="text-xl font-medium text-gray-900 mb-2">Your cart is empty</h3>
+                                    <p class="text-gray-500 max-w-md mx-auto mb-8">Looks like you haven't added any products to your cart yet.</p>
+                                    <a href="{% url 'order_list' %}" class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm">
+                                        <i class="fas fa-shopping-bag mr-2"></i> Start Shopping
+                                    </a>
+                                </div>
+                            `;
+                            
+                            // Hide summary
+                            const summarySection = document.querySelector('.bg-gray-50');
+                            if (summarySection) {
+                                summarySection.remove();
+                            }
+                            
+                            // Update cart count
+                            document.getElementById('cart-count').textContent = '0 items';
+                            
+                            showToast(data.message, 'success');
+                            
+                            // Redirect to dashboard after short delay
+                            setTimeout(() => {
+                                window.location.href = '{% url "order_list" %}';
+                            }, 1500);
+                        } else {
+                            showToast(data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showToast('Failed to clear cart', 'error');
+                    });
+                }
+            });
+        }
+
+        // Checkout button handler
+        const checkoutButton = document.getElementById('checkout-button');
+        if (checkoutButton) {
+            checkoutButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Check if cart has items
+                const cartCount = document.getElementById('cart-count');
+                if (cartCount && cartCount.textContent.includes('0')) {
+                    showToast('Your cart is empty', 'error');
+                    return;
+                }
+                
+                // Proceed with checkout
+                window.location.href = this.getAttribute('href');
+            });
+        }
+
+        // Function to safely format currency values
+        function formatCurrency(value) {
+            const num = parseFloat(value);
+            return !isNaN(num) ? num.toFixed(2) : '0.00';
+        }
     });
 </script>
 {% endblock %}

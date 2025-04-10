@@ -1,124 +1,116 @@
-{% extends 'base.html' %}
-{% load static %}
+{% extends 'base_customer.html' %}
+
+{% block title %}My Account - Marline{% endblock %}
+{% block page_title %}My Account{% endblock %}
 
 {% block content %}
-<div class="min-h-screen py-12">
-    <div class="max-w-4xl mx-auto px-4">
-        <!-- Profile Header -->
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl overflow-hidden shadow-xl">
-            <div class="p-8">
-                <div class="flex items-center space-x-6">
-                    <div class="relative">
-                        <div class="w-24 h-24 rounded-full bg-white ring-4 ring-white flex items-center justify-center">
-                            <span class="text-3xl font-bold text-blue-600">{{ user.username|first|upper }}</span>
-                        </div>
-                        <button class="absolute bottom-0 right-0 bg-blue-500 p-2 rounded-full text-white hover:bg-blue-600 transition-colors">
-                            <i class="fas fa-camera"></i>
-                        </button>
-                    </div>
-                    <div class="text-white">
-                        <h1 class="text-3xl font-bold">{{ user.username }}</h1>
-                        <p class="text-blue-100">{{ user.email }}</p>
-                        <div class="mt-2">
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-800 text-white">
-                                {{ user.get_role_display }}
-                            </span>
-                        </div>
-                    </div>
+<div class="container mx-auto">
+    <!-- User Profile Card -->
+    <div class="bg-white rounded-lg shadow-soft p-6 mb-6 animate-slide-in">
+        <div class="flex flex-col md:flex-row">
+            <!-- Profile Avatar -->
+            <div class="flex-shrink-0 flex flex-col items-center mb-6 md:mb-0 md:mr-8">
+                <div class="w-32 h-32 rounded-full bg-gradient-to-br from-primary-500 to-primary-300 flex items-center justify-center mb-4">
+                    <span class="text-white text-4xl font-bold">{{ user.username|first|upper }}</span>
+                </div>
+                <div class="mt-4">
+                    <a href="{% url 'account_settings' %}" class="text-center block bg-primary-500 hover:bg-primary-600 text-white py-2 px-6 rounded-md transition-all">
+                        <i class="fas fa-edit mr-2"></i>Edit Profile
+                    </a>
                 </div>
             </div>
-        </div>
-
-        <!-- Profile Content -->
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Main Info -->
-            <div class="md:col-span-2 space-y-6">
-                <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="text-sm font-medium text-gray-500">Username</div>
-                        <div class="text-sm text-gray-900">{{ user.username }}</div>
+            
+            <!-- Profile Information -->
+            <div class="flex-grow">
+                <h2 class="text-2xl font-bold text-gray-800">{{ user.get_full_name|default:user.username }}</h2>
+                <p class="text-gray-500 mb-4">{{ user.role|title }}</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-500 mb-1">Username</p>
+                        <p class="font-medium">{{ user.username }}</p>
                     </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="text-sm font-medium text-gray-500">Email</div>
-                        <div class="text-sm text-gray-900">
-                            {{ user.email }}
-                            {% if user.is_email_verified %}
-                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    <svg class="mr-1 h-3 w-3 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
-                                    </svg>
-                                    Verified
-                                </span>
-                            {% else %}
-                                <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                    Not Verified
-                                </span>
-                            {% endif %}
-                        </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-500 mb-1">Email</p>
+                        <p class="font-medium">{{ user.email }}</p>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="text-sm font-medium text-gray-500">Role</div>
-                        <div class="text-sm text-gray-900">{{ user.get_role_display }}</div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-500 mb-1">First Name</p>
+                        <p class="font-medium">{{ user.first_name|default:"Not set" }}</p>
                     </div>
-
-                    {% if user.created_by %}
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="text-sm font-medium text-gray-500">Added By</div>
-                        <div class="text-sm text-gray-900">{{ user.created_by.username }}</div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-500 mb-1">Last Name</p>
+                        <p class="font-medium">{{ user.last_name|default:"Not set" }}</p>
+                    </div>
+                    {% if user.phone_number %}
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-500 mb-1">Phone</p>
+                        <p class="font-medium">{{ user.phone_number }}</p>
                     </div>
                     {% endif %}
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="text-sm font-medium text-gray-500">Account Status</div>
-                        <div class="text-sm text-gray-900">
-                            {% if user.is_active %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Active
-                                </span>
-                            {% else %}
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                    Inactive
-                                </span>
-                            {% endif %}
-                        </div>
+                    {% if user.address %}
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <p class="text-sm text-gray-500 mb-1">Address</p>
+                        <p class="font-medium">{{ user.address }}</p>
                     </div>
+                    {% endif %}
                 </div>
-
-                {% if not user.is_email_verified %}
-                <div class="mt-6">
-                    <form method="post" action="{% url 'resend_verification_email' %}">
-                        {% csrf_token %}
-                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                            Resend Verification Email
-                        </button>
-                    </form>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Side Info -->
-            <div class="space-y-6">
-                <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-                    <div class="max-w-md w-full space-y-8">
-                        <div class="text-center">
-                            <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
-                                Access Restricted
-                            </h2>
-                            <p class="mt-2 text-sm text-gray-600">
-                                This page can only be accessed from your dashboard.
-                            </p>
-                            <div class="mt-5">
-                                <a href="{% url 'dashboard' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                    Go to Dashboard
-                                </a>
-                            </div>
-                        </div>
-                    </div>
+                
+                <div class="flex gap-4 mt-4">
+                    <a href="{% url 'account_settings' %}" class="text-primary-600 hover:text-primary-800 flex items-center">
+                        <i class="fas fa-cog mr-2"></i>Account Settings
+                    </a>
+                    <a href="{% url 'change_password' %}" class="text-primary-600 hover:text-primary-800 flex items-center">
+                        <i class="fas fa-lock mr-2"></i>Change Password
+                    </a>
                 </div>
             </div>
         </div>
     </div>
+    
+    {% if recent_orders %}
+    <!-- Recent Orders -->
+    <div class="bg-white rounded-lg shadow-soft p-6">
+        <h3 class="text-lg font-semibold mb-4">Recent Orders</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead>
+                    <tr>
+                        <th class="py-3 px-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Order #</th>
+                        <th class="py-3 px-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th class="py-3 px-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                        <th class="py-3 px-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="py-3 px-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in recent_orders %}
+                    <tr class="border-t border-gray-200">
+                        <td class="py-4 px-4 text-sm">{{ order.order_number }}</td>
+                        <td class="py-4 px-4 text-sm">{{ order.created_at|date:"M d, Y" }}</td>
+                        <td class="py-4 px-4 text-sm">${{ order.total_amount }}</td>
+                        <td class="py-4 px-4">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if order.status == 'delivered' %}bg-green-100 text-green-800
+                                {% elif order.status == 'processing' %}bg-blue-100 text-blue-800
+                                {% elif order.status == 'shipped' %}bg-purple-100 text-purple-800
+                                {% elif order.status == 'cancelled' %}bg-red-100 text-red-800
+                                {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                {{ order.status|title }}
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 text-sm">
+                            <a href="{% url 'order_detail' order_id=order.id %}" class="text-primary-600 hover:text-primary-900">View Details</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4 text-center">
+            <a href="{% url 'order_list' %}" class="text-primary-600 hover:text-primary-800">View All Orders <i class="fas fa-arrow-right ml-1"></i></a>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

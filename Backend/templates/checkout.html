@@ -1,0 +1,258 @@
+{% extends "base_customer.html" %}
+{% load static %}
+
+{% block title %}Checkout - Marline{% endblock %}
+
+{% block page_title %}Checkout{% endblock %}
+
+{% block content %}
+<div class="space-y-8 animate-fade-in">
+    <!-- Checkout Navigation -->
+    <div class="flex items-center justify-between bg-white p-4 rounded-xl shadow-soft mb-6">
+        <div class="flex items-center space-x-4">
+            <a href="{% url 'view_cart' %}" class="flex items-center text-gray-600 hover:text-primary-600 transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i>
+                <span>Back to Cart</span>
+            </a>
+            <div class="text-gray-400">|</div>
+            <a href="{% url 'order_list' %}" class="flex items-center text-blue-600 hover:text-blue-700 transition-colors">
+                <i class="fas fa-shopping-bag mr-2"></i>
+                <span>Continue Shopping</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Checkout Form -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-xl shadow-soft overflow-hidden">
+                <div class="border-b border-gray-200 p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <i class="fas fa-shipping-fast text-primary-500 mr-3"></i>
+                        Shipping Information
+                    </h2>
+                </div>
+                
+                <form id="checkout-form" method="POST" action="{% url 'checkout' %}" class="p-6 space-y-6">
+                    {% csrf_token %}
+                    
+                    <!-- Name -->
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <label for="first_name" class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                            <input type="text" id="first_name" name="first_name" required
+                                   class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                        <div>
+                            <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                            <input type="text" id="last_name" name="last_name" required
+                                   class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                    </div>
+                    
+                    <!-- Contact -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <input type="email" id="email" name="email" value="{{ request.user.email }}" required
+                               class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                    
+                    <div>
+                        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                        <input type="tel" id="phone" name="phone" required
+                               class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                    
+                    <!-- Address -->
+                    <div>
+                        <label for="shipping_address" class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                        <input type="text" id="shipping_address" name="shipping_address" required
+                               class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <label for="shipping_city" class="block text-sm font-medium text-gray-700 mb-1">City</label>
+                            <input type="text" id="shipping_city" name="shipping_city" required
+                                   class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                        <div>
+                            <label for="shipping_state" class="block text-sm font-medium text-gray-700 mb-1">State/Province</label>
+                            <input type="text" id="shipping_state" name="shipping_state" required
+                                   class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-6">
+                        <div>
+                            <label for="shipping_zip" class="block text-sm font-medium text-gray-700 mb-1">ZIP/Postal Code</label>
+                            <input type="text" id="shipping_zip" name="shipping_zip" required
+                                   class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                        <div>
+                            <label for="shipping_country" class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                            <input type="text" id="shipping_country" name="shipping_country" required
+                                   class="w-full rounded-lg border-gray-300 focus:ring-primary-500 focus:border-primary-500">
+                        </div>
+                    </div>
+                    
+                    <!-- Payment Section -->
+                    <div class="border-t border-gray-200 pt-6">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">Payment Method</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center">
+                                <input type="radio" id="payment_cash" name="payment_method" value="cash_on_delivery" checked
+                                       class="h-4 w-4 text-primary-600 focus:ring-primary-500">
+                                <label for="payment_cash" class="ml-2 text-gray-700">Cash on Delivery</label>
+                            </div>
+                            
+                            <div class="flex items-center">
+                                <input type="radio" id="payment_card" name="payment_method" value="credit_card" 
+                                       class="h-4 w-4 text-primary-600 focus:ring-primary-500">
+                                <label for="payment_card" class="ml-2 text-gray-700">Credit/Debit Card (Coming Soon)</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-4">
+                        <button type="submit" class="w-full bg-primary-600 hover:bg-primary-700 text-white py-3 rounded-lg font-medium transition-colors">
+                            Place Order
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Order Summary -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-xl shadow-soft overflow-hidden sticky top-4">
+                <div class="border-b border-gray-200 p-6">
+                    <h2 class="text-xl font-bold text-gray-800">Order Summary</h2>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    <!-- Item List -->
+                    <div class="max-h-64 overflow-y-auto space-y-4">
+                        {% for item in cart_items %}
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="w-12 h-12 bg-gray-50 rounded flex items-center justify-center overflow-hidden mr-3">
+                                    {% if item.product.image %}
+                                        <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="max-h-10 max-w-full object-contain">
+                                    {% else %}
+                                        <i class="fas fa-box text-gray-300 text-lg"></i>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-800">{{ item.product.name }}</p>
+                                    <p class="text-xs text-gray-500">Qty: {{ item.quantity }}</p>
+                                </div>
+                            </div>
+                            <p class="text-sm font-medium text-gray-800">${{ item.subtotal }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Price Calculation -->
+                    <div class="border-t border-gray-200 pt-4 space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Subtotal</span>
+                            <span class="font-medium">${{ total_amount }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Shipping</span>
+                            <span class="font-medium">Free</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Total -->
+                    <div class="border-t border-gray-200 pt-4">
+                        <div class="flex justify-between">
+                            <span class="text-lg font-bold text-gray-800">Total</span>
+                            <span class="text-lg font-bold text-primary-600">${{ total_amount }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast-notification" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg opacity-0 transition-opacity duration-300 flex items-center z-50">
+    <i class="fas fa-info-circle mr-2"></i>
+    <span id="toast-message">Message here</span>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast-notification');
+            const toastMessage = document.getElementById('toast-message');
+            
+            // Set message
+            toastMessage.textContent = message;
+            
+            // Set color based on type
+            if (type === 'success') {
+                toast.className = toast.className.replace(/bg-\w+-\d+/g, 'bg-green-600');
+            } else if (type === 'error') {
+                toast.className = toast.className.replace(/bg-\w+-\d+/g, 'bg-red-600');
+            } else if (type === 'info') {
+                toast.className = toast.className.replace(/bg-\w+-\d+/g, 'bg-blue-600');
+            }
+            
+            // Show toast
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            
+            // Hide toast after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+
+        const checkoutForm = document.getElementById('checkout-form');
+        
+        if (checkoutForm) {
+            checkoutForm.addEventListener('submit', function(e) {
+                const requiredFields = checkoutForm.querySelectorAll('[required]');
+                let isValid = true;
+                
+                requiredFields.forEach(field => {
+                    if (!field.value.trim()) {
+                        isValid = false;
+                        field.classList.add('border-red-500');
+                        
+                        // Add event listener to remove red border when user types
+                        field.addEventListener('input', function() {
+                            if (this.value.trim()) {
+                                this.classList.remove('border-red-500');
+                            }
+                        }, { once: true });
+                    } else {
+                        field.classList.remove('border-red-500');
+                    }
+                });
+                
+                if (!isValid) {
+                    e.preventDefault();
+                    showToast('Please fill in all required fields', 'error');
+                    
+                    // Scroll to the first invalid field
+                    const firstInvalidField = checkoutForm.querySelector('.border-red-500');
+                    if (firstInvalidField) {
+                        firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        firstInvalidField.focus();
+                    }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

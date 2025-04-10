@@ -1,0 +1,259 @@
+{% extends 'base_customer.html' %}
+
+{% block title %}Products - Marline{% endblock %}
+{% block page_title %}Products{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-card:hover .quick-actions {
+        opacity: 1;
+    }
+    .quick-actions {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .category-filter:checked + label {
+        @apply bg-primary-100 border-primary-500 text-primary-700;
+    }
+    .sort-option:checked + label {
+        @apply bg-primary-100 text-primary-700 font-medium;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto">
+    <!-- Search and Filters Section -->
+    <div class="bg-white rounded-lg shadow-soft p-4 mb-6">
+        <form method="get" class="flex flex-col md:flex-row gap-4">
+            <!-- Search Input -->
+            <div class="flex-1">
+                <label for="search" class="sr-only">Search Products</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                        <i class="fas fa-search text-gray-400"></i>
+                    </span>
+                    <input type="text" name="q" id="search" placeholder="Search products..." value="{{ search_query }}"
+                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                </div>
+            </div>
+            
+            <!-- Category Filter -->
+            <div class="md:w-48">
+                <label for="category" class="sr-only">Filter by Category</label>
+                <select name="category" id="category" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                    <option value="">All Categories</option>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Sort Options -->
+            <div class="md:w-48">
+                <label for="sort" class="sr-only">Sort Products</label>
+                <select name="sort" id="sort" class="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500">
+                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
+                    <option value="price_low" {% if sort_by == 'price_low' %}selected{% endif %}>Price (Low to High)</option>
+                    <option value="price_high" {% if sort_by == 'price_high' %}selected{% endif %}>Price (High to Low)</option>
+                    <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest First</option>
+                </select>
+            </div>
+            
+            <!-- Filter Button -->
+            <div>
+                <button type="submit" class="w-full md:w-auto px-4 py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600">
+                    <i class="fas fa-filter mr-2"></i>Apply Filters
+                </button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Products Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {% if products %}
+            {% for product in products %}
+            <div class="bg-white rounded-lg shadow-soft overflow-hidden product-card transition-transform hover:transform hover:scale-[1.02]">
+                <!-- Product Image -->
+                <div class="h-48 bg-gray-200 relative">
+                    {% if product.image %}
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center bg-gray-100">
+                        <i class="fas fa-box-open text-4xl text-gray-400"></i>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Quick Action Buttons -->
+                    <div class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center gap-2 quick-actions">
+                        <button onclick="addToCart('{{ product.id }}')" class="bg-white rounded-full p-2 hover:bg-primary-500 hover:text-white transition-colors" title="Add to Cart">
+                            <i class="fas fa-shopping-cart"></i>
+                        </button>
+                        <button onclick="toggleWishlist('{{ product.id }}', this)" class="bg-white rounded-full p-2 hover:bg-red-500 hover:text-white transition-colors" title="Add to Wishlist">
+                            <i class="fas fa-heart {% if product.id in wishlist_product_ids %}text-red-500{% endif %}"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Product Info -->
+                <div class="p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-semibold text-gray-800 truncate">{{ product.name }}</h3>
+                        <span class="text-primary-600 font-bold">${{ product.price }}</span>
+                    </div>
+                    
+                    {% if product.category %}
+                    <div class="mb-2">
+                        <span class="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-full">{{ product.category.name }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <p class="text-sm text-gray-600 line-clamp-2 mb-3">{{ product.description|default:"No description available." }}</p>
+                    
+                    {% if product.stock > 10 %}
+                    <span class="text-xs text-green-600 mb-3 block"><i class="fas fa-check-circle mr-1"></i>In Stock</span>
+                    {% elif product.stock > 0 %}
+                    <span class="text-xs text-orange-600 mb-3 block"><i class="fas fa-clock mr-1"></i>Only {{ product.stock }} left</span>
+                    {% else %}
+                    <span class="text-xs text-red-600 mb-3 block"><i class="fas fa-times-circle mr-1"></i>Out of Stock</span>
+                    {% endif %}
+                    
+                    <!-- Add to Cart Button -->
+                    <button onclick="addToCart('{{ product.id }}')" class="w-full py-2 bg-primary-500 text-white rounded-md hover:bg-primary-600 transition-colors flex items-center justify-center">
+                        <i class="fas fa-cart-plus mr-2"></i> Add to Cart
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-span-full bg-white rounded-lg shadow-soft p-8 text-center">
+                <div class="text-5xl text-gray-300 mb-4">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-700 mb-2">No products found</h3>
+                <p class="text-gray-500 mb-4">Try adjusting your search or filter criteria</p>
+                <a href="{% url 'product_catalog' %}" class="text-primary-600 hover:text-primary-800 font-medium">
+                    <i class="fas fa-redo mr-2"></i>Reset filters
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    function addToCart(productId) {
+        // Create form data
+        const formData = new FormData();
+        formData.append('product_id', productId);
+        formData.append('quantity', 1);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        
+        // Make AJAX request
+        fetch('{% url "add_to_cart" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success notification
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-lg z-50 animate-slide-in';
+                notification.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="py-1"><i class="fas fa-check-circle"></i></div>
+                        <div class="ml-3">
+                            <p class="font-medium">${data.message}</p>
+                        </div>
+                        <button class="ml-auto" onclick="this.parentElement.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                document.body.appendChild(notification);
+                
+                // Update cart count
+                const cartCount = document.querySelector('#cart-button span');
+                if (cartCount) {
+                    cartCount.textContent = data.cart_total_items;
+                }
+                
+                // Auto-remove notification after 3 seconds
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 300);
+                }, 3000);
+            } else {
+                // Show error notification
+                alert(data.message || 'Failed to add product to cart');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while adding to cart');
+        });
+    }
+    
+    function toggleWishlist(productId, buttonEl) {
+        // Create form data
+        const formData = new FormData();
+        formData.append('product_id', productId);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        
+        // Make AJAX request
+        fetch('{% url "add_to_wishlist" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Toggle heart icon color
+                const heartIcon = buttonEl.querySelector('i');
+                if (data.added) {
+                    heartIcon.classList.add('text-red-500');
+                } else {
+                    heartIcon.classList.remove('text-red-500');
+                }
+                
+                // Show success notification
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded shadow-lg z-50 animate-slide-in';
+                notification.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="py-1"><i class="fas fa-heart"></i></div>
+                        <div class="ml-3">
+                            <p class="font-medium">${data.message}</p>
+                        </div>
+                        <button class="ml-auto" onclick="this.parentElement.parentElement.remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                document.body.appendChild(notification);
+                
+                // Auto-remove notification after 3 seconds
+                setTimeout(() => {
+                    notification.style.opacity = '0';
+                    setTimeout(() => notification.remove(), 300);
+                }, 3000);
+            } else {
+                // Show error notification
+                alert(data.message || 'Failed to update wishlist');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while updating wishlist');
+        });
+    }
+</script>
+{% endblock %}
+{% endblock %}

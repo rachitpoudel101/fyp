@@ -71,6 +71,8 @@ urlpatterns = [
 
     # Profile URL
     path('profile/', views.profile_view, name='profile'),
+    path('account-settings/', views.account_settings, name='account_settings'),
+    path('change-password/', views.change_password, name='change_password'),
     path('super-admin-profile/', views.super_admin_profile, name='super_admin_profile'),
 
     # Password reset URLs
@@ -89,4 +91,10 @@ urlpatterns = [
     path('wishlist/add/', views.add_to_wishlist, name='add_to_wishlist'),
     path('wishlist/remove/', views.remove_from_wishlist, name='remove_from_wishlist'),
     path('wishlist/move-to-cart/', views.move_to_cart, name='move_to_cart'),
+
+    # Add the checkout URL pattern
+    path('checkout/', views.checkout, name='checkout'),
+
+    # Customer product catalog
+    path('products/', views.product_catalog, name='product_catalog'),
 ]
