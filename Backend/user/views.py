@@ -1262,30 +1262,48 @@ def forgot_password(request):
 
 def reset_password(request, token):
     try:
+        # Debug log to see what's happening
+        print(f"DEBUG: Attempting password reset with token: {token}")
+        
         user = CustomUser.objects.get(
             reset_password_token=token,
             reset_password_expires__gt=timezone.now()
         )
+        
+        print(f"DEBUG: Found user: {user.username} with email: {user.email}")
+        
         if request.method == 'POST':
             password = request.POST.get('password')
             confirm_password = request.POST.get('confirm_password')
+            
+            print(f"DEBUG: Received password reset POST request")
             
             if password != confirm_password:
                 messages.error(request, 'Passwords do not match.')
                 return render(request, 'reset_password.html')
             
+            # Reset the password
             user.set_password(password)
             user.reset_password_token = None
             user.reset_password_expires = None
             user.save()
             
+            print(f"DEBUG: Password reset successful for user: {user.username}")
             messages.success(request, 'Your password has been reset successfully. You can now login.')
-            return redirect('login')
+            
+            # Explicitly use an HttpResponseRedirect for more reliable redirection
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(reverse('login'))
             
         return render(request, 'reset_password.html')
         
     except CustomUser.DoesNotExist:
+        print(f"DEBUG: Invalid or expired reset token: {token}")
         messages.error(request, 'Invalid or expired reset link.')
+        return redirect('login')
+    except Exception as e:
+        print(f"DEBUG: Error during password reset: {str(e)}")
+        messages.error(request, f"An error occurred: {str(e)}")
         return redirect('login')
 
 # Add a new dedicated view for product deletion
