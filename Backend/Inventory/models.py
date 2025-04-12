@@ -14,6 +14,7 @@ class Profile(models.Model):
 class Category(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(null=True, blank=True)
+    expires = models.BooleanField(default=False, help_text='Whether products in this category expire')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

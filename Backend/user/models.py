@@ -105,3 +105,32 @@ class WishlistItem(models.Model):
     
     def __str__(self):
         return f"{self.product.name} in {self.wishlist}"
+
+class Notification(models.Model):
+    """
+    Model for storing notifications for users
+    """
+    NOTIFICATION_TYPES = (
+        ('order', 'New Order'),
+        ('status', 'Status Update'),
+        ('stock', 'Stock Alert'),
+        ('general', 'General Notification'),
+    )
+    
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, default='general')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    related_order = models.ForeignKey('Inventory.Order', on_delete=models.CASCADE, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.title} - {self.user.username}"
+        
+    def mark_as_read(self):
+        self.is_read = True
+        self.save()

@@ -97,4 +97,13 @@ urlpatterns = [
 
     # Customer product catalog
     path('products/', views.product_catalog, name='product_catalog'),
+
+    # New API endpoint to get category details
+    path('category/<int:category_id>/', views.get_category_details, name='get_category_details'),
+
+    # Add the new API endpoint for warehouse product count
+    path('api/warehouse/<int:warehouse_id>/product-count/', views.warehouse_product_count, name='warehouse_product_count'),
+
+    # Add the new API endpoint for updating stock
+    path('update-stock/<int:product_id>/', views.update_stock, name='update_stock'),
 ]

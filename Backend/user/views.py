@@ -1,4 +1,4 @@
-from django.utils import timezone  # Correct timezone import
+from django.utils import timezone  #  timezone import
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout, authenticate
@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from Inventory.models import Order, OrderItem, Product, Category
 from Inventory.forms import CategoryForm, ProductForm, OrderForm
 from .forms import CustomUserCreationForm, WarehouseForm, StaffCreationForm
-from .models import CustomUser, Warehouse, ActivityLog, Cart, CartItem, Wishlist, WishlistItem  # Add ActivityLog to the importser, Warehouse
+from .models import CustomUser, Warehouse, ActivityLog, Cart, CartItem, Wishlist, WishlistItem  
 from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.urls import reverse
@@ -300,14 +300,155 @@ def manage_warehouses(request):
         return HttpResponseForbidden("You are not authorized to view this page")
     
     warehouses = Warehouse.objects.all()
-    return render(request, 'manage_warehouses.html', {'warehouses': warehouses})
+    
+    # Get ALL warehouse managers regardless of assignment status
+    available_managers = CustomUser.objects.filter(
+        role='warehouse_manager',
+        is_active=True
+    )
+    
+    # Calculate statistics for the dashboard
+    active_warehouses = warehouses.filter(manager__isnull=False)
+    total_products = Product.objects.count()
+    
+    context = {
+        'warehouses': warehouses,
+        'available_managers': available_managers,
+        'active_warehouses': active_warehouses,
+        'total_products': total_products
+    }
+    
+    return render(request, 'manage_warehouses.html', context)
 
 # Warehouse Manager Dashboard - Only accessible by warehouse manager users
 @login_required
 def warehouse_dashboard(request):
     if request.user.role != 'warehouse_manager':
         return HttpResponseForbidden("You are not authorized to view this page")
-    return render(request, 'warehouse_dashboard.html')
+    
+    # Get the warehouse managed by this user
+    warehouse = getattr(request.user, 'managed_warehouse', None)
+    
+    if not warehouse:
+        messages.error(request, "You are not assigned to any warehouse yet")
+        return render(request, 'warehouse_dashboard.html', {'no_warehouse': True})
+    
+    # Get recent orders that contain products from this warehouse
+    from django.db.models import Count
+    from Inventory.models import OrderItem, Order
+    
+    # Find order IDs that contain products from this warehouse
+    order_ids = OrderItem.objects.filter(
+        product__warehouse=warehouse
+    ).values_list('order_id', flat=True).distinct()
+    
+    # Get those orders
+    recent_orders = Order.objects.filter(
+        id__in=order_ids
+    ).order_by('-created_at')[:5]
+    
+    # Get count of orders by status
+    pending_count = Order.objects.filter(id__in=order_ids, status='pending').count()
+    processing_count = Order.objects.filter(id__in=order_ids, status='processing').count()
+    shipped_count = Order.objects.filter(id__in=order_ids, status='shipped').count()
+    delivered_count = Order.objects.filter(id__in=order_ids, status='delivered').count()
+    
+    # Get unread notifications if the table exists
+    try:
+        unread_notifications = request.user.notifications.filter(is_read=False)[:5]
+        notification_count = unread_notifications.count()
+    except Exception:
+        # Handle the case when notifications aren't available
+        unread_notifications = []
+        notification_count = 0
+    
+    context = {
+        'warehouse': warehouse,
+        'recent_orders': recent_orders,
+        'pending_count': pending_count,
+        'processing_count': processing_count,
+        'shipped_count': shipped_count,
+        'delivered_count': delivered_count,
+        'total_orders': len(order_ids),
+        'unread_notifications': unread_notifications,
+        'notification_count': notification_count
+    }
+    
+    return render(request, 'warehouse_dashboard.html', context)
+
+@login_required
+def warehouse_orders(request):
+    """View for warehouse managers to see orders containing their warehouse's products"""
+    if request.user.role != 'warehouse_manager':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get the warehouse managed by this user
+    warehouse = getattr(request.user, 'managed_warehouse', None)
+    if not warehouse:
+        messages.error(request, "You are not assigned to any warehouse yet")
+        return redirect('warehouse_dashboard')
+    
+    # Get status filter from query params
+    status_filter = request.GET.get('status', '')
+    
+    # Find order IDs that contain products from this warehouse
+    from Inventory.models import OrderItem, Order
+    order_ids = OrderItem.objects.filter(
+        product__warehouse=warehouse
+    ).values_list('order_id', flat=True).distinct()
+    
+    # Apply status filter if provided
+    orders = Order.objects.filter(id__in=order_ids)
+    if status_filter and status_filter != 'all':
+        orders = orders.filter(status=status_filter)
+    
+    # Order by most recent first
+    orders = orders.order_by('-created_at')
+    
+    context = {
+        'warehouse': warehouse,
+        'orders': orders,
+        'current_status': status_filter or 'all'
+    }
+    
+    return render(request, 'warehouse_orders.html', context)
+
+@login_required
+def view_notifications(request):
+    """View for users to see all their notifications"""
+    try:
+        if request.method == 'POST':
+            # Mark all as read if requested
+            if 'mark_all_read' in request.POST:
+                request.user.notifications.filter(is_read=False).update(is_read=True)
+                messages.success(request, "All notifications marked as read")
+                return redirect('view_notifications')
+            
+            # Mark specific notification as read
+            notification_id = request.POST.get('notification_id')
+            if notification_id:
+                from .models import Notification
+                notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+                notification.is_read = True
+                notification.save()
+                
+                # If there's a related order, redirect to it
+                if notification.related_order:
+                    return redirect('order_detail', order_id=notification.related_order.id)
+        
+        # Get all notifications for this user
+        notifications = request.user.notifications.all().order_by('-created_at')
+        return render(request, 'notifications.html', {
+            'notifications': notifications,
+            'unread_count': notifications.filter(is_read=False).count()
+        })
+    except Exception:
+        # If notifications aren't available, show an empty list
+        messages.warning(request, "Notification system is not available at the moment.")
+        return render(request, 'notifications.html', {
+            'notifications': [],
+            'unread_count': 0
+        })
 
 @login_required
 def inventory(request):
@@ -364,7 +505,6 @@ def update_order_status(request, order_id):
                 admin=request.user,
                 action=f"Updated order {order.order_number} status from {old_status} to {status}"
             )
-            
             messages.success(request, f"Order status successfully updated to {status}")
         except Exception as e:
             messages.error(request, f"Error updating order status: {str(e)}")
@@ -421,20 +561,16 @@ def order_list(request):
     if request.user.role == 'customer':
         orders = Order.objects.filter(customer=request.user)
         products = Product.objects.all()
-        
         # Get or create cart and wishlist for displaying counts
         cart, _ = Cart.objects.get_or_create(user=request.user)
         wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
-        
         context = {
             'orders': orders,
             'products': products,
             'cart': cart,
             'wishlist': wishlist
         }
-        
         return render(request, 'order_list.html', context)
-    
     elif request.user.role == 'warehouse_manager':
         orders = Order.objects.all()
         return render(request, 'order_list.html', {'orders': orders})
@@ -451,7 +587,6 @@ def user_statistics(request):
     users = CustomUser.objects.select_related('created_by').all().order_by('role')
     
     # Get ALL warehouse managers and staff members regardless of created_by field
-    # This ensures we see all warehouse managers in the system
     warehouse_managers = CustomUser.objects.filter(role='warehouse_manager')
     staff_members = CustomUser.objects.filter(role='staff', created_by=request.user)
     
@@ -490,7 +625,6 @@ def product_management(request):
             try:
                 print(f"DEBUG: Updating product ID: {product_id}")
                 product = Product.objects.get(id=product_id)
-                
                 # Get form fields with validation
                 product.name = request.POST.get('edit_name', '').strip()
                 if not product.name:
@@ -510,36 +644,38 @@ def product_management(request):
                 category_id = request.POST.get('edit_category')
                 if category_id:
                     try:
-                        product.category = Category.objects.get(id=category_id)
+                        category = Category.objects.get(id=category_id)
+                        product.category = category
+                        
+                        # Set expires based on category setting
+                        if category.expires:
+                            expires_date = request.POST.get('edit_expires')
+                            if (expires_date and expires_date.strip()):
+                                product.expires = expires_date
+                            else:
+                                # If category requires expiry but no date provided, handle error
+                                raise ValueError("Expiry date is required for this category")
+                        else:
+                            product.expires = None
+                            
                     except Category.DoesNotExist:
                         print(f"DEBUG: Category with ID {category_id} doesn't exist")
                 
-                # Handle expiry date
-                expires_date = request.POST.get('edit_expires')
-                if expires_date and expires_date.strip():
-                    product.expires = expires_date
-                else:
-                    product.expires = None
+                # Get warehouse ID from form
+                warehouse_id = request.POST.get('edit_warehouse')
+                if warehouse_id:
+                    try:
+                        warehouse = Warehouse.objects.get(id=warehouse_id)
+                        
+                        # Check if warehouse can handle expiring products if needed
+                        if product.expires and not warehouse.handles_expiring:
+                            messages.warning(request, f"Warning: Selected warehouse does not handle expiring products. Product has been assigned, but please consider a different warehouse.")
+                        
+                        product.warehouse = warehouse
+                    except Warehouse.DoesNotExist:
+                        messages.error(request, f"Selected warehouse does not exist.")
+                        return redirect('product_management')
                 
-                # Find appropriate warehouse based on expiry
-                if product.expires:
-                    warehouse = Warehouse.objects.filter(handles_expiring=True).first()
-                    if not warehouse:
-                        warehouse = Warehouse.objects.create(
-                            name="Expiring Products Warehouse",
-                            location="Default Location",
-                            handles_expiring=True
-                        )
-                else:
-                    warehouse = Warehouse.objects.filter(handles_expiring=False).first()
-                    if not warehouse:
-                        warehouse = Warehouse.objects.create(
-                            name="Non-Expiring Products Warehouse",
-                            location="Default Location",
-                            handles_expiring=False
-                        )
-                
-                product.warehouse = warehouse
                 product.save()
                 
                 # Log this action
@@ -561,7 +697,7 @@ def product_management(request):
                 print(f"DEBUG: Error updating product: {str(e)}")
                 messages.error(request, f"Error updating product: {str(e)}")
                 return redirect('product_management')
-                
+        
         # Handle product creation (existing code)
         else:
             product_id = request.POST.get('product_id')
@@ -574,26 +710,61 @@ def product_management(request):
             if form.is_valid():
                 try:
                     product = form.save(commit=False)
+                    # Check if category requires expiry date
+                    if product.category and product.category.expires:
+                        if not product.expires:
+                            return JsonResponse({
+                                'success': False,
+                                'error': 'This category requires an expiry date',
+                                'message': 'Please set an expiry date for this product'
+                            })
                     
-                    # Find appropriate warehouse based on expiry
-                    if product.expires:
-                        warehouse = Warehouse.objects.filter(handles_expiring=True).first()
-                        if not warehouse:
-                            warehouse = Warehouse.objects.create(
-                                name="Expiring Products Warehouse",
-                                location="Default Location",
-                                handles_expiring=True
-                            )
+                    # Get warehouse from form if provided
+                    warehouse_id = request.POST.get('warehouse')
+                    if warehouse_id:
+                        try:
+                            warehouse = Warehouse.objects.get(id=warehouse_id)
+                            
+                            # Check if warehouse can handle expiring products if needed
+                            if product.expires and not warehouse.handles_expiring:
+                                return JsonResponse({
+                                    'success': False,
+                                    'error': 'Selected warehouse cannot handle expiring products',
+                                    'message': 'Please select a warehouse that handles expiring products'
+                                })
+                                
+                            product.warehouse = warehouse
+                        except Warehouse.DoesNotExist:
+                            return JsonResponse({
+                                'success': False,
+                                'error': 'Selected warehouse does not exist',
+                                'message': 'Please select a valid warehouse'
+                            })
                     else:
-                        warehouse = Warehouse.objects.filter(handles_expiring=False).first()
-                        if not warehouse:
-                            warehouse = Warehouse.objects.create(
-                                name="Non-Expiring Products Warehouse",
-                                location="Default Location",
-                                handles_expiring=False
-                            )
+                        # Fallback to original logic if no warehouse selected
+                        if product.category and product.category.expires:
+                            # Find expiring warehouse
+                            warehouse = Warehouse.objects.filter(handles_expiring=True).first()
+                            if not warehouse:
+                                warehouse = Warehouse.objects.create(
+                                    name="Expiring Products Warehouse",
+                                    location="Default Location",
+                                    handles_expiring=True
+                                )
+                        else:
+                            # If category doesn't expire or no category, clear expiry date
+                            product.expires = None
+                            # Find non-expiring warehouse
+                            warehouse = Warehouse.objects.filter(handles_expiring=False).first()
+                            if not warehouse:
+                                warehouse = Warehouse.objects.create(
+                                    name="Non-Expiring Products Warehouse",
+                                    location="Default Location",
+                                    handles_expiring=False
+                                )
+                        
+                        product.warehouse = warehouse
                     
-                    product.warehouse = warehouse
                     product.save()
                     
                     ActivityLog.objects.create(
@@ -620,7 +791,7 @@ def product_management(request):
                     'error': errors,
                     'message': 'Please fill in all required fields correctly.'
                 })
-
+    
     products = Product.objects.all().select_related('warehouse')
     categories = Category.objects.all()
     warehouses = Warehouse.objects.all()
@@ -688,15 +859,17 @@ def add_category(request):
             'success': False,
             'error': 'Only POST method is allowed'
         }, status=405)
-
+    
     try:
         # Print POST data for debugging
         print("POST DATA:", request.POST)
         
         name = request.POST.get('name', '').strip()
         description = request.POST.get('description', '').strip()
+        # Get the expires field value (checkbox)
+        expires = request.POST.get('expires') == 'on'
         
-        print(f"CATEGORY DATA - Name: '{name}', Description: '{description}'")
+        print(f"CATEGORY DATA - Name: '{name}', Description: '{description}', Expires: {expires}")
         
         if not name:
             print("ERROR: Category name is empty")
@@ -704,27 +877,28 @@ def add_category(request):
                 'success': False,
                 'error': 'Category name cannot be empty'
             }, status=400)
-
-        # Case-insensitive check for existing category - FIX THE SYNTAX HERE
-        if Category.objects.filter(name__iexact=name).exists():  # Corrected syntax
+        
+        # Case-insensitive check for existing category
+        if Category.objects.filter(name__iexact(name).exists()):
             print(f"ERROR: Category '{name}' already exists")
             return JsonResponse({
                 'success': False,
                 'error': f'Category "{name}" already exists'
             }, status=400)
-
-        # Create new category
+        
+        # Create new category with expires field
         category = Category.objects.create(
             name=name,
-            description=description if description else None
+            description=description if description else None,
+            expires=expires
         )
         
-        print(f"CATEGORY CREATED: ID={category.id}, Name='{category.name}'")
+        print(f"CATEGORY CREATED: ID={category.id}, Name='{category.name}', Expires={category.expires}")
         
         # Log the activity
         ActivityLog.objects.create(
             admin=request.user,
-            action=f"Added new category: {category.name}"
+            action=f"Added new category: {category.name} (Expires: {expires})"
         )
 
         return JsonResponse({
@@ -732,11 +906,12 @@ def add_category(request):
             'category': {
                 'id': category.id,
                 'name': category.name,
-                'description': category.description or ''
+                'description': category.description or '',
+                'expires': category.expires
             },
             'message': f'Category "{category.name}" added successfully!'
         })
-
+        
     except Exception as e:
         print(f"ERROR ADDING CATEGORY: {str(e)}")
         import traceback
@@ -767,6 +942,7 @@ def get_product_details(request, product_id):
             'stock': product.stock,
             'description': product.description or '',
             'expires': product.expires.isoformat() if product.expires else None,
+            'warehouse': product.warehouse.id if product.warehouse else None,  # Add warehouse ID
         }
         return JsonResponse(data)
     except Exception as e:
@@ -792,7 +968,6 @@ def resend_verification_email(request):
             'your_email@example.com',  # Replace with your email
             [user.email],
         )
-
         messages.success(request, "Verification email has been resent.")
     else:
         messages.info(request, "Your email is already verified.")
@@ -814,7 +989,7 @@ def add_user(request):
                 user.generate_verification_token()  # Generate token
                 user.role = request.POST.get('role')  # Save the role
                 user.save()
-
+                
                 # Optionally send a verification email
                 verification_link = request.build_absolute_uri(
                     reverse('verify_email', args=[user.verification_token])
@@ -834,9 +1009,9 @@ def add_user(request):
             errors = form.errors.as_json()
             messages.error(request, "Failed to create user. Please check the form.")
             return JsonResponse({'success': False, 'error': errors})
+    
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
-
-    return JsonResponse({'success': False, 'error': 'Invalid request method'})    
 @login_required
 def super_admin_dashboard(request):
     if request.user.role != 'super_admin':
@@ -853,10 +1028,10 @@ def super_admin_dashboard(request):
     context = {
         'admins': admins,
         'verified_admins': verified_admins,  # Pass verified admins
-        'activities': activities,
-        'user_form': CustomUserCreationForm(),  # Form to add new admins
         'pending_admins': pending_admins,
+        'activities': activities,
         'approved_admins': approved_admins,
+        'user_form': CustomUserCreationForm(),  # Form to add new admins
         'verification_requests': verification_requests,
         'recent_activities': recent_activities,  # Pass recent activities
     }
@@ -870,7 +1045,6 @@ def add_admin(request):
     if request.method == "POST":
         # Include request.FILES if your form handles file uploads
         form = CustomUserCreationForm(request.POST)
-        
         # Important: Force role to be 'admin' before validation
         post_data = request.POST.copy()  # Create a mutable copy
         post_data['role'] = 'admin'  # Set role to admin
@@ -883,8 +1057,6 @@ def add_admin(request):
                 raw_password = form.cleaned_data['password1']  # Get from cleaned_data
                 user.role = 'admin'  # Ensure role is set to admin
                 user.is_email_verified = False
-                
-                # Generate verification token
                 user.verification_token = get_random_string(length=32)
                 
                 # Debug with more details
@@ -928,11 +1100,9 @@ def add_admin(request):
                 
                 messages.success(request, f"Admin {user.username} has been successfully created. An email has been sent with login credentials and a verification link.")
                 return redirect('super_admin_dashboard')
-                
             except Exception as e:
                 print(f"DEBUG: Detailed error saving admin: {type(e).__name__}: {str(e)}")
                 messages.error(request, f"Error creating admin: {str(e)}")
-                
         else:
             # Log and display form errors
             print(f"DEBUG: Form validation errors: {form.errors}")
@@ -1034,7 +1204,7 @@ def request_verification(request):
         request.user.is_approved = False  # Reset approval status
         request.user.save()
         messages.success(request, "Your verification request has been sent to the super admin.")
-    return redirect('profile')  # Redirect to the profile page
+    return redirect('profile')
 
 @login_required
 def admin_management(request):
@@ -1120,9 +1290,9 @@ def toggle_admin_status(request, admin_id):
 def landing_page(request):
     return render(request, 'landing.html')
 
+# Profile view - Displays user profile and recent orders if they are a customer
 @login_required
 def profile_view(request):
-    # Get user's recent orders if they are a customer
     recent_orders = []
     if request.user.role == 'customer':
         recent_orders = Order.objects.filter(customer=request.user).order_by('-created_at')[:5]
@@ -1148,6 +1318,12 @@ def account_settings(request):
                 user.address = request.POST.get('address')
             if 'city' in request.POST:
                 user.city = request.POST.get('city')
+            if 'state' in request.POST:
+                user.state = request.POST.get('state')
+            if 'country' in request.POST:
+                user.country = request.POST.get('country')
+            if 'zip_code' in request.POST:
+                user.zip_code = request.POST.get('zip_code')
             
             user.save()
             messages.success(request, 'Your account information has been updated successfully.')
@@ -1195,7 +1371,7 @@ def assign_warehouse_manager(request, warehouse_id):
         warehouse = get_object_or_404(Warehouse, id=warehouse_id)
         
         try:
-            if (manager_id):
+            if manager_id:
                 manager = get_object_or_404(CustomUser, id=manager_id, role='warehouse_manager')
                 warehouse.manager = manager
                 warehouse.save()
@@ -1205,7 +1381,6 @@ def assign_warehouse_manager(request, warehouse_id):
                     admin=request.user,
                     action=f"Assigned manager {manager.username} to warehouse {warehouse.name}"
                 )
-                
                 messages.success(request, f'Successfully assigned {manager.username} to {warehouse.name}')
             else:
                 warehouse.manager = None
@@ -1214,7 +1389,6 @@ def assign_warehouse_manager(request, warehouse_id):
                 
         except Exception as e:
             messages.error(request, f'Error assigning manager: {str(e)}')
-        
         return redirect('admin_dashboard')
     
     return HttpResponseBadRequest("Invalid request method")
@@ -1223,7 +1397,7 @@ def assign_warehouse_manager(request, warehouse_id):
 def warehouse_products(request, warehouse_id):
     if request.user.role not in ['admin', 'warehouse_manager']:
         return HttpResponseForbidden("You are not authorized to view this page")
-    
+        
     warehouse = get_object_or_404(Warehouse, id=warehouse_id)
     products = Product.objects.filter(warehouse=warehouse)
     
@@ -1251,7 +1425,7 @@ def forgot_password(request):
             send_mail(
                 'Reset Your Password',
                 f'Click the link to reset your password: {reset_link}\nThis link will expire in 24 hours.',
-                'your_email@example.com',
+                'your_email@example.com',  # Replace with your email
                 [user.email],
             )
             messages.success(request, 'Password reset link has been sent to your email.')
@@ -1296,7 +1470,6 @@ def reset_password(request, token):
             return HttpResponseRedirect(reverse('login'))
             
         return render(request, 'reset_password.html')
-        
     except CustomUser.DoesNotExist:
         print(f"DEBUG: Invalid or expired reset token: {token}")
         messages.error(request, 'Invalid or expired reset link.')
@@ -1342,7 +1515,6 @@ def delete_product(request, product_id):
         
         # For regular form submissions
         return redirect('product_management')
-        
     except Product.DoesNotExist:
         print(f"PRODUCT NOT FOUND: ID {product_id}")
         messages.error(request, "Product not found")
@@ -1351,7 +1523,6 @@ def delete_product(request, product_id):
             return JsonResponse({"error": "Product not found"}, status=404)
         
         return redirect('product_management')
-        
     except Exception as e:
         print(f"ERROR DELETING PRODUCT {product_id}: {str(e)}")
         messages.error(request, f"Failed to delete product: {str(e)}")
@@ -1404,18 +1575,65 @@ def delete_warehouse(request, warehouse_id):
     if request.method == 'POST':
         warehouse_name = warehouse.name
         try:
+            # Check if products are associated with this warehouse
+            associated_products = Product.objects.filter(warehouse=warehouse)
+            product_count = associated_products.count()
+            
+            # If products exist, reassign them to a default warehouse before deletion
+            if product_count > 0:
+                # Find or create a suitable default warehouse
+                default_warehouse, created = Warehouse.objects.get_or_create(
+                    name="Default Warehouse",
+                    defaults={
+                        'location': 'Default Location',
+                        'handles_expiring': True  # Set to True to handle all types of products
+                    }
+                )
+                
+                # Make sure we don't reassign to the same warehouse we're deleting
+                if default_warehouse.id == warehouse.id:
+                    # Find another warehouse or create a new one with a different name
+                    default_warehouse, created = Warehouse.objects.get_or_create(
+                        name="Backup Warehouse",
+                        defaults={
+                            'location': 'Default Location',
+                            'handles_expiring': True
+                        }
+                    )
+                
+                # Reassign all products to the default warehouse
+                associated_products.update(warehouse=default_warehouse)
+                
+                # Log the reassignment
+                ActivityLog.objects.create(
+                    admin=request.user,
+                    action=f"Reassigned {product_count} products from warehouse '{warehouse_name}' to '{default_warehouse.name}'"
+                )
+                
+                messages.info(
+                    request, 
+                    f"{product_count} products from warehouse '{warehouse_name}' have been reassigned to '{default_warehouse.name}'."
+                )
+            
+            # Now delete the warehouse
             warehouse.delete()
+            
             # Log the activity
             ActivityLog.objects.create(
                 admin=request.user,
                 action=f"Deleted warehouse: {warehouse_name}"
             )
+            
             messages.success(request, f'Warehouse "{warehouse_name}" deleted successfully!')
+            
         except Exception as e:
+            print(f"ERROR DELETING WAREHOUSE: {str(e)}")
             messages.error(request, f'Error deleting warehouse: {str(e)}')
         
+        # Always redirect back to manage_warehouses, even if there's an error
         return redirect('manage_warehouses')
     
+    # For GET requests, render the confirmation page
     return render(request, 'delete_warehouse.html', {'warehouse': warehouse})
 
 @login_required
@@ -1430,34 +1648,35 @@ def edit_category(request, category_id):
         try:
             name = request.POST.get('name', '').strip()
             description = request.POST.get('description', '').strip()
+            # Get the expires field value
+            expires = request.POST.get('expires') == 'on'
             
             if not name:
                 messages.error(request, "Category name cannot be empty")
                 return redirect('product_management')
-                
+            
             # Check if another category with this name exists (excluding current category)
             if Category.objects.filter(name__iexact=name).exclude(id=category_id).exists():
                 messages.error(request, f'Category "{name}" already exists')
                 return redirect('product_management')
-                
+            
             # Update category
             category.name = name
             category.description = description
+            category.expires = expires
             category.save()
             
             # Log the activity
             ActivityLog.objects.create(
                 admin=request.user,
-                action=f"Updated category: {category.name}"
+                action=f"Updated category: {category.name} (Expires: {expires})"
             )
-            
             messages.success(request, f'Category "{category.name}" updated successfully!')
             return redirect('product_management')
             
         except Exception as e:
             messages.error(request, f'Error updating category: {str(e)}')
             return redirect('product_management')
-    
     return redirect('product_management')
 
 @login_required
@@ -1467,9 +1686,9 @@ def delete_category(request, category_id):
         return HttpResponseForbidden("You are not authorized to perform this action")
     
     category = get_object_or_404(Category, id=category_id)
+    category_name = category.name
     
     if request.method == 'POST':
-        category_name = category.name
         try:
             # Check if products are associated with this category
             if Product.objects.filter(category=category).exists():
@@ -1483,13 +1702,10 @@ def delete_category(request, category_id):
                 admin=request.user,
                 action=f"Deleted category: {category_name}"
             )
-            
             messages.success(request, f'Category "{category_name}" deleted successfully!')
         except Exception as e:
             messages.error(request, f'Error deleting category: {str(e)}')
-        
         return redirect('product_management')
-    
     return redirect('product_management')
 
 @login_required
@@ -1497,7 +1713,6 @@ def manage_categories(request):
     """View function to list all categories"""
     if request.user.role != 'admin':
         return HttpResponseForbidden("You are not authorized to view this page")
-    
     categories = Category.objects.all()
     return render(request, 'manage_categories.html', {'categories': categories})
 
@@ -1507,16 +1722,13 @@ def view_cart(request):
     """View to display the user's cart contents"""
     # Get or create cart for the user
     cart, created = Cart.objects.get_or_create(user=request.user)
-    
     # Calculate total price
     total_price = sum(item.product.price * item.quantity for item in cart.items.all())
-    
     context = {
         'cart': cart,
         'cart_items': cart.items.all().select_related('product'),
         'total_price': total_price
     }
-    
     return render(request, 'cart.html', context)
 
 @login_required
@@ -1545,15 +1757,15 @@ def add_to_cart(request):
         # Calculate the new total quantity
         new_total_quantity = cart_item.quantity + quantity
         
-        # Check if there's enough stock for the combined quantity
+        # Check if there's enough stock for the combined quantity 
         if product.stock < new_total_quantity:
             return JsonResponse({
-                'success': False, 
+                'success': False,
                 'message': f'Not enough stock available. Only {product.stock} available.',
                 'available_stock': product.stock,
                 'current_cart_quantity': cart_item.quantity
             }, status=400)
-            
+        
         # Now update the quantity
         cart_item.quantity = new_total_quantity
         cart_item.save()
@@ -1570,10 +1782,8 @@ def add_to_cart(request):
             'item_quantity': cart_item.quantity,
             'item_subtotal': cart_item.subtotal
         })
-    
     except Product.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Product not found'}, status=404)
-    
     except Exception as e:
         print(f"ERROR in add_to_cart: {str(e)}")
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
@@ -1621,52 +1831,49 @@ def update_cart_item(request):
                 'cart_total_price': total_price,
                 'item_subtotal': 0
             })
-        else:
-            # Check if there's enough stock
-            if cart_item.product.stock < new_quantity:
-                return JsonResponse({
-                    'success': False,
-                    'message': f'Not enough stock available. Only {cart_item.product.stock} available.',
-                    'available_stock': cart_item.product.stock
-                }, status=400)
-            
-            # Update the quantity
-            previous_quantity = cart_item.quantity
-            cart_item.quantity = new_quantity
-            cart_item.save()
-            
-            # Recalculate subtotal after save - Ensure it's a float
-            subtotal = float(cart_item.product.price * new_quantity)
-            
-            # Get new cart totals
-            cart = request.user.cart
-            total_items = cart.total_items
-            total_price = float(cart.total_price) if cart.total_price else 0.0
-            
-            # Log the update for debugging
-            print(f"Cart item updated: id={cart_item_id}, product={cart_item.product.name}, " +
-                  f"quantity: {previous_quantity} → {new_quantity}, subtotal=${subtotal}")
-            
+        
+        # Check if there's enough stock
+        if cart_item.product.stock < new_quantity:
             return JsonResponse({
-                'success': True,
-                'message': 'Cart updated successfully',
-                'cart_total_items': total_items,
-                'cart_total_price': total_price,
-                'item_subtotal': subtotal
-            })
-    
+                'success': False,
+                'message': f'Not enough stock available. Only {cart_item.product.stock} available.',
+                'available_stock': cart_item.product.stock
+            }, status=400)
+        
+        # Update the quantity
+        previous_quantity = cart_item.quantity
+        cart_item.quantity = new_quantity
+        cart_item.save()
+        
+        # Recalculate subtotal after save - Ensure it's a float
+        subtotal = float(cart_item.product.price * new_quantity)
+        
+        # Get new cart totals
+        cart = request.user.cart
+        total_items = cart.total_items
+        total_price = float(cart.total_price) if cart.total_price else 0.0
+        
+        # Log the update for debugging
+        print(f"Cart item updated: id={cart_item_id}, product={cart_item.product.name}, " +
+              f"quantity: {previous_quantity} → {new_quantity}, subtotal=${subtotal}")
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Cart updated successfully',
+            'cart_total_items': total_items,
+            'cart_total_price': total_price,
+            'item_subtotal': subtotal
+        })
     except CartItem.DoesNotExist:
         return JsonResponse({
             'success': False, 
             'message': 'Cart item not found'
         }, status=404)
-    
     except Exception as e:
-        # Log the exception for debugging
         print(f"Error in update_cart_item: {str(e)}")
+        # Log the exception for debugging
         import traceback
         traceback.print_exc()
-        
         return JsonResponse({
             'success': False, 
             'message': f'Error updating cart: {str(e)}'
@@ -1695,19 +1902,17 @@ def remove_from_cart(request):
         response_data = {
             'success': True,
             'message': f'{product_name} removed from your cart',
-            'cart_total_items': total_items,
+            'cart_total_items': total_items,    
             'cart_total_price': total_price
         }
         
         # If requested to redirect to dashboard
         if redirect_to_dashboard:
             response_data['redirect'] = reverse('order_list')
-            
+        
         return JsonResponse(response_data)
-    
     except CartItem.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Cart item not found'}, status=404)
-    
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
@@ -1718,14 +1923,12 @@ def clear_cart(request):
     try:
         if hasattr(request.user, 'cart'):
             request.user.cart.items.all().delete()
-        
         return JsonResponse({
             'success': True,
             'message': 'Cart cleared successfully',
             'cart_total_items': 0,
             'cart_total_price': 0
         })
-    
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
@@ -1735,12 +1938,10 @@ def view_wishlist(request):
     """View to display the user's wishlist contents"""
     # Get or create wishlist for the user
     wishlist, created = Wishlist.objects.get_or_create(user=request.user)
-    
     context = {
         'wishlist': wishlist,
         'wishlist_items': wishlist.items.all().select_related('product')
     }
-    
     return render(request, 'wishlist.html', context)
 
 @login_required
@@ -1776,10 +1977,8 @@ def add_to_wishlist(request):
             'wishlist_total_items': total_items,
             'added': item_created
         })
-    
     except Product.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Product not found'}, status=404)
-    
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
@@ -1805,10 +2004,8 @@ def remove_from_wishlist(request):
             'message': f'{product_name} removed from your wishlist',
             'wishlist_total_items': total_items
         })
-    
     except WishlistItem.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Wishlist item not found'}, status=404)
-    
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
@@ -1843,7 +2040,6 @@ def move_to_cart(request):
             product=product,
             defaults={'quantity': quantity}
         )
-        
         if not created:
             cart_item.quantity = F('quantity') + quantity
             cart_item.save()
@@ -1861,10 +2057,8 @@ def move_to_cart(request):
             'wishlist_total_items': wishlist_count,
             'cart_total_items': cart_count
         })
-    
     except WishlistItem.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Wishlist item not found'}, status=404)
-    
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
@@ -1874,20 +2068,16 @@ def order_list(request):
     if request.user.role == 'customer':
         orders = Order.objects.filter(customer=request.user)
         products = Product.objects.all()
-        
         # Get or create cart and wishlist for displaying counts
         cart, _ = Cart.objects.get_or_create(user=request.user)
         wishlist, _ = Wishlist.objects.get_or_create(user=request.user)
-        
         context = {
             'orders': orders,
             'products': products,
             'cart': cart,
             'wishlist': wishlist
         }
-        
         return render(request, 'order_list.html', context)
-    
     elif request.user.role == 'warehouse_manager':
         orders = Order.objects.all()
         return render(request, 'order_list.html', {'orders': orders})
@@ -1971,7 +2161,6 @@ def checkout(request):
                 
                 messages.success(request, "Your order has been placed successfully!")
                 return redirect('order_detail', order_id=order.id)
-        
         except Exception as e:
             messages.error(request, f"Error processing checkout: {str(e)}")
             return redirect('view_cart')
@@ -2046,3 +2235,68 @@ def product_catalog(request):
     }
     
     return render(request, 'product_catalog.html', context)
+
+# Add a new endpoint to get category details
+@login_required
+def get_category_details(request, category_id):
+    """API endpoint to get category details including expires field"""
+    if request.user.role not in ['admin', 'warehouse_manager']:
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    try:
+        category = get_object_or_404(Category, id=category_id)
+        data = {
+            'id': category.id,
+            'name': category.name,
+            'description': category.description or '',
+            'expires': category.expires
+        }
+        return JsonResponse(data)
+    except Exception as e:
+        print(f"DEBUG: Error fetching category details: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def warehouse_product_count(request, warehouse_id):
+    """API endpoint to get the count of products in a warehouse"""
+    if request.user.role != 'admin':
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+    
+    try:
+        warehouse = get_object_or_404(Warehouse, id=warehouse_id)
+        count = Product.objects.filter(warehouse=warehouse).count()
+        return JsonResponse({'count': count})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+def update_stock(request, product_id):
+    """View function to update a product's stock level"""
+    if request.user.role != 'warehouse_manager':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == 'POST':
+        try:
+            product = get_object_or_404(Product, id=product_id)
+            stock_change = int(request.POST.get('stock_change', 0))
+            
+            # Update the stock
+            product.stock += stock_change
+            
+            # Ensure stock doesn't go below zero
+            if product.stock < 0:
+                product.stock = 0
+                
+            product.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Updated stock for {product.name} by {stock_change} units (New stock: {product.stock})"
+            )
+            
+            messages.success(request, f"Stock updated successfully for {product.name}")
+        except Exception as e:
+            messages.error(request, f"Error updating stock: {str(e)}")
+    
+    return redirect('warehouse_dashboard')

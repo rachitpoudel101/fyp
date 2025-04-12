@@ -29,6 +29,73 @@
     <p class="text-muted">Manage inventory and shipments</p>
 </div>
 
+{% if not warehouse %}
+<div class="alert alert-warning">
+    You are not assigned to any warehouse yet. Please contact an administrator.
+</div>
+{% else %}
+<!-- Warehouse Info -->
+<div class="alert alert-info">
+    <h5>{{ warehouse.name }}</h5>
+    <p>Location: {{ warehouse.location }}</p>
+    <p>Handles Expiring Products: {% if warehouse.handles_expiring %}Yes{% else %}No{% endif %}</p>
+</div>
+
+<!-- Notifications Section -->
+{% if unread_notifications %}
+<div class="notifications-container mb-4">
+    <h5 class="text-muted mb-3">Unread Notifications ({{ notification_count }})</h5>
+    <div class="list-group">
+        {% for notification in unread_notifications %}
+        <div class="list-group-item">
+            <p>{{ notification.message }}</p>
+            <small class="text-muted">{{ notification.created_at|date:"M d, Y" }}</small>
+        </div>
+        {% empty %}
+        <div class="list-group-item">
+            <p>No new notifications</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Order Stats -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h4 class="mb-0">{{ total_orders }}</h4>
+                <p class="card-text">Total Orders</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body text-center">
+                <h4 class="mb-0">{{ pending_count }}</h4>
+                <p class="card-text">Pending</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-dark">
+            <div class="card-body text-center">
+                <h4 class="mb-0">{{ processing_count }}</h4>
+                <p class="card-text">Processing</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h4 class="mb-0">{{ shipped_count }}</h4>
+                <p class="card-text">Shipped</p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-4 mb-4">
     <div class="col-md-6">
         <div class="metric-card">
@@ -43,13 +110,17 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for product in products %}
+                        {% for product in warehouse.product_set.all %}
                         <tr>
                             <td>{{ product.name }}</td>
                             <td>{{ product.stock }}</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#updateStockModal{{ product.id }}">Update Stock</button>
                             </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center">No products available in this warehouse</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -60,24 +131,34 @@
     
     <div class="col-md-6">
         <div class="metric-card">
-            <h6 class="text-muted mb-3">Orders</h6>
+            <h6 class="text-muted mb-3">Recent Orders</h6>
             <div class="table-responsive">
                 <table class="table">
                     <thead>
                         <tr>
                             <th>Order ID</th>
                             <th>Status</th>
+                            <th>Date</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for order in orders %}
+                        {% for order in recent_orders %}
                         <tr>
                             <td>{{ order.order_number }}</td>
-                            <td>{{ order.status }}</td>
+                            <td>
+                                <span class="badge bg-{% if order.status == 'pending' %}warning{% elif order.status == 'processing' %}info{% elif order.status == 'shipped' %}primary{% elif order.status == 'delivered' %}success{% else %}secondary{% endif %}">
+                                    {{ order.status|title }}
+                                </span>
+                            </td>
+                            <td>{{ order.created_at|date:"M d, Y" }}</td>
                             <td>
                                 <button class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#updateOrderStatusModal{{ order.id }}">Update Status</button>
                             </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center">No orders available</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -88,7 +169,7 @@
 </div>
 
 <!-- Update Stock Modal -->
-{% for product in products %}
+{% for product in warehouse.product_set.all %}
 <div class="modal fade" id="updateStockModal{{ product.id }}" tabindex="-1" aria-labelledby="updateStockModalLabel{{ product.id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -97,8 +178,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="{% url 'update_stock' product.id %}">
+                <form method="POST" action="{% url 'inventory' %}">
                     {% csrf_token %}
+                    <input type="hidden" name="product_id" value="{{ product.id }}">
                     <div class="mb-3">
                         <label for="currentStock{{ product.id }}" class="form-label">Current Stock</label>
                         <input type="number" class="form-control" id="currentStock{{ product.id }}" value="{{ product.stock }}" readonly>
@@ -116,7 +198,7 @@
 {% endfor %}
 
 <!-- Update Order Status Modal -->
-{% for order in orders %}
+{% for order in recent_orders %}
 <div class="modal fade" id="updateOrderStatusModal{{ order.id }}" tabindex="-1" aria-labelledby="updateOrderStatusModalLabel{{ order.id }}" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -144,7 +226,7 @@
     </div>
 </div>
 {% endfor %}
-
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}

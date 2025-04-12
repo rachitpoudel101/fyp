@@ -1,0 +1,161 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Warehouse Orders - {{ warehouse.name }}{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'warehouse_dashboard' %}">
+            <i class="fas fa-home me-2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'warehouse_orders' %}">
+            <i class="fas fa-box me-2"></i> Orders
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'view_notifications' %}">
+            <i class="fas fa-bell me-2"></i> Notifications
+            {% with unread_count=request.user.notifications.filter.is_read=False.count %}
+                {% if unread_count > 0 %}
+                <span class="badge bg-danger">{{ unread_count }}</span>
+                {% endif %}
+            {% endwith %}
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'warehouse_products' warehouse.id %}">
+            <i class="fas fa-boxes me-2"></i> Products
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Orders - {{ warehouse.name }}</h1>
+    <p class="text-muted">Manage orders with products from your warehouse</p>
+</div>
+
+<!-- Status Filter Tabs -->
+<div class="mb-4">
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a class="nav-link {% if current_status == 'all' %}active{% endif %}" href="{% url 'warehouse_orders' %}">
+                All Orders
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if current_status == 'pending' %}active{% endif %}" href="{% url 'warehouse_orders' %}?status=pending">
+                Pending
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if current_status == 'processing' %}active{% endif %}" href="{% url 'warehouse_orders' %}?status=processing">
+                Processing
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if current_status == 'shipped' %}active{% endif %}" href="{% url 'warehouse_orders' %}?status=shipped">
+                Shipped
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if current_status == 'delivered' %}active{% endif %}" href="{% url 'warehouse_orders' %}?status=delivered">
+                Delivered
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link {% if current_status == 'cancelled' %}active{% endif %}" href="{% url 'warehouse_orders' %}?status=cancelled">
+                Cancelled
+            </a>
+        </li>
+    </ul>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Orders</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Customer</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Total</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>{{ order.order_number }}</td>
+                        <td>{{ order.customer.username }}</td>
+                        <td>{{ order.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <span class="badge bg-{% if order.status == 'pending' %}warning{% elif order.status == 'processing' %}info{% elif order.status == 'shipped' %}primary{% elif order.status == 'delivered' %}success{% else %}secondary{% endif %}">
+                                {{ order.status|title }}
+                            </span>
+                        </td>
+                        <td>${{ order.total_amount }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <h6 class="dropdown-header">Update Status</h6>
+                                    </li>
+                                    <li>
+                                        <form method="post" action="{% url 'update_order_status' order.id %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="processing">
+                                            <button type="submit" class="dropdown-item">Processing</button>
+                                        </form>
+                                    </li>
+                                    <li>
+                                        <form method="post" action="{% url 'update_order_status' order.id %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="shipped">
+                                            <button type="submit" class="dropdown-item">Shipped</button>
+                                        </form>
+                                    </li>
+                                    <li>
+                                        <form method="post" action="{% url 'update_order_status' order.id %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="delivered">
+                                            <button type="submit" class="dropdown-item">Delivered</button>
+                                        </form>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form method="post" action="{% url 'update_order_status' order.id %}">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="status" value="cancelled">
+                                            <button type="submit" class="dropdown-item text-danger">Cancelled</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">No orders found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

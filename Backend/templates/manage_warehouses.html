@@ -67,6 +67,21 @@
     {% endif %}
 </div>
 
+<!-- Add this at the top of your content block to debug -->
+{% if request.user.is_superuser %}
+<div class="alert alert-info">
+    <h6>Debug Info:</h6>
+    <p>Available Managers Count: {{ available_managers|length }}</p>
+    <ul>
+        {% for manager in available_managers %}
+            <li>{{ manager.username }} (ID: {{ manager.id }})</li>
+        {% empty %}
+            <li>No managers available in the list!</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
@@ -86,12 +101,13 @@
                                 <th>Location</th>
                                 <th>Manager</th>
                                 <th>Status</th>
+                                <th>Products</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for warehouse in warehouses %}
-                            <tr>
+                            <tr data-warehouse-id="{{ warehouse.id }}">
                                 <td>{{ warehouse.id }}</td>
                                 <td>{{ warehouse.name }}</td>
                                 <td>{{ warehouse.location }}</td>
@@ -108,6 +124,18 @@
                                     {% else %}
                                         <span class="badge bg-warning">Pending Manager</span>
                                     {% endif %}
+                                </td>
+                                <td>
+                                    <!-- Display product count -->
+                                    {% with product_count=warehouse.product_set.count %}
+                                        {% if product_count > 0 %}
+                                            <span class="badge bg-info product-count" data-count="{{ product_count }}">
+                                                {{ product_count }} products
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary product-count" data-count="0">Empty</span>
+                                        {% endif %}
+                                    {% endwith %}
                                 </td>
                                 <td>
                                     <div class="btn-group">
@@ -138,7 +166,7 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="6" class="text-center">No warehouses found.</td>
+                                <td colspan="7" class="text-center">No warehouses found.</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -180,14 +208,16 @@
                                 <td>
                                     <form method="POST" action="{% url 'assign_warehouse_manager' warehouse.id %}" class="d-flex align-items-center">
                                         {% csrf_token %}
-                                        <select name="manager_id" class="form-select form-select-sm me-2">
+                                        <select name="manager_id" class="form-select form-select-sm me-2" required>
                                             <option value="">Select Manager</option>
                                             {% for manager in available_managers %}
-                                                <option value="{{ manager.id }}">{{ manager.username }}</option>
+                                                <option value="{{ manager.id }}" {% if warehouse.manager and warehouse.manager.id == manager.id %}selected{% endif %}>
+                                                    {{ manager.username }} {% if manager.role %}({{ manager.role }}){% endif %}
+                                                </option>
                                             {% endfor %}
                                         </select>
                                         <button type="submit" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-user-check"></i>
+                                            <i class="fas fa-user-check"></i> Assign
                                         </button>
                                     </form>
                                 </td>
@@ -214,25 +244,25 @@
                     <div class="col-md-6">
                         <div class="p-3 bg-light rounded">
                             <h6 class="text-muted">Total Warehouses</h6>
-                            <h2 class="mb-0">{{ warehouses|length }}</h6>
+                            <h2 class="mb-0">{{ warehouses|length }}</h2>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="p-3 bg-light rounded">
                             <h6 class="text-muted">Active Warehouses</h6>
-                            <h2 class="mb-0">{{ active_warehouses|length }}</h6>
+                            <h2 class="mb-0">{{ active_warehouses|length }}</h2>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="p-3 bg-light rounded">
                             <h6 class="text-muted">Total Products</h6>
-                            <h2 class="mb-0">{{ total_products }}</h6>
+                            <h2 class="mb-0">{{ total_products }}</h2>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="p-3 bg-light rounded">
                             <h6 class="text-muted">Managers</h6>
-                            <h2 class="mb-0">{{ available_managers|length }}</h6>
+                            <h2 class="mb-0">{{ available_managers|length }}</h2>
                         </div>
                     </div>
                 </div>
@@ -252,6 +282,11 @@
             <div class="modal-body">
                 <p>Are you sure you want to delete the warehouse <strong id="warehouseName"></strong>?</p>
                 <p class="text-danger">This action cannot be undone and may impact products stored in this warehouse.</p>
+                
+                <div id="productWarning" class="alert alert-warning d-none">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <span id="productWarningText"></span>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -269,7 +304,62 @@
         const modal = new bootstrap.Modal(document.getElementById('deleteWarehouseModal'));
         document.getElementById('warehouseName').textContent = warehouseName;
         document.getElementById('deleteWarehouseForm').action = "{% url 'delete_warehouse' 0 %}".replace('0', warehouseId);
+        
+        // Get the row for this warehouse
+        const row = document.querySelector(`tr[data-warehouse-id="${warehouseId}"]`);
+        if (row) {
+            const productCountEl = row.querySelector('.product-count');
+            if (productCountEl) {
+                const productCount = parseInt(productCountEl.getAttribute('data-count') || '0');
+                const productWarning = document.getElementById('productWarning');
+                const productWarningText = document.getElementById('productWarningText');
+                
+                if (productCount > 0) {
+                    productWarning.classList.remove('d-none');
+                    productWarningText.textContent = `This warehouse contains ${productCount} products. These products will be automatically reassigned to a default warehouse.`;
+                    // Always enable the delete button regardless of product count
+                    document.querySelector('#deleteWarehouseForm button[type="submit"]').disabled = false;
+                } else {
+                    productWarning.classList.add('d-none');
+                    document.querySelector('#deleteWarehouseForm button[type="submit"]').disabled = false;
+                }
+            }
+        }
+        
         modal.show();
     }
+
+    // Enhance form submissions with JavaScript
+    document.addEventListener('DOMContentLoaded', function() {
+        // Manager form handling
+        const managerForms = document.querySelectorAll('form[action^="{% url 'assign_warehouse_manager' 0 %}".slice(0, -1)]');
+        
+        managerForms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const select = this.querySelector('select[name="manager_id"]');
+                if (!select.value) {
+                    e.preventDefault();
+                    alert('Please select a manager to assign');
+                }
+            });
+        });
+
+        // Handle delete warehouse form submission
+        const deleteForm = document.getElementById('deleteWarehouseForm');
+        if (deleteForm) {
+            deleteForm.addEventListener('submit', function(e) {
+                // You can add additional confirmation logic here if needed
+                // For example, disable the submit button to prevent double-clicks
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+                }
+                
+                // Allow the form submission to proceed
+                // The modal will be automatically closed when the page reloads after deletion
+            });
+        }
+    });
 </script>
 {% endblock %}

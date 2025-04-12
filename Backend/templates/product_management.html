@@ -139,6 +139,17 @@
                 {% csrf_token %}
                 <div class="modal-body">
                     {{ form.as_p }} <!-- Render the form fields -->
+                    <!-- Add warehouse selection -->
+                    <div class="mb-3">
+                        <label for="id_warehouse" class="form-label">Warehouse</label>
+                        <select class="form-control" id="id_warehouse" name="warehouse" required>
+                            <option value="">Select Warehouse</option>
+                            {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}">{{ warehouse.name }} {% if warehouse.handles_expiring %}(Handles Expiring){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Choose the warehouse for this product</small>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -167,6 +178,10 @@
                     <div class="mb-3">
                         <label for="categoryDescription" class="form-label">Description</label>
                         <textarea class="form-control" id="categoryDescription" name="description"></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="categoryExpires" name="expires">
+                        <label class="form-check-label" for="categoryExpires">Products in this category expire</label>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -225,6 +240,18 @@
                         <label for="edit_expires" class="form-label">Expiry Date (Optional)</label>
                         <input type="date" class="form-control" id="edit_expires" name="edit_expires">
                     </div>
+                    
+                    <!-- Add warehouse selection to edit form -->
+                    <div class="mb-3">
+                        <label for="edit_warehouse" class="form-label">Warehouse</label>
+                        <select class="form-control" id="edit_warehouse" name="edit_warehouse" required>
+                            <option value="">Select Warehouse</option>
+                            {% for warehouse in warehouses %}
+                            <option value="{{ warehouse.id }}">{{ warehouse.name }} {% if warehouse.handles_expiring %}(Handles Expiring){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">Choose the warehouse for this product</small>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -254,6 +281,10 @@
                     <div class="mb-3">
                         <label for="edit_category_description" class="form-label">Description</label>
                         <textarea class="form-control" id="edit_category_description" name="description"></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="edit_category_expires" name="expires">
+                        <label class="form-check-label" for="edit_category_expires">Products in this category expire</label>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -414,6 +445,83 @@
             });
         }
 
+        // Category change handler - show/hide expiry date based on category
+        const categorySelect = document.getElementById('id_category');
+        const expiresField = document.getElementById('id_expires').closest('.mb-3');
+
+        if (categorySelect && expiresField) {
+            // Function to handle category change
+            function handleCategoryChange() {
+                // Get the selected category ID
+                const categoryId = categorySelect.value;
+                
+                // Check if the category requires expiry date
+                fetch(`/category/${categoryId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.expires) {
+                            // If category has expires=true, show the expires field
+                            expiresField.style.display = 'block';
+                            document.getElementById('id_expires').required = true;
+                        } else {
+                            // If category doesn't expire, hide the field and clear its value
+                            expiresField.style.display = 'none';
+                            document.getElementById('id_expires').required = false;
+                            document.getElementById('id_expires').value = '';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching category details:', error);
+                        // Show the field by default if there's an error
+                        expiresField.style.display = 'block';
+                    });
+            }
+            
+            // Add event listener for category changes
+            categorySelect.addEventListener('change', handleCategoryChange);
+            
+            // Initial call to set the correct state
+            if (categorySelect.value) {
+                handleCategoryChange();
+            }
+        }
+
+        // Same handling for edit product form
+        const editCategorySelect = document.getElementById('edit_category');
+        const editExpiresField = document.getElementById('edit_expires').closest('.mb-3');
+
+        if (editCategorySelect && editExpiresField) {
+            // Function to handle category change
+            function handleEditCategoryChange() {
+                // Get the selected category ID
+                const categoryId = editCategorySelect.value;
+                
+                // Check if the category requires expiry date
+                fetch(`/category/${categoryId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.expires) {
+                            // If category has expires=true, show the expires field
+                            editExpiresField.style.display = 'block';
+                            document.getElementById('edit_expires').required = true;
+                        } else {
+                            // If category doesn't expire, hide the field and clear its value
+                            editExpiresField.style.display = 'none';
+                            document.getElementById('edit_expires').required = false;
+                            document.getElementById('edit_expires').value = '';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching category details:', error);
+                        // Show the field by default if there's an error
+                        editExpiresField.style.display = 'block';
+                    });
+            }
+            
+            // Add event listener for category changes
+            editCategorySelect.addEventListener('change', handleEditCategoryChange);
+        }
+
         // SIMPLER EDIT PRODUCT FUNCTIONALITY
         document.querySelectorAll('.edit-product').forEach(button => {
             button.addEventListener('click', function() {
@@ -425,6 +533,15 @@
                 document.getElementById('edit_name').value = row.cells[0].textContent.trim();
                 document.getElementById('edit_price').value = row.cells[2].textContent.replace('$', '').trim();
                 document.getElementById('edit_stock').value = row.cells[3].textContent.trim();
+                
+                // Get warehouse from table
+                const warehouseName = row.cells[4].textContent.trim();
+                const warehouseSelect = document.getElementById('edit_warehouse');
+                Array.from(warehouseSelect.options).forEach(option => {
+                    if (option.textContent.includes(warehouseName)) {
+                        warehouseSelect.value = option.value;
+                    }
+                });
                 
                 // Get expiry date from table
                 const expiryText = row.cells[5].textContent.trim();
@@ -455,6 +572,11 @@
                     }
                 });
                 
+                // Trigger category change handler to show/hide expiry field
+                if (typeof handleEditCategoryChange === 'function') {
+                    handleEditCategoryChange();
+                }
+                
                 // Fetch additional product details via AJAX
                 fetch(`/product/${productId}/`)
                     .then(response => response.json())
@@ -465,6 +587,11 @@
                         // If we have an exact date from API, use it
                         if (data.expires) {
                             document.getElementById('edit_expires').value = data.expires.split('T')[0]; // Format YYYY-MM-DD
+                        }
+                        
+                        // Set the warehouse if it's in the data
+                        if (data.warehouse) {
+                            document.getElementById('edit_warehouse').value = data.warehouse;
                         }
                     })
                     .catch(error => {
@@ -479,6 +606,7 @@
                 const categoryId = this.dataset.id;
                 const categoryName = this.dataset.name;
                 const categoryDescription = this.dataset.description;
+                const categoryExpires = this.dataset.expires === 'true';
                 
                 // Set the form action URL
                 document.getElementById('editCategoryForm').action = `{% url 'edit_category' 0 %}`.replace('0', categoryId);
@@ -487,6 +615,7 @@
                 document.getElementById('edit_category_id').value = categoryId;
                 document.getElementById('edit_category_name').value = categoryName;
                 document.getElementById('edit_category_description').value = categoryDescription || '';
+                document.getElementById('edit_category_expires').checked = categoryExpires;
             });
         });
     });
