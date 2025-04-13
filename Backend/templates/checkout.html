@@ -108,9 +108,19 @@
                             </div>
                             
                             <div class="flex items-center">
-                                <input type="radio" id="payment_card" name="payment_method" value="credit_card" 
+                                <input type="radio" id="payment_khalti" name="payment_method" value="khalti" 
                                        class="h-4 w-4 text-primary-600 focus:ring-primary-500">
-                                <label for="payment_card" class="ml-2 text-gray-700">Credit/Debit Card (Coming Soon)</label>
+                                <label for="payment_khalti" class="ml-2 text-gray-700 flex items-center">
+                                    Khalti Digital Wallet
+                                    <img src="https://khalti.s3.ap-south-1.amazonaws.com/KPG/dist/2020.12.17.0.0.0/icons/khalti.png" 
+                                         alt="Khalti" class="h-5 ml-2">
+                                </label>
+                            </div>
+                            
+                            <div class="flex items-center">
+                                <input type="radio" id="payment_card" name="payment_method" value="credit_card" disabled
+                                       class="h-4 w-4 text-primary-600 focus:ring-primary-500">
+                                <label for="payment_card" class="ml-2 text-gray-400">Credit/Debit Card (Coming Soon)</label>
                             </div>
                         </div>
                     </div>
@@ -187,6 +197,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Add Khalti SDK -->
+<script src="https://khalti.s3.ap-south-1.amazonaws.com/KPG/dist/2020.12.17.0.0.0/khalti-checkout.iffe.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Toast notification function
@@ -217,38 +230,137 @@
             }, 3000);
         }
 
+        // Initialize Khalti payment
+        const khaltiConfig = {
+            // Replace this with your actual Khalti public key
+            "publicKey": "test_public_key_dc74e0fd57cb46cd93832aee0a390234",
+            "productIdentity": "marline-order-" + Date.now(),
+            "productName": "Marline Order",
+            "productUrl": window.location.href,
+            "eventHandler": {
+                onSuccess(payload) {
+                    // Submit the payload data to server for verification
+                    fetch('{% url "verify_khalti_payment" %}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify(payload)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Add payment token to form
+                            const tokenInput = document.createElement('input');
+                            tokenInput.type = 'hidden';
+                            tokenInput.name = 'khalti_token';
+                            tokenInput.value = payload.token;
+                            
+                            // Add payment amount to form
+                            const amountInput = document.createElement('input');
+                            amountInput.type = 'hidden';
+                            amountInput.name = 'khalti_amount';
+                            amountInput.value = payload.amount;
+                            
+                            // Add inputs and submit form
+                            const form = document.getElementById('checkout-form');
+                            form.appendChild(tokenInput);
+                            form.appendChild(amountInput);
+                            form.submit();
+                        } else {
+                            showToast('Payment verification failed: ' + data.message, 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showToast('Error verifying payment: ' + error.message, 'error');
+                    });
+                },
+                onError(error) {
+                    showToast('Payment error: ' + error.message, 'error');
+                },
+                onClose() {
+                    showToast('Payment window closed without completing payment', 'info');
+                }
+            },
+            // Custom styles for Khalti popup
+            "paymentPreference": ["KHALTI"],
+        };
+
+        // Create Khalti checkout instance
+        const khaltiCheckout = new KhaltiCheckout(khaltiConfig);
+
         const checkoutForm = document.getElementById('checkout-form');
         
         if (checkoutForm) {
             checkoutForm.addEventListener('submit', function(e) {
-                const requiredFields = checkoutForm.querySelectorAll('[required]');
-                let isValid = true;
+                const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+                const totalAmount = {{ total_amount }}; // Amount in NPR
                 
-                requiredFields.forEach(field => {
-                    if (!field.value.trim()) {
-                        isValid = false;
-                        field.classList.add('border-red-500');
-                        
-                        // Add event listener to remove red border when user types
-                        field.addEventListener('input', function() {
-                            if (this.value.trim()) {
-                                this.classList.remove('border-red-500');
-                            }
-                        }, { once: true });
-                    } else {
-                        field.classList.remove('border-red-500');
-                    }
-                });
-                
-                if (!isValid) {
+                // If Khalti is selected, handle it separately
+                if (paymentMethod === 'khalti') {
                     e.preventDefault();
-                    showToast('Please fill in all required fields', 'error');
                     
-                    // Scroll to the first invalid field
-                    const firstInvalidField = checkoutForm.querySelector('.border-red-500');
-                    if (firstInvalidField) {
-                        firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        firstInvalidField.focus();
+                    const requiredFields = checkoutForm.querySelectorAll('[required]');
+                    let isValid = true;
+                    
+                    requiredFields.forEach(field => {
+                        if (!field.value.trim()) {
+                            isValid = false;
+                            field.classList.add('border-red-500');
+                            
+                            field.addEventListener('input', function() {
+                                if (this.value.trim()) {
+                                    this.classList.remove('border-red-500');
+                                }
+                            }, { once: true });
+                        } else {
+                            field.classList.remove('border-red-500');
+                        }
+                    });
+                    
+                    if (isValid) {
+                        // Launch Khalti payment popup - amount in paisa (100 paisa = 1 NPR)
+                        khaltiCheckout.show({ amount: totalAmount * 100 });
+                    } else {
+                        showToast('Please fill in all required fields', 'error');
+                        
+                        // Scroll to the first invalid field
+                        const firstInvalidField = checkoutForm.querySelector('.border-red-500');
+                        if (firstInvalidField) {
+                            firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            firstInvalidField.focus();
+                        }
+                    }
+                } else {
+                    // For other payment methods, continue with the normal form validation
+                    const requiredFields = checkoutForm.querySelectorAll('[required]');
+                    let isValid = true;
+                    
+                    requiredFields.forEach(field => {
+                        if (!field.value.trim()) {
+                            isValid = false;
+                            field.classList.add('border-red-500');
+                            
+                            field.addEventListener('input', function() {
+                                if (this.value.trim()) {
+                                    this.classList.remove('border-red-500');
+                                }
+                            }, { once: true });
+                        } else {
+                            field.classList.remove('border-red-500');
+                        }
+                    });
+                    
+                    if (!isValid) {
+                        e.preventDefault();
+                        showToast('Please fill in all required fields', 'error');
+                        
+                        const firstInvalidField = checkoutForm.querySelector('.border-red-500');
+                        if (firstInvalidField) {
+                            firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            firstInvalidField.focus();
+                        }
                     }
                 }
             });

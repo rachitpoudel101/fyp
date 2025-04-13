@@ -1,0 +1,245 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Order Dashboard - Marline{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav flex-column">
+    {% if request.user.role == 'admin' %}
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'admin_dashboard' %}">
+            <i class="fas fa-home me-2"></i> Dashboard
+        </a>
+    </li>
+    {% elif request.user.role == 'warehouse_manager' %}
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'warehouse_dashboard' %}">
+            <i class="fas fa-home me-2"></i> Dashboard
+        </a>
+    </li>
+    {% endif %}
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'order_dashboard' %}">
+            <i class="fas fa-shopping-cart me-2"></i> Order Management
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'product_management' %}">
+            <i class="fas fa-box me-2"></i> Products
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'manage_warehouses' %}">
+            <i class="fas fa-warehouse me-2"></i> Warehouses
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'user_statistics' %}">
+            <i class="fas fa-users me-2"></i> Users
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Order Management Dashboard</h1>
+    <p class="text-muted">Manage customer orders and track order statuses</p>
+</div>
+
+<!-- Notifications Section -->
+<div id="notifications">
+    {% if messages %}
+    <div class="alert-container">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Order Statistics -->
+<div class="row mb-4">
+    <div class="col-md-2">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">Total Orders</h5>
+                <h2 class="mb-0">{{ total_orders }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">Pending</h5>
+                <h2 class="mb-0">{{ pending_orders }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Processing</h5>
+                <h2 class="mb-0">{{ processing_orders }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-secondary">
+            <div class="card-body">
+                <h5 class="card-title">Shipped</h5>
+                <h2 class="mb-0">{{ shipped_orders }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title">Delivered</h5>
+                <h2 class="mb-0">{{ delivered_orders }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="card text-white bg-danger">
+            <div class="card-body">
+                <h5 class="card-title">Cancelled</h5>
+                <h2 class="mb-0">{{ cancelled_orders }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Filter -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Order Filters</h5>
+            </div>
+            <div class="card-body">
+                <form class="row g-3" method="GET" action="{% url 'order_dashboard' %}">
+                    <div class="col-md-4">
+                        <label for="status" class="form-label">Order Status</label>
+                        <select id="status" name="status" class="form-select">
+                            <option value="all" {% if current_status == 'all' %}selected{% endif %}>All Orders</option>
+                            <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending</option>
+                            <option value="processing" {% if current_status == 'processing' %}selected{% endif %}>Processing</option>
+                            <option value="shipped" {% if current_status == 'shipped' %}selected{% endif %}>Shipped</option>
+                            <option value="delivered" {% if current_status == 'delivered' %}selected{% endif %}>Delivered</option>
+                            <option value="cancelled" {% if current_status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">Apply Filters</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Orders Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Recent Orders</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Date</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td>{{ order.order_number }}</td>
+                                <td>{{ order.customer.username }}</td>
+                                <td>{{ order.created_at|date:"M d, Y" }}</td>
+                                <td>${{ order.total_amount }}</td>
+                                <td>
+                                    {% if order.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                    {% elif order.status == 'processing' %}
+                                    <span class="badge bg-info">Processing</span>
+                                    {% elif order.status == 'shipped' %}
+                                    <span class="badge bg-secondary">Shipped</span>
+                                    {% elif order.status == 'delivered' %}
+                                    <span class="badge bg-success">Delivered</span>
+                                    {% elif order.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ order.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                                            Actions
+                                        </button>
+                                        <div class="dropdown-menu">
+                                            <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#orderDetailModal{{ order.id }}">
+                                                <i class="fas fa-eye me-2"></i> View Details
+                                            </a>
+                                            <a href="#" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#updateStatusModal{{ order.id }}">
+                                                <i class="fas fa-edit me-2"></i> Update Status
+                                            </a>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <!-- Order Status Update Modal for each order -->
+                            <div class="modal fade" id="updateStatusModal{{ order.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Update Order Status</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form action="{% url 'update_order_status' order.id %}" method="POST">
+                                            {% csrf_token %}
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label for="status{{ order.id }}" class="form-label">New Status</label>
+                                                    <select id="status{{ order.id }}" name="status" class="form-select">
+                                                        <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
+                                                        <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
+                                                        <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                                                        <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                                        <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-primary">Update Status</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">No orders found</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

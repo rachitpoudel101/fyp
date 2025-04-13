@@ -106,4 +106,7 @@ urlpatterns = [
 
     # Add the new API endpoint for updating stock
     path('update-stock/<int:product_id>/', views.update_stock, name='update_stock'),
+
+    # Add the new Khalti payment verification URL
+    path('verify-khalti-payment/', views.verify_khalti_payment, name='verify_khalti_payment'),
 ]

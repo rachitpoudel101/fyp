@@ -1,3 +1,4 @@
+import json
 from django.utils import timezone  #  timezone import
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
@@ -193,6 +194,8 @@ def dashboard(request):
         return redirect('admin_dashboard')
     elif request.user.role == 'warehouse_manager':
         return redirect('warehouse_dashboard')
+    elif request.user.role == 'staff':
+        return redirect('staff_dashboard')  # Add this line
     elif request.user.role == 'customer':
         return redirect('customer_dashboard')  # Changed to redirect to customer dashboard
     else:
@@ -490,7 +493,7 @@ def orders(request):
 @login_required
 def update_order_status(request, order_id):
     if request.user.role != 'warehouse_manager':
-        return HttpResponseForbidden("You are not authorized to view this page")
+        return HttpResponseForbidden("You are not authorized to perform this action")
     
     order = get_object_or_404(Order, id=order_id)
     if request.method == "POST":
@@ -879,7 +882,7 @@ def add_category(request):
             }, status=400)
         
         # Case-insensitive check for existing category
-        if Category.objects.filter(name__iexact(name).exists()):
+        if Category.objects.filter(name__iexact=name).exists():
             print(f"ERROR: Category '{name}' already exists")
             return JsonResponse({
                 'success': False,
@@ -1017,23 +1020,22 @@ def super_admin_dashboard(request):
     if request.user.role != 'super_admin':
         return HttpResponseForbidden("You are not authorized to view this page")
     
+    # Get all admin categories
     admins = CustomUser.objects.filter(role='admin')
-    verified_admins = CustomUser.objects.filter(role='admin', is_verified=True)  # Only verified admins
-    activities = Order.objects.all()  # Example: Fetch all orders as activities
-    pending_admins = CustomUser.objects.filter(role='admin', is_approved=False)
-    approved_admins = CustomUser.objects.filter(role='admin', is_approved=True, is_verified=False)
-    verification_requests = CustomUser.objects.filter(role='admin', is_approved=False, is_verified=False)
-    recent_activities = ActivityLog.objects.order_by('-timestamp')[:10]  # Fetch recent activities
+    verified_admins = admins.filter(is_verified=True)
+    pending_admins = admins.filter(is_approved=False, is_verified=False)
+    verification_requests = admins.filter(is_approved=True, is_verified=False)
+    
+    # Get recent activities
+    recent_activities = ActivityLog.objects.order_by('-timestamp')[:10]
 
     context = {
         'admins': admins,
-        'verified_admins': verified_admins,  # Pass verified admins
+        'verified_admins': verified_admins,
         'pending_admins': pending_admins,
-        'activities': activities,
-        'approved_admins': approved_admins,
-        'user_form': CustomUserCreationForm(),  # Form to add new admins
         'verification_requests': verification_requests,
-        'recent_activities': recent_activities,  # Pass recent activities
+        'recent_activities': recent_activities,
+        'user_form': CustomUserCreationForm()
     }
     return render(request, 'super_admin_dashboard.html', context)
 
@@ -1183,28 +1185,166 @@ def add_warehouse_manager(request):
 
 @login_required
 def approve_admin(request, admin_id):
+    """View function to approve a pending admin"""
+    if request.user.role != 'super_admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
     if request.method == "POST":
-        admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
-        admin.is_approved = True
-        admin.save()
-        return redirect('super_admin_dashboard')
+        try:
+            admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
+            admin.is_approved = True
+            admin.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Approved admin account for {admin.username}"
+            )
+            
+            # Send approval notification email
+            try:
+                send_mail(
+                    'Admin Account Approved',
+                    f"""
+                    Dear {admin.username},
+                    
+                    Your admin account has been approved by the super administrator.
+                    You can now log in to the admin dashboard.
+                    
+                    Thank you,
+                    Super Admin
+                    """,
+                    'your_email@example.com',  # Replace with your email
+                    [admin.email],
+                    fail_silently=True
+                )
+            except Exception as e:
+                print(f"Failed to send approval email: {str(e)}")
+            
+            messages.success(request, f"Admin {admin.username} has been approved successfully.")
+        except Exception as e:
+            messages.error(request, f"Error approving admin: {str(e)}")
+        
+    return redirect('super_admin_dashboard')
 
 @login_required
 def verify_admin(request, admin_id):
+    """View function to verify an admin's account"""
+    if request.user.role != 'super_admin':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
     if request.method == "POST":
-        admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
-        if admin.is_approved:  # Only allow verification if approved
+        try:
+            admin = get_object_or_404(CustomUser, id=admin_id, role='admin')
+            
+            # First approve if not already approved
+            if not admin.is_approved:
+                admin.is_approved = True
+            
+            # Then verify
             admin.is_verified = True
+            admin.is_email_verified = True  # Also mark email as verified
             admin.save()
-        return redirect('super_admin_dashboard')
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Verified admin account for {admin.username}"
+            )
+            
+            # Send verification confirmation email
+            try:
+                send_mail(
+                    'Admin Account Verified',
+                    f"""
+                    Dear {admin.username},
+                    
+                    Your admin account has been verified by the super administrator.
+                    You now have full access to the admin dashboard and all its features.
+                    
+                    Thank you,
+                    Super Admin
+                    """,
+                    'your_email@example.com',  # Replace with your email
+                    [admin.email],
+                    fail_silently=True
+                )
+            except Exception as e:
+                print(f"Failed to send verification email: {str(e)}")
+            
+            messages.success(request, f"Admin {admin.username} has been verified successfully.")
+        except Exception as e:
+            messages.error(request, f"Error verifying admin: {str(e)}")
+        
+    return redirect('super_admin_dashboard')
 
 @login_required
 def request_verification(request):
     if request.user.role == 'admin' and not request.user.is_verified:
-        request.user.is_approved = False  # Reset approval status
+        # Check if we have a verification message from the admin
+        verification_message = request.POST.get('verification_message', '')
+        
+        # Set status to mark as needing approval
+        request.user.is_approved = False
+        
+        # We don't have verification_request_date field, so we won't use it
+        # Instead, we'll rely on model's last_login or Django's built-in timestamps
         request.user.save()
+        
+        # Log the verification request
+        ActivityLog.objects.create(
+            admin=request.user,
+            action=f"Admin {request.user.username} requested account verification: {verification_message}"
+        )
+        
+        # Try to notify super admins via email
+        try:
+            # Get all super admin emails
+            super_admins = CustomUser.objects.filter(role='super_admin', is_active=True)
+            super_admin_emails = [user.email for user in super_admins if user.email]
+            
+            if super_admin_emails:
+                admin_details = f"""
+                Username: {request.user.username}
+                Email: {request.user.email}
+                Date Requested: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}
+                Message: {verification_message if verification_message else 'No message provided'}
+                """
+                
+                # Send email notification to super admins
+                send_mail(
+                    'Admin Verification Request',
+                    f"An admin has requested account verification:\n\n{admin_details}\n\nPlease log in to approve this request.",
+                    'your_email@example.com',  # Replace with your email
+                    super_admin_emails,
+                    fail_silently=True
+                )
+        except Exception as e:
+            print(f"Failed to send email notification to super admins: {str(e)}")
+        
         messages.success(request, "Your verification request has been sent to the super admin.")
+        return redirect('admin_dashboard')
+    
+    # Show an error if the user is not an admin or already verified
+    if request.user.role != 'admin':
+        messages.error(request, "Only admin accounts can request verification.")
+    elif request.user.is_verified:
+        messages.info(request, "Your account is already verified.")
+    
     return redirect('profile')
+
+# Add a new view to show the request verification form
+@login_required
+def request_verification_form(request):
+    if request.user.role != 'admin' or request.user.is_verified:
+        return HttpResponseForbidden("You cannot request verification.")
+    
+    # Check if there's already a pending request
+    has_pending_request = request.user.is_approved == False
+    
+    return render(request, 'request_verification.html', {
+        'has_pending_request': has_pending_request
+    })
 
 @login_required
 def admin_management(request):
@@ -1371,7 +1511,7 @@ def assign_warehouse_manager(request, warehouse_id):
         warehouse = get_object_or_404(Warehouse, id=warehouse_id)
         
         try:
-            if manager_id:
+            if (manager_id):
                 manager = get_object_or_404(CustomUser, id=manager_id, role='warehouse_manager')
                 warehouse.manager = manager
                 warehouse.save()
@@ -1580,7 +1720,7 @@ def delete_warehouse(request, warehouse_id):
             product_count = associated_products.count()
             
             # If products exist, reassign them to a default warehouse before deletion
-            if product_count > 0:
+            if (product_count > 0):
                 # Find or create a suitable default warehouse
                 default_warehouse, created = Warehouse.objects.get_or_create(
                     name="Default Warehouse",
@@ -1656,7 +1796,7 @@ def edit_category(request, category_id):
                 return redirect('product_management')
             
             # Check if another category with this name exists (excluding current category)
-            if Category.objects.filter(name__iexact=name).exclude(id=category_id).exists():
+            if Category.objects.filter(name__iexact(name)).exclude(id=category_id).exists():
                 messages.error(request, f'Category "{name}" already exists')
                 return redirect('product_management')
             
@@ -2113,19 +2253,64 @@ def checkout(request):
         try:
             # Begin transaction
             with transaction.atomic():
-                # Create order
+                # Create order with only the fields we know exist in the model
                 order = Order.objects.create(
                     order_number=str(uuid.uuid4()),
                     customer=request.user,
                     total_amount=total_amount,
-                    status='pending',
-                    # Add shipping details from form
-                    shipping_address=request.POST.get('shipping_address'),
-                    shipping_city=request.POST.get('shipping_city'),
-                    shipping_state=request.POST.get('shipping_state'),
-                    shipping_country=request.POST.get('shipping_country'),
-                    shipping_zip=request.POST.get('shipping_zip')
+                    status='pending'
                 )
+                
+                # Save shipping details separately in session for future use
+                shipping_info = {
+                    'shipping_address': request.POST.get('shipping_address'),
+                    'shipping_city': request.POST.get('shipping_city'),
+                    'shipping_state': request.POST.get('shipping_state'),
+                    'shipping_country': request.POST.get('shipping_country'),
+                    'shipping_zip': request.POST.get('shipping_zip'),
+                    'first_name': request.POST.get('first_name'),
+                    'last_name': request.POST.get('last_name'),
+                    'email': request.POST.get('email'),
+                    'phone': request.POST.get('phone')
+                }
+                
+                # Store shipping info in session
+                request.session['last_shipping_info'] = shipping_info
+                
+                # Check for Khalti payment token
+                khalti_token = request.POST.get('khalti_token')
+                payment_method = request.POST.get('payment_method', 'cash_on_delivery')
+                
+                # Save payment method to order
+                try:
+                    # Update order with payment information
+                    order.payment_method = payment_method
+                    
+                    if khalti_token:
+                        order.payment_status = 'paid'
+                        order.payment_details = khalti_token
+                    else:
+                        order.payment_status = 'pending'
+                    
+                    order.save()
+                except Exception as e:
+                    print(f"WARNING: Could not save payment details to order: {e}")
+                
+                # Try to update shipping fields if they exist in the model
+                try:
+                    # Get the order field names to check if shipping fields exist
+                    order_fields = [f.name for f in Order._meta.get_fields()]
+                    
+                    # Update only fields that exist in the model
+                    for field, value in shipping_info.items():
+                        if field in order_fields and value:
+                            setattr(order, field, value)
+                    
+                    # Save changes if any
+                    order.save()
+                except Exception as e:
+                    # Log the error but continue with order creation
+                    print(f"WARNING: Could not save shipping details to order: {e}")
                 
                 # Create order items from cart items
                 for cart_item in cart_items:
@@ -2152,14 +2337,14 @@ def checkout(request):
                 # Clear the cart
                 cart.items.all().delete()
                 
-                # Log the activity
+                # Log the activity - FIX: Use admin field instead of user
                 ActivityLog.objects.create(
-                    admin=None,  # No admin for customer actions
-                    user=request.user,
-                    action=f"Placed order #{order.order_number} for ${order.total_amount}"
+                    admin=request.user,  # Use admin field for the user
+                    action=f"Placed order #{order.order_number} for ${order.total_amount} via {payment_method}"
                 )
                 
-                messages.success(request, "Your order has been placed successfully!")
+                payment_status_msg = " Payment completed successfully!" if khalti_token else ""
+                messages.success(request, f"Your order has been placed successfully!{payment_status_msg}")
                 return redirect('order_detail', order_id=order.id)
         except Exception as e:
             messages.error(request, f"Error processing checkout: {str(e)}")
@@ -2300,3 +2485,316 @@ def update_stock(request, product_id):
             messages.error(request, f"Error updating stock: {str(e)}")
     
     return redirect('warehouse_dashboard')
+
+@login_required
+def order_dashboard(request):
+    """View for order management dashboard"""
+    if request.user.role not in ['admin', 'warehouse_manager', 'super_admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get all orders with their status
+    all_orders = Order.objects.all().select_related('customer')
+    
+    # Get status filter from query params
+    status_filter = request.GET.get('status', '')
+    
+    # Apply status filter if provided
+    filtered_orders = all_orders
+    if status_filter and status_filter != 'all':
+        filtered_orders = all_orders.filter(status=status_filter)
+    
+    # Order by most recent first
+    filtered_orders = filtered_orders.order_by('-created_at')
+    
+    # Calculate order statistics
+    context = {
+        'recent_orders': filtered_orders[:10],  # Show 10 most recent orders
+        'total_orders': all_orders.count(),
+        'pending_orders': all_orders.filter(status='pending').count(),
+        'processing_orders': all_orders.filter(status='processing').count(),
+        'shipped_orders': all_orders.filter(status='shipped').count(),
+        'delivered_orders': all_orders.filter(status='delivered').count(),
+        'cancelled_orders': all_orders.filter(status='cancelled').count(),
+        'current_status': status_filter or 'all'
+    }
+    
+    return render(request, 'order_dashboard.html', context)
+
+@login_required
+@require_POST
+def verify_khalti_payment(request):
+    """Verify Khalti payment with Khalti server"""
+    if request.user.role != 'customer':
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+    
+    try:
+        # Parse the request data
+        payload = json.loads(request.body)
+        token = payload.get('token')
+        amount = payload.get('amount')
+        
+        if not token or not amount:
+            return JsonResponse({
+                'success': False, 
+                'message': 'Invalid payment data'
+            }, status=400)
+        
+        # Prepare verification data
+        verification_data = {
+            'token': token,
+            'amount': amount
+        }
+        
+        # Replace with your actual Khalti secret key
+        headers = {
+            'Authorization': "live_secret_key_68791341fdd94846a146f0457ff7b455"
+        }
+        
+        # Verify with Khalti server
+        response = requests.post(
+            'https://khalti.com/api/v2/payment/verify/',
+            data=verification_data,
+            headers=headers
+        )
+        
+        # Process the response
+        if response.status_code == 200:
+            # Payment verified successfully
+            verification_response = response.json()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Verified Khalti payment of NPR {amount/100} with token {token[:10]}..."
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'data': verification_response
+            })
+        else:
+            # Payment verification failed
+            error_data = response.json()
+            return JsonResponse({
+                'success': False,
+                'message': error_data.get('detail', 'Payment verification failed'),
+                'error': error_data
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'message': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'message': str(e)
+        }, status=500)
+
+@login_required
+def staff_dashboard(request):
+    """Dashboard view for staff members"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get the admin who created this staff member
+    created_by = request.user.created_by
+    
+    # Get recent orders for monitoring
+    recent_orders = Order.objects.all().order_by('-created_at')[:10]
+    
+    # Get low stock products that need attention
+    low_stock_products = Product.objects.filter(stock__lte=F('min_stock'))
+    
+    # Get pending orders that need processing
+    pending_orders = Order.objects.filter(status='pending').count()
+    processing_orders = Order.objects.filter(status='processing').count()
+    
+    # Get statistics for the dashboard
+    total_products = Product.objects.count()
+    total_orders = Order.objects.count()
+    
+    context = {
+        'recent_orders': recent_orders,
+        'low_stock_products': low_stock_products,
+        'pending_orders': pending_orders,
+        'processing_orders': processing_orders,
+        'total_products': total_products,
+        'total_orders': total_orders,
+        'created_by': created_by
+    }
+    
+    return render(request, 'staff_dashboard.html', context)
+
+@login_required
+def staff_order_management(request):
+    """View for staff to manage orders"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get status filter from query params
+    status_filter = request.GET.get('status', '')
+    
+    # Get all orders
+    orders = Order.objects.all()
+    
+    # Apply status filter if provided
+    if status_filter and status_filter != 'all':
+        orders = orders.filter(status=status_filter)
+    
+    # Order by most recent first
+    orders = orders.order_by('-created_at')
+    
+    context = {
+        'orders': orders,
+        'current_status': status_filter or 'all'
+    }
+    
+    return render(request, 'staff_order_management.html', context)
+
+@login_required
+def staff_process_order(request, order_id):
+    """View for staff to process a specific order"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    order = get_object_or_404(Order, id=order_id)
+    
+    if request.method == "POST":
+        try:
+            status = request.POST.get('status')
+            old_status = order.status
+            order.status = status
+            order.save()
+            
+            # Log the status change
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Staff updated order {order.order_number} status from {old_status} to {status}"
+            )
+            messages.success(request, f"Order status successfully updated to {status}")
+        except Exception as e:
+            messages.error(request, f"Error updating order status: {str(e)}")
+        
+        return redirect('staff_order_management')
+    
+    context = {
+        'order': order,
+        'order_items': order.items.all().select_related('product')
+    }
+    return render(request, 'staff_order_detail.html', context)
+
+@login_required
+def staff_inventory_management(request):
+    """View for staff to manage inventory"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get all products
+    products = Product.objects.all().select_related('category', 'warehouse')
+    
+    # Get filter parameters
+    category_id = request.GET.get('category')
+    warehouse_id = request.GET.get('warehouse')
+    low_stock = request.GET.get('low_stock') == 'true'
+    
+    # Apply filters
+    if category_id:
+        products = products.filter(category_id=category_id)
+    
+    if warehouse_id:
+        products = products.filter(warehouse_id=warehouse_id)
+    
+    if low_stock:
+        products = products.filter(stock__lte=F('min_stock'))
+    
+    # Get all categories and warehouses for filter dropdowns
+    categories = Category.objects.all()
+    warehouses = Warehouse.objects.all()
+    
+    context = {
+        'products': products,
+        'categories': categories,
+        'warehouses': warehouses,
+        'selected_category': category_id,
+        'selected_warehouse': warehouse_id,
+        'show_low_stock': low_stock
+    }
+    
+    return render(request, 'staff_inventory.html', context)
+
+@login_required
+def staff_update_stock(request, product_id):
+    """View for staff to update product stock levels"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == 'POST':
+        try:
+            product = get_object_or_404(Product, id=product_id)
+            stock_change = int(request.POST.get('stock_change', 0))
+            
+            # Update the stock
+            old_stock = product.stock
+            product.stock += stock_change
+            
+            # Ensure stock doesn't go below zero
+            if product.stock < 0:
+                product.stock = 0
+                
+            product.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Staff updated stock for {product.name} from {old_stock} to {product.stock} units"
+            )
+            
+            messages.success(request, f"Stock updated successfully for {product.name}")
+        except Exception as e:
+            messages.error(request, f"Error updating stock: {str(e)}")
+    
+    return redirect('staff_inventory_management')
+
+@login_required
+def staff_customer_management(request):
+    """View for staff to manage customers"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get all customers
+    customers = CustomUser.objects.filter(role='customer')
+    
+    # Search functionality
+    search_query = request.GET.get('q', '')
+    if search_query:
+        customers = customers.filter(
+            Q(username__icontains=search_query) | 
+            Q(email__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query)
+        )
+    
+    context = {
+        'customers': customers,
+        'search_query': search_query
+    }
+    
+    return render(request, 'staff_customer_management.html', context)
+
+@login_required
+def staff_view_customer(request, customer_id):
+    """View for staff to see customer details and orders"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    customer = get_object_or_404(CustomUser, id=customer_id, role='customer')
+    customer_orders = Order.objects.filter(customer=customer).order_by('-created_at')
+    
+    context = {
+        'customer': customer,
+        'orders': customer_orders
+    }
+    
+    return render(request, 'staff_customer_detail.html', context)

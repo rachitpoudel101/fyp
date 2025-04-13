@@ -66,6 +66,34 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    PAYMENT_METHOD_CHOICES = [
+        ('cash_on_delivery', 'Cash on Delivery'),
+        ('khalti', 'Khalti Digital Wallet'),
+        ('credit_card', 'Credit/Debit Card'),
+    ]
+    
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+    ]
+    
+    payment_method = models.CharField(
+        max_length=20, 
+        choices=PAYMENT_METHOD_CHOICES, 
+        default='cash_on_delivery'
+    )
+    
+    payment_status = models.CharField(
+        max_length=10, 
+        choices=PAYMENT_STATUS_CHOICES, 
+        default='pending'
+    )
+    
+    payment_details = models.CharField(max_length=255, blank=True, null=True)
+    payment_date = models.DateTimeField(null=True, blank=True)
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)

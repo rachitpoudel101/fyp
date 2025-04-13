@@ -99,59 +99,178 @@
 <div class="mt-8 bg-white rounded-xl shadow-lg overflow-hidden">
     <div class="border-b border-gray-200">
         <nav class="flex space-x-4 px-6" aria-label="Tabs">
-            <button class="px-3 py-4 text-sm font-medium text-blue-600 border-b-2 border-blue-600">
+            <button id="verifiedTab" class="px-3 py-4 text-sm font-medium text-blue-600 border-b-2 border-blue-600 tab-button" onclick="changeTab('verified')">
                 Verified Admins
             </button>
-            <button class="px-3 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">
+            <button id="pendingTab" class="px-3 py-4 text-sm font-medium text-gray-500 hover:text-gray-700 tab-button" onclick="changeTab('pending')">
                 Pending Admins
+                {% if pending_admins.count > 0 %}
+                <span class="ml-1 bg-red-100 text-red-800 text-xs font-semibold px-2 py-0.5 rounded-full">
+                    {{ pending_admins.count }}
+                </span>
+                {% endif %}
             </button>
-            <button class="px-3 py-4 text-sm font-medium text-gray-500 hover:text-gray-700">
+            <button id="verificationTab" class="px-3 py-4 text-sm font-medium text-gray-500 hover:text-gray-700 tab-button" onclick="changeTab('verification')">
                 Verification Requests
+                {% if verification_requests.count > 0 %}
+                <span class="ml-1 bg-red-100 text-red-800 text-xs font-semibold px-2 py-0.5 rounded-full">
+                    {{ verification_requests.count }}
+                </span>
+                {% endif %}
             </button>
         </nav>
     </div>
     
     <!-- Tab Content -->
     <div class="p-6">
-        <div class="bg-white shadow-lg rounded-xl p-6 hover:shadow-xl transition duration-300">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">
-                    <i class="fas fa-user-check mr-2 text-blue-600"></i>Verified Admins
-                </h2>
-                <span class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-                    {{ verified_admins|length }} Admins
-                </span>
+        <!-- Verified Admins Tab -->
+        <div id="verifiedAdmins" class="tab-content">
+            <div class="bg-white shadow-lg rounded-xl p-6 hover:shadow-xl transition duration-300">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-user-check mr-2 text-blue-600"></i>Verified Admins
+                    </h2>
+                    <span class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
+                        {{ verified_admins|length }} Admins
+                    </span>
+                </div>
+                <table class="table-auto w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2">Username</th>
+                            <th class="border border-gray-300 px-4 py-2">Email</th>
+                            <th class="border border-gray-300 px-4 py-2">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admin in verified_admins %}
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2">{{ admin.username }}</td>
+                            <td class="border border-gray-300 px-4 py-2">{{ admin.email }}</td>
+                            <td class="border border-gray-300 px-4 py-2">
+                                <button onclick="toggleEditForm({{ admin.id }})" class="bg-blue-500 text-white px-4 py-2 rounded">Edit</button>
+                                <form id="edit-form-{{ admin.id }}" method="post" action="{% url 'edit_admin' admin.id %}" class="hidden mt-2">
+                                    {% csrf_token %}
+                                    <input type="text" name="username" value="{{ admin.username }}" class="border border-gray-300 px-4 py-2 rounded w-full mb-2">
+                                    <input type="email" name="email" value="{{ admin.email }}" class="border border-gray-300 px-4 py-2 rounded w-full mb-2">
+                                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Save</button>
+                                </form>
+                                <form method="post" action="{% url 'delete_admin' admin.id %}" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="border border-gray-300 px-4 py-2 text-center">No verified admins found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-            <table class="table-auto w-full border-collapse border border-gray-300">
-                <thead>
-                    <tr>
-                        <th class="border border-gray-300 px-4 py-2">Username</th>
-                        <th class="border border-gray-300 px-4 py-2">Email</th>
-                        <th class="border border-gray-300 px-4 py-2">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for admin in verified_admins %}
-                    <tr>
-                        <td class="border border-gray-300 px-4 py-2">{{ admin.username }}</td>
-                        <td class="border border-gray-300 px-4 py-2">{{ admin.email }}</td>
-                        <td class="border border-gray-300 px-4 py-2">
-                            <button onclick="toggleEditForm({{ admin.id }})" class="bg-blue-500 text-white px-4 py-2 rounded">Edit</button>
-                            <form id="edit-form-{{ admin.id }}" method="post" action="{% url 'edit_admin' admin.id %}" class="hidden mt-2">
-                                {% csrf_token %}
-                                <input type="text" name="username" value="{{ admin.username }}" class="border border-gray-300 px-4 py-2 rounded w-full mb-2">
-                                <input type="email" name="email" value="{{ admin.email }}" class="border border-gray-300 px-4 py-2 rounded w-full mb-2">
-                                <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">Save</button>
-                            </form>
-                            <form method="post" action="{% url 'delete_admin' admin.id %}" class="inline">
-                                {% csrf_token %}
-                                <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        </div>
+
+        <!-- Pending Admins Tab -->
+        <div id="pendingAdmins" class="tab-content hidden">
+            <div class="bg-white shadow-lg rounded-xl p-6 hover:shadow-xl transition duration-300">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-user-clock mr-2 text-yellow-600"></i>Pending Admins
+                    </h2>
+                    <span class="bg-yellow-100 text-yellow-800 text-sm font-medium px-3 py-1 rounded-full">
+                        {{ pending_admins|length }} Pending
+                    </span>
+                </div>
+                <table class="table-auto w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2">Username</th>
+                            <th class="border border-gray-300 px-4 py-2">Email</th>
+                            <th class="border border-gray-300 px-4 py-2">Registered</th>
+                            <th class="border border-gray-300 px-4 py-2">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admin in pending_admins %}
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2">{{ admin.username }}</td>
+                            <td class="border border-gray-300 px-4 py-2">{{ admin.email }}</td>
+                            <td class="border border-gray-300 px-4 py-2">{{ admin.date_joined|date:"M d, Y" }}</td>
+                            <td class="border border-gray-300 px-4 py-2">
+                                <form method="post" action="{% url 'approve_admin' admin.id %}" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                        <i class="fas fa-check mr-2"></i>Approve
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'delete_admin' admin.id %}" class="inline ml-2">
+                                    {% csrf_token %}
+                                    <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                                        <i class="fas fa-times mr-2"></i>Reject
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="border border-gray-300 px-4 py-2 text-center">No pending admins to approve</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Verification Requests Tab -->
+        <div id="verificationRequests" class="tab-content hidden">
+            <div class="bg-white shadow-lg rounded-xl p-6 hover:shadow-xl transition duration-300">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">
+                        <i class="fas fa-user-shield mr-2 text-purple-600"></i>Verification Requests
+                    </h2>
+                    <span class="bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1 rounded-full">
+                        {{ verification_requests|length }} Requests
+                    </span>
+                </div>
+                <table class="table-auto w-full border-collapse border border-gray-300">
+                    <thead>
+                        <tr>
+                            <th class="border border-gray-300 px-4 py-2">Username</th>
+                            <th class="border border-gray-300 px-4 py-2">Email</th>
+                            <th class="border border-gray-300 px-4 py-2">Requested</th>
+                            <th class="border border-gray-300 px-4 py-2">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for admin in verification_requests %}
+                        <tr>
+                            <td class="border border-gray-300 px-4 py-2">{{ admin.username }}</td>
+                            <td class="border border-gray-300 px-4 py-2">{{ admin.email }}</td>
+                            <td class="border border-gray-300 px-4 py-2">{{ admin.last_login|date:"M d, Y" }}</td>
+                            <td class="border border-gray-300 px-4 py-2">
+                                <form method="post" action="{% url 'verify_admin' admin.id %}" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                        <i class="fas fa-check-circle mr-2"></i>Verify
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'delete_admin' admin.id %}" class="inline ml-2">
+                                    {% csrf_token %}
+                                    <button type="submit" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                                        <i class="fas fa-ban mr-2"></i>Reject
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="border border-gray-300 px-4 py-2 text-center">No verification requests pending</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -199,6 +318,37 @@
         const form = document.getElementById(`edit-form-${adminId}`);
         form.classList.toggle('hidden');
     }
+    
+    // Tab switching functionality
+    function changeTab(tabName) {
+        // Hide all tab content
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.add('hidden');
+        });
+        
+        // Remove active styling from all tabs
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+            button.classList.add('text-gray-500');
+        });
+        
+        // Show selected tab content
+        if (tabName === 'verified') {
+            document.getElementById('verifiedAdmins').classList.remove('hidden');
+            document.getElementById('verifiedTab').classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            document.getElementById('verifiedTab').classList.remove('text-gray-500');
+        } else if (tabName === 'pending') {
+            document.getElementById('pendingAdmins').classList.remove('hidden');
+            document.getElementById('pendingTab').classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            document.getElementById('pendingTab').classList.remove('text-gray-500');
+        } else if (tabName === 'verification') {
+            document.getElementById('verificationRequests').classList.remove('hidden');
+            document.getElementById('verificationTab').classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            document.getElementById('verificationTab').classList.remove('text-gray-500');
+        }
+    }
+    
+    // Form submission handler for admin forms
     document.getElementById('add-admin-form').addEventListener('submit', function () {
         const submitButton = document.getElementById('submit-button');
         const buttonText = document.getElementById('button-text');
