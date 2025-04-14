@@ -169,6 +169,8 @@ def user_login(request):
                 return redirect('admin_dashboard')
             elif user.role == 'warehouse_manager':
                 return redirect('warehouse_dashboard')
+            elif user.role == 'staff':
+                return redirect('staff_dashboard')  # Add redirect for staff role
             elif user.role == 'customer':
                 return redirect('order_list')
             else:
