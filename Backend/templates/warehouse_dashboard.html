@@ -20,6 +20,11 @@
             <i class="fas fa-clipboard-list me-2"></i> Orders
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'warehouse_orders' %}">
+            <i class="fas fa-truck me-2"></i> Deliveries
+        </a>
+    </li>
 </ul>
 {% endblock %}
 
@@ -150,10 +155,20 @@
                                 <span class="badge bg-{% if order.status == 'pending' %}warning{% elif order.status == 'processing' %}info{% elif order.status == 'shipped' %}primary{% elif order.status == 'delivered' %}success{% else %}secondary{% endif %}">
                                     {{ order.status|title }}
                                 </span>
+                                {% if order.assigned_staff %}
+                                <small class="d-block text-muted">Assigned to: {{ order.assigned_staff.username }}</small>
+                                {% endif %}
                             </td>
                             <td>{{ order.created_at|date:"M d, Y" }}</td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#updateOrderStatusModal{{ order.id }}">Update Status</button>
+                                {% if not order.assigned_staff and order.status == 'pending' %}
+                                <button class="btn btn-sm btn-success me-1" data-bs-toggle="modal" data-bs-target="#assignStaffModal{{ order.id }}">
+                                    <i class="fas fa-user-plus"></i> Assign
+                                </button>
+                                {% endif %}
+                                <button class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal" data-bs-target="#updateOrderStatusModal{{ order.id }}">
+                                    <i class="fas fa-edit"></i> Status
+                                </button>
                             </td>
                         </tr>
                         {% empty %}
@@ -220,6 +235,36 @@
                         </select>
                     </div>
                     <button type="submit" class="btn btn-primary">Update Status</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Staff Modal -->
+<div class="modal fade" id="assignStaffModal{{ order.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Order {{ order.order_number }} to Staff</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'assign_delivery' order.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="warehouse_dashboard">
+                    <div class="mb-3">
+                        <label for="staffMember{{ order.id }}" class="form-label">Select Staff Member</label>
+                        <select class="form-select" id="staffMember{{ order.id }}" name="staff_id" required>
+                            <option value="">-- Select Staff Member --</option>
+                            {% for staff in staff_members %}
+                            <option value="{{ staff.id }}">{{ staff.get_full_name|default:staff.username }}</option>
+                            {% empty %}
+                            <option value="" disabled>No staff members available</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-success">Assign Delivery</button>
                 </form>
             </div>
         </div>

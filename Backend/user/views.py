@@ -271,7 +271,7 @@ def admin_dashboard(request):
 def create_warehouse(request):
     if request.user.role != 'admin':
         return HttpResponseForbidden("You are not authorized to perform this action")
-        
+    
     if request.method == 'POST':
         warehouse_name = request.POST.get('warehouse_name')
         location = request.POST.get('location')
@@ -284,13 +284,11 @@ def create_warehouse(request):
                 location=location,
                 handles_expiring=handles_expiring
             )
-            
             # Log the activity
             ActivityLog.objects.create(
                 admin=request.user,
                 action=f"Created new warehouse: {warehouse_name}"
             )
-            
             messages.success(request, f'Warehouse "{warehouse_name}" created successfully!')
             return redirect('admin_dashboard')
         except Exception as e:
@@ -309,7 +307,7 @@ def manage_warehouses(request):
     # Get ALL warehouse managers regardless of assignment status
     available_managers = CustomUser.objects.filter(
         role='warehouse_manager',
-        is_active=True
+        is_active=True,
     )
     
     # Calculate statistics for the dashboard
@@ -352,11 +350,17 @@ def warehouse_dashboard(request):
         id__in=order_ids
     ).order_by('-created_at')[:5]
     
+    # Get staff members for assignment
+    staff_members = CustomUser.objects.filter(role='staff', is_active=True)
+    
     # Get count of orders by status
     pending_count = Order.objects.filter(id__in=order_ids, status='pending').count()
     processing_count = Order.objects.filter(id__in=order_ids, status='processing').count()
     shipped_count = Order.objects.filter(id__in=order_ids, status='shipped').count()
     delivered_count = Order.objects.filter(id__in=order_ids, status='delivered').count()
+    
+    # Get all warehouses
+    warehouses = Warehouse.objects.all()
     
     # Get unread notifications if the table exists
     try:
@@ -367,6 +371,9 @@ def warehouse_dashboard(request):
         unread_notifications = []
         notification_count = 0
     
+    # Get low stock products
+    low_stock_products = Product.objects.filter(stock__lte=F('min_stock'))
+    
     context = {
         'warehouse': warehouse,
         'recent_orders': recent_orders,
@@ -376,7 +383,11 @@ def warehouse_dashboard(request):
         'delivered_count': delivered_count,
         'total_orders': len(order_ids),
         'unread_notifications': unread_notifications,
-        'notification_count': notification_count
+        'notification_count': notification_count,
+        'staff_members': staff_members,
+        'warehouses': warehouses,
+        'low_stock_products': low_stock_products,
+        'user_form': CustomUserCreationForm()
     }
     
     return render(request, 'warehouse_dashboard.html', context)
@@ -389,6 +400,7 @@ def warehouse_orders(request):
     
     # Get the warehouse managed by this user
     warehouse = getattr(request.user, 'managed_warehouse', None)
+    
     if not warehouse:
         messages.error(request, "You are not assigned to any warehouse yet")
         return redirect('warehouse_dashboard')
@@ -489,7 +501,6 @@ def orders(request):
         'shipped_orders': all_orders.filter(status='shipped').count(),
         'cancelled_orders': all_orders.filter(status='cancelled').count(),
     }
-    
     return render(request, 'orders.html', context)
 
 @login_required
@@ -513,7 +524,6 @@ def update_order_status(request, order_id):
             messages.success(request, f"Order status successfully updated to {status}")
         except Exception as e:
             messages.error(request, f"Error updating order status: {str(e)}")
-        
         return redirect('orders')
     return redirect('orders')
 
@@ -579,7 +589,6 @@ def order_list(request):
     elif request.user.role == 'warehouse_manager':
         orders = Order.objects.all()
         return render(request, 'order_list.html', {'orders': orders})
-    
     else:
         return HttpResponseForbidden("You are not authorized to view this page")
 
@@ -634,7 +643,7 @@ def product_management(request):
                 product.name = request.POST.get('edit_name', '').strip()
                 if not product.name:
                     raise ValueError("Product name cannot be empty")
-                    
+                
                 price = request.POST.get('edit_price', '')
                 if price:
                     product.price = float(price)
@@ -662,7 +671,6 @@ def product_management(request):
                                 raise ValueError("Expiry date is required for this category")
                         else:
                             product.expires = None
-                            
                     except Category.DoesNotExist:
                         print(f"DEBUG: Category with ID {category_id} doesn't exist")
                 
@@ -691,7 +699,6 @@ def product_management(request):
                 
                 messages.success(request, f"Product '{product.name}' was updated successfully!")
                 return redirect('product_management')
-                
             except Product.DoesNotExist:
                 messages.error(request, "Product not found.")
                 return redirect('product_management')
@@ -767,7 +774,6 @@ def product_management(request):
                                     location="Default Location",
                                     handles_expiring=False
                                 )
-                        
                         product.warehouse = warehouse
                     
                     product.save()
@@ -905,7 +911,7 @@ def add_category(request):
             admin=request.user,
             action=f"Added new category: {category.name} (Expires: {expires})"
         )
-
+        
         return JsonResponse({
             'success': True,
             'category': {
@@ -960,7 +966,7 @@ def resend_verification_email(request):
         user = request.user
         user.generate_verification_token()  # Generate a new token
         user.save()
-
+        
         # Generate verification link
         verification_link = request.build_absolute_uri(
             reverse('verify_email', args=[user.verification_token])
@@ -976,7 +982,7 @@ def resend_verification_email(request):
         messages.success(request, "Verification email has been resent.")
     else:
         messages.info(request, "Your email is already verified.")
-
+    
     return redirect('verify_pending')
 
 @login_required
@@ -1030,7 +1036,7 @@ def super_admin_dashboard(request):
     
     # Get recent activities
     recent_activities = ActivityLog.objects.order_by('-timestamp')[:10]
-
+    
     context = {
         'admins': admins,
         'verified_admins': verified_admins,
@@ -1096,7 +1102,7 @@ def add_admin(request):
                     {verification_link}
                     
                     Thank you,
-                    Super Admin
+                    Super Admins
                     """,
                     'your_email@example.com',  # Replace with your email
                     [user.email],
@@ -1539,7 +1545,7 @@ def assign_warehouse_manager(request, warehouse_id):
 def warehouse_products(request, warehouse_id):
     if request.user.role not in ['admin', 'warehouse_manager']:
         return HttpResponseForbidden("You are not authorized to view this page")
-        
+    
     warehouse = get_object_or_404(Warehouse, id=warehouse_id)
     products = Product.objects.filter(warehouse=warehouse)
     
@@ -1547,6 +1553,7 @@ def warehouse_products(request, warehouse_id):
         'warehouse': warehouse,
         'products': products
     }
+    
     return render(request, 'warehouse_products.html', context)
 
 def forgot_password(request):
@@ -1713,9 +1720,9 @@ def delete_warehouse(request, warehouse_id):
         return HttpResponseForbidden("You are not authorized to perform this action")
     
     warehouse = get_object_or_404(Warehouse, id=warehouse_id)
+    warehouse_name = warehouse.name
     
     if request.method == 'POST':
-        warehouse_name = warehouse.name
         try:
             # Check if products are associated with this warehouse
             associated_products = Product.objects.filter(warehouse=warehouse)
@@ -1754,7 +1761,7 @@ def delete_warehouse(request, warehouse_id):
                 
                 messages.info(
                     request, 
-                    f"{product_count} products from warehouse '{warehouse_name}' have been reassigned to '{default_warehouse.name}'."
+                    f"{product_count} products from warehouse '{warehouse_name}' have been reassigned to '{default_warehouse.name}'.",
                 )
             
             # Now delete the warehouse
@@ -1767,7 +1774,6 @@ def delete_warehouse(request, warehouse_id):
             )
             
             messages.success(request, f'Warehouse "{warehouse_name}" deleted successfully!')
-            
         except Exception as e:
             print(f"ERROR DELETING WAREHOUSE: {str(e)}")
             messages.error(request, f'Error deleting warehouse: {str(e)}')
@@ -1836,7 +1842,7 @@ def delete_category(request, category_id):
             if Product.objects.filter(category=category).exists():
                 messages.error(request, f'Cannot delete category "{category_name}" because it has products associated with it.')
                 return redirect('product_management')
-                
+            
             category.delete()
             
             # Log the activity
@@ -1855,6 +1861,7 @@ def manage_categories(request):
     """View function to list all categories"""
     if request.user.role != 'admin':
         return HttpResponseForbidden("You are not authorized to view this page")
+    
     categories = Category.objects.all()
     return render(request, 'manage_categories.html', {'categories': categories})
 
@@ -1911,7 +1918,7 @@ def add_to_cart(request):
         # Now update the quantity
         cart_item.quantity = new_total_quantity
         cart_item.save()
-        
+            
         # Calculate new cart totals
         total_items = cart.total_items
         total_price = cart.total_price
@@ -1961,7 +1968,7 @@ def update_cart_item(request):
                     'success': True,
                     'message': message,
                     'redirect': redirect_url,
-                    'cart_total_items': total_items, 
+                    'cart_total_items': total_items,
                     'cart_total_price': total_price,
                     'item_subtotal': 0
                 })
@@ -2044,7 +2051,7 @@ def remove_from_cart(request):
         response_data = {
             'success': True,
             'message': f'{product_name} removed from your cart',
-            'cart_total_items': total_items,    
+            'cart_total_items': total_items,
             'cart_total_price': total_price
         }
         
@@ -2223,7 +2230,6 @@ def order_list(request):
     elif request.user.role == 'warehouse_manager':
         orders = Order.objects.all()
         return render(request, 'order_list.html', {'orders': orders})
-    
     else:
         return HttpResponseForbidden("You are not authorized to view this page")
 
@@ -2287,13 +2293,11 @@ def checkout(request):
                 try:
                     # Update order with payment information
                     order.payment_method = payment_method
-                    
                     if khalti_token:
                         order.payment_status = 'paid'
                         order.payment_details = khalti_token
                     else:
                         order.payment_status = 'pending'
-                    
                     order.save()
                 except Exception as e:
                     print(f"WARNING: Could not save payment details to order: {e}")
@@ -2481,7 +2485,6 @@ def update_stock(request, product_id):
                 admin=request.user,
                 action=f"Updated stock for {product.name} by {stock_change} units (New stock: {product.stock})"
             )
-            
             messages.success(request, f"Stock updated successfully for {product.name}")
         except Exception as e:
             messages.error(request, f"Error updating stock: {str(e)}")
@@ -2537,7 +2540,7 @@ def verify_khalti_payment(request):
         
         if not token or not amount:
             return JsonResponse({
-                'success': False, 
+                'success': False,
                 'message': 'Invalid payment data'
             }, status=400)
         
@@ -2582,7 +2585,7 @@ def verify_khalti_payment(request):
                 'message': error_data.get('detail', 'Payment verification failed'),
                 'error': error_data
             })
-            
+        
     except json.JSONDecodeError:
         return JsonResponse({
             'success': False, 
@@ -2678,7 +2681,6 @@ def staff_process_order(request, order_id):
             messages.success(request, f"Order status successfully updated to {status}")
         except Exception as e:
             messages.error(request, f"Error updating order status: {str(e)}")
-        
         return redirect('staff_order_management')
     
     context = {

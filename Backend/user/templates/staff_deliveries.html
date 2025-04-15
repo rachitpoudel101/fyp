@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Deliveries - Staff Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse">
+            <div class="position-sticky pt-3">
+                <div class="text-center mb-4">
+                    <img src="{% static 'img/logo-icon.png' %}" alt="Logo" width="60" class="mb-2">
+                    <h6 class="text-white">Staff Panel</h6>
+                </div>
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{% url 'staff_dashboard' %}">
+                            <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{% url 'staff_order_management' %}">
+                            <i class="fas fa-shopping-cart me-2"></i> Orders
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active text-white" href="{% url 'staff_deliveries' %}">
+                            <i class="fas fa-truck me-2"></i> My Deliveries
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{% url 'staff_inventory_management' %}">
+                            <i class="fas fa-boxes me-2"></i> Inventory
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="{% url 'staff_customer_management' %}">
+                            <i class="fas fa-users me-2"></i> Customers
+                        </a>
+                    </li>
+                    <li class="nav-item mt-5">
+                        <a class="nav-link text-white" href="{% url 'user_logout' %}">
+                            <i class="fas fa-sign-out-alt me-2"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main content -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">My Assigned Deliveries</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user me-1"></i> {{ request.user.username }}
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                            <li><a class="dropdown-item" href="{% url 'profile_view' %}">My Profile</a></li>
+                            <li><a class="dropdown-item" href="{% url 'user_logout' %}">Logout</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            {% if messages %}
+            <div class="messages">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Filter Controls -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" action="{% url 'staff_deliveries' %}" class="row g-3 align-items-center">
+                        <div class="col-md-6">
+                            <label for="statusFilter" class="form-label">Filter by Status</label>
+                            <select class="form-select" id="statusFilter" name="status" onchange="this.form.submit()">
+                                <option value="all" {% if current_status == 'all' %}selected{% endif %}>All Statuses</option>
+                                <option value="processing" {% if current_status == 'processing' %}selected{% endif %}>Processing</option>
+                                <option value="shipped" {% if current_status == 'shipped' %}selected{% endif %}>Shipped</option>
+                                <option value="delivered" {% if current_status == 'delivered' %}selected{% endif %}>Delivered</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Delivery List -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Assigned Deliveries</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Customer</th>
+                                    <th>Date Assigned</th>
+                                    <th>Address</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td><a href="{% url 'staff_process_order' order.id %}" class="text-decoration-none">{{ order.order_number }}</a></td>
+                                    <td>
+                                        {{ order.customer.get_full_name|default:order.customer.username }}
+                                        <small class="d-block text-muted">{{ order.customer.email }}</small>
+                                    </td>
+                                    <td>{{ order.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if order.shipping_address %}
+                                            {{ order.shipping_address }}, {{ order.shipping_city }}
+                                        {% else %}
+                                            <span class="text-muted">No address provided</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if order.status == 'processing' %}
+                                        <span class="badge bg-info">Processing</span>
+                                        {% elif order.status == 'shipped' %}
+                                        <span class="badge bg-primary">Shipped</span>
+                                        {% elif order.status == 'delivered' %}
+                                        <span class="badge bg-success">Delivered</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ order.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{% url 'staff_process_order' order.id %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#updateDeliveryModal{{ order.id }}">
+                                                <i class="fas fa-truck"></i> Update
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Update Delivery Modal -->
+                                        <div class="modal fade" id="updateDeliveryModal{{ order.id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Update Delivery Status</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <form action="{% url 'update_delivery_status' order.id %}" method="post">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="next" value="staff_deliveries">
+                                                            <div class="mb-3">
+                                                                <p><strong>Order:</strong> {{ order.order_number }}</p>
+                                                                <p><strong>Customer:</strong> {{ order.customer.get_full_name|default:order.customer.username }}</p>
+                                                                <p><strong>Current Status:</strong> {{ order.status|title }}</p>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label for="status{{ order.id }}" class="form-label">Update Status:</label>
+                                                                <select class="form-select" id="status{{ order.id }}" name="status" required>
+                                                                    <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
+                                                                    <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                                                                    <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                                                </select>
+                                                            </div>
+                                                            <button type="submit" class="btn btn-primary">Update Status</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="fas fa-truck fa-3x mb-3"></i>
+                                            <p>No deliveries assigned to you yet</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add any JavaScript needed for the delivery page
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Staff deliveries page loaded');
+    });
+</script>
+{% endblock %}
