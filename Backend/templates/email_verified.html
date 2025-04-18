@@ -5,14 +5,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Verified</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="{% static 'css/email_verified.css' %}" rel="stylesheet">
 </head>
-<body>
-    <div class="container">
-        <h1 class="mb-4">Email Verified Successfully</h1>
-        <p class="mb-4">Your email has been verified. You can now log in to your account.</p>
-        <a href="{% url 'login' %}" class="btn btn-primary">Go to Login</a>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="p-6 sm:p-8">
+            <div class="flex justify-center mb-6">
+                <div class="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+            </div>
+            <h1 class="text-2xl font-semibold text-center text-gray-900 mb-2">Email Verified Successfully</h1>
+            <p class="text-center text-gray-600 mb-6">Your email has been verified. You can now log in to your account.</p>
+            <div class="flex justify-center">
+                <a href="{% url 'login' %}" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-sm transition-colors duration-200">
+                    Go to Login
+                </a>
+            </div>
+        </div>
     </div>
     <script src="{% static 'js/email_verified.js' %}"></script>
 </body>

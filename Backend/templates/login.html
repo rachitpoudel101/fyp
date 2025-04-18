@@ -163,71 +163,7 @@
         }
     </style>
     
-    <script>
-        // Enhanced auto-hide functionality to handle various error types
-        document.addEventListener('DOMContentLoaded', function() {
-            const errorNotification = document.getElementById('error-notification');
-            
-            // Check if there are any errors to display
-            const hasErrors = {% if form.non_field_errors or email_verification_error %}true{% else %}false{% endif %};
-            const isEmailVerificationError = {% if email_verification_error %}true{% else %}false{% endif %};
-            
-            if (hasErrors) {
-                // Display the error notification
-                errorNotification.style.display = 'flex';
-                
-                // Set specific error message if needed
-                const errorMessage = document.getElementById('error-message');
-                if (isEmailVerificationError && errorMessage) {
-                    errorMessage.textContent = 'Your email has not been verified. Please check your email and verify your account.';
-                }
-                
-                // Auto-hide after 5 seconds
-                setTimeout(() => {
-                    errorNotification.style.opacity = '0.9';
-                    errorNotification.style.transition = 'opacity 0.5s ease-out';
-                }, 5000);
-                
-                setTimeout(() => {
-                    errorNotification.style.display = 'none';
-                }, 5500);
-            }
-            
-            // Track form submissions
-            const loginForm = document.querySelector('form');
-            if (loginForm) {
-                loginForm.addEventListener('submit', function() {
-                    localStorage.setItem('lastSubmitTime', Date.now().toString());
-                });
-            }
-            
-            // Show error notification on page load if it has errors
-            if (errorNotification && hasErrors) {
-                errorNotification.style.display = 'flex';
-            }
-            
-            // Flip animation code
-            const signupLink = document.querySelector('a[href="{% url 'signup' %}"]');
-            
-            signupLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                document.body.classList.add('animating');
-                
-                // Target only the login form container instead of the whole card
-                const container = document.querySelector('.login-container');
-                container.classList.add('card-flip');
-                
-                // Trigger animation with slight delay to ensure proper rendering
-                setTimeout(() => {
-                    container.classList.add('flipped');
-                }, 50);
-                
-                // Redirect after animation completes
-                setTimeout(() => {
-                    window.location.href = "{% url 'signup' %}";
-                }, 700);
-            });
-        });
-    </script>
+    <!-- Load the external JavaScript file -->
+    <script src="{% static 'js/login.js' %}"></script>
 </body>
 </html>

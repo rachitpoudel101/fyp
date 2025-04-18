@@ -19,15 +19,17 @@
             <!-- Sidebar -->
             <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
-                    <div class="d-flex align-items-center mb-4 px-3">
-                        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-6O6lZm6FwR4Urq0BnOCGuG59jdux31.png" alt="Marline" width="40" height="40">
-                        <span class="fs-4 ms-2 text-white">Rachit</span>
+                    <div class="d-flex align-items-center mb-4 px-3 sidebar-brand">
+                        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-6O6lZm6FwR4Urq0BnOCGuG59jdux31.png" alt="Marline" width="40" height="40" class="brand-logo">
+                        <span class="fs-4 ms-2 text-white fw-bold">Rachit</span>
                     </div>
                     
-                    {% block sidebar_menu %}{% endblock %}
+                    <div class="sidebar-menu">
+                        {% block sidebar_menu %}{% endblock %}
+                    </div>
                     
                     <div class="mt-auto px-3">
-                        <a href="{% url 'logout' %}" class="nav-link text-white">
+                        <a href="{% url 'logout' %}" class="nav-link text-white logout-btn">
                             <i class="fas fa-sign-out-alt me-2"></i> Log Out
                         </a>
                     </div>
@@ -36,13 +38,55 @@
 
             <!-- Main content -->
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
-                {% block content %}{% endblock %}
+                <!-- Top Navigation Bar -->
+                <div class="top-navbar py-2 mb-4 border-bottom d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <button class="btn d-md-none" id="sidebarToggle">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <h4 class="mb-0 ms-2">{% block page_title %}Dashboard{% endblock %}</h4>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <div class="dropdown me-3">
+                            <a href="#" class="position-relative text-decoration-none" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-bell fs-5"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    3
+                                </span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown">
+                                <li><a class="dropdown-item" href="#">Notification 1</a></li>
+                                <li><a class="dropdown-item" href="#">Notification 2</a></li>
+                                <li><a class="dropdown-item" href="#">Notification 3</a></li>
+                            </ul>
+                        </div>
+                        <div class="user-profile d-flex align-items-center">
+                            <img src="https://via.placeholder.com/40" alt="User" class="rounded-circle me-2" width="40" height="40">
+                            <span class="d-none d-md-inline">Welcome back!</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-wrapper p-3 bg-white rounded shadow-sm">
+                    {% block content %}{% endblock %}
+                </div>
             </main>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Toggle sidebar on mobile
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function() {
+                    document.querySelector('.sidebar').classList.toggle('show');
+                });
+            }
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

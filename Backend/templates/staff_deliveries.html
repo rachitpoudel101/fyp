@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Deliveries</title>
+    <link href="{% static 'css/dashboard.css' %}" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>My Deliveries</h1>
+        
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="status-filters">
+            <a href="{% url 'staff_deliveries' %}?status=all" class="filter-btn {% if current_status == 'all' %}active{% endif %}">All</a>
+            <a href="{% url 'staff_deliveries' %}?status=pending" class="filter-btn {% if current_status == 'pending' %}active{% endif %}">Pending ({{ pending_count }})</a>
+            <a href="{% url 'staff_deliveries' %}?status=processing" class="filter-btn {% if current_status == 'processing' %}active{% endif %}">Processing ({{ processing_count }})</a>
+            <a href="{% url 'staff_deliveries' %}?status=shipped" class="filter-btn {% if current_status == 'shipped' %}active{% endif %}">Shipped ({{ shipped_count }})</a>
+            <a href="{% url 'staff_deliveries' %}?status=delivered" class="filter-btn {% if current_status == 'delivered' %}active{% endif %}">Delivered ({{ delivered_count }})</a>
+        </div>
+        
+        {% if assigned_deliveries %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Customer</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for delivery in assigned_deliveries %}
+                <tr>
+                    <td>{{ delivery.order_number }}</td>
+                    <td>{{ delivery.customer.username }}</td>
+                    <td>{{ delivery.created_at|date:"M d, Y" }}</td>
+                    <td>
+                        <span class="status-badge status-{{ delivery.status }}">
+                            {{ delivery.status|title }}
+                        </span>
+                    </td>
+                    <td>${{ delivery.total_amount }}</td>
+                    <td>
+                        <form method="post" action="{% url 'update_delivery_status' delivery.id %}" class="inline-form">
+                            {% csrf_token %}
+                            <select name="status">
+                                <option value="pending" {% if delivery.status == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="processing" {% if delivery.status == 'processing' %}selected{% endif %}>Processing</option>
+                                <option value="shipped" {% if delivery.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                                <option value="delivered" {% if delivery.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                            </select>
+                            <button type="submit" class="btn btn-sm">Update</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <p>No deliveries assigned to you with the selected status.</p>
+        </div>
+        {% endif %}
+        
+        <div class="back-link">
+            <a href="{% url 'staff_dashboard' %}" class="btn">Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

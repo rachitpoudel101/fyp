@@ -1,21 +1,93 @@
+/* Sidebar styling */
 .sidebar {
-    background-color: #1e1e1e;
+    background: linear-gradient(135deg, #4b6cb7, #182848);
     min-height: 100vh;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
 }
-.sidebar .nav-link {
-    color: white;
-    padding: 0.5rem 1rem;
-    margin: 0.2rem 0;
+
+.sidebar-brand {
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 15px;
 }
-.sidebar .nav-link:hover {
+
+.brand-logo {
+    filter: drop-shadow(0 0 4px rgba(255,255,255,0.2));
+}
+
+.sidebar-menu a {
+    color: rgba(255,255,255,0.8);
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar-menu a:hover, .sidebar-menu a.active {
     background-color: rgba(255,255,255,0.1);
+    color: white;
+    transform: translateX(5px);
 }
+
+.sidebar-menu i {
+    margin-right: 10px;
+    width: 20px;
+    text-align: center;
+}
+
+.logout-btn {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding-top: 15px;
+    margin-top: 20px;
+    transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+    color: #ff6b6b !important;
+}
+
+/* Main content styling */
 .main-content {
     background-color: #f8f9fa;
+    min-height: 100vh;
 }
-.metric-card {
-    background: white;
-    border-radius: 10px;
-    padding: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+.content-wrapper {
+    transition: all 0.3s ease;
+}
+
+.top-navbar {
+    background-color: white;
+}
+
+/* User profile and notifications */
+.user-profile {
+    cursor: pointer;
+}
+
+.user-profile img {
+    border: 2px solid #4b6cb7;
+    transition: all 0.2s ease;
+}
+
+.user-profile:hover img {
+    transform: scale(1.05);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -100%;
+        z-index: 1000;
+        width: 80%;
+        max-width: 300px;
+    }
+    
+    .sidebar.show {
+        left: 0;
+    }
 }

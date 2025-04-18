@@ -422,10 +422,14 @@ def warehouse_orders(request):
     # Order by most recent first
     orders = orders.order_by('-created_at')
     
+    # Get available staff members for assignment
+    staff_members = CustomUser.objects.filter(role='staff', is_active=True)
+    
     context = {
         'warehouse': warehouse,
         'orders': orders,
-        'current_status': status_filter or 'all'
+        'current_status': status_filter or 'all',
+        'staff_members': staff_members
     }
     
     return render(request, 'warehouse_orders.html', context)
@@ -2599,38 +2603,90 @@ def verify_khalti_payment(request):
 
 @login_required
 def staff_dashboard(request):
-    """Dashboard view for staff members"""
+    """
+    Dashboard view for staff members showing assigned orders, deliveries, and inventory status.
+    
+    This view displays:
+    - Recent assigned orders
+    - Pending deliveries
+    - Completed deliveries
+    - Low stock products
+    - Order statistics
+    """
     if request.user.role != 'staff':
         return HttpResponseForbidden("You are not authorized to view this page")
     
-    # Get the admin who created this staff member
-    created_by = request.user.created_by
+    try:
+        # Get the admin who created this staff member
+        created_by = request.user.created_by
+        
+        # Get staff's order data
+        staff_orders = get_staff_order_data(request.user)
+        
+        # Get low stock products that need attention
+        low_stock_products = get_low_stock_products()
+        
+        context = {
+            'recent_assigned_orders': staff_orders['recent_orders'],
+            'pending_deliveries': staff_orders['pending_deliveries'],
+            'completed_deliveries': staff_orders['completed_deliveries'],
+            'low_stock_products': low_stock_products,
+            'total_assigned_orders': staff_orders['total_count'],
+            'pending_deliveries_count': staff_orders['pending_count'],
+            'completed_deliveries_count': staff_orders['completed_count'],
+            'created_by': created_by
+        }
+        
+        return render(request, 'staff_dashboard.html', context)
+        
+    except Exception as e:
+        messages.error(request, f"Error loading dashboard: {str(e)}")
+        return render(request, 'staff_dashboard.html', {'error': str(e)})
+
+
+def get_staff_order_data(staff_user):
+    """
+    Helper function to get order data for a staff member.
     
-    # Get recent orders for monitoring
-    recent_orders = Order.objects.all().order_by('-created_at')[:10]
+    Args:
+        staff_user: The staff user object
     
-    # Get low stock products that need attention
-    low_stock_products = Product.objects.filter(stock__lte=F('min_stock'))
+    Returns:
+        dict: Dictionary containing order data
+    """
+    # Get orders assigned to this staff member
+    assigned_orders = Order.objects.filter(assigned_to=staff_user).order_by('-created_at')
+    recent_orders = assigned_orders[:5]
     
-    # Get pending orders that need processing
-    pending_orders = Order.objects.filter(status='pending').count()
-    processing_orders = Order.objects.filter(status='processing').count()
+    # Get pending deliveries (orders in shipped status assigned to this staff)
+    pending_deliveries = assigned_orders.filter(status='shipped')
     
-    # Get statistics for the dashboard
-    total_products = Product.objects.count()
-    total_orders = Order.objects.count()
+    # Get recently completed deliveries
+    completed_deliveries = assigned_orders.filter(status='delivered').order_by('-created_at')[:5]
     
-    context = {
+    # Calculate order statistics
+    total_count = assigned_orders.count()
+    pending_count = pending_deliveries.count()
+    completed_count = assigned_orders.filter(status='delivered').count()
+    
+    return {
         'recent_orders': recent_orders,
-        'low_stock_products': low_stock_products,
-        'pending_orders': pending_orders,
-        'processing_orders': processing_orders,
-        'total_products': total_products,
-        'total_orders': total_orders,
-        'created_by': created_by
+        'pending_deliveries': pending_deliveries,
+        'completed_deliveries': completed_deliveries,
+        'total_count': total_count,
+        'pending_count': pending_count,
+        'completed_count': completed_count
     }
+
+
+def get_low_stock_products():
+    """
+    Helper function to get products with stock at or below minimum level.
     
-    return render(request, 'staff_dashboard.html', context)
+    Returns:
+        QuerySet: Products with low stock
+    """
+    return Product.objects.filter(stock__lte=F('min_stock'))
 
 @login_required
 def staff_order_management(request):
@@ -2802,3 +2858,108 @@ def staff_view_customer(request, customer_id):
     }
     
     return render(request, 'staff_customer_detail.html', context)
+
+@login_required
+def staff_deliveries(request):
+    """View for staff to manage assigned deliveries"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Filter by status if provided
+    status_filter = request.GET.get('status', '')
+    
+    # Get all orders assigned to this staff
+    assigned_deliveries = Order.objects.filter(assigned_to=request.user)
+    
+    # Apply status filter if provided
+    if status_filter and status_filter != 'all':
+        assigned_deliveries = assigned_deliveries.filter(status=status_filter)
+    else:
+        # Default to show orders that need action (pending, processing, shipped)
+        assigned_deliveries = assigned_deliveries.filter(
+            status__in=['pending', 'processing', 'shipped']
+        )
+    
+    # Order by most recent first
+    assigned_deliveries = assigned_deliveries.order_by('-created_at')
+    
+    context = {
+        'assigned_deliveries': assigned_deliveries,
+        'assigned_deliveries_count': assigned_deliveries.count(),
+        'current_status': status_filter or 'active',
+        'pending_count': Order.objects.filter(assigned_to=request.user, status='pending').count(),
+        'processing_count': Order.objects.filter(assigned_to=request.user, status='processing').count(),
+        'shipped_count': Order.objects.filter(assigned_to=request.user, status='shipped').count(),
+        'delivered_count': Order.objects.filter(assigned_to=request.user, status='delivered').count()
+    }
+    
+    return render(request, 'staff_deliveries.html', context)
+
+@login_required
+def update_delivery_status(request, order_id):
+    """View for staff to update delivery status of an order"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    # Get order and check if it's assigned to this staff member
+    order = get_object_or_404(Order, id=order_id)
+    
+    # Make sure order is assigned to this staff member
+    if order.assigned_to != request.user:
+        return HttpResponseForbidden("You are not assigned to handle this order")
+    
+    if request.method == "POST":
+        try:
+            status = request.POST.get('status')
+            old_status = order.status
+            order.status = status
+            order.save()    
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Staff updated delivery status for order {order.order_number} from {old_status} to {status}"
+            )
+            
+            messages.success(request, f"Order status successfully updated to {status}")
+        except Exception as e:
+            messages.error(request, f"Error updating order status: {str(e)}")
+    
+    return redirect('staff_deliveries')
+
+@login_required
+def assign_staff_to_order(request, order_id):
+    """View for warehouse managers to assign orders to staff members"""
+    if request.user.role != 'warehouse_manager':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    order = get_object_or_404(Order, id=order_id)
+    
+    if request.method == "POST":
+        staff_id = request.POST.get('staff_id')
+        if staff_id:
+            staff = get_object_or_404(CustomUser, id=staff_id, role='staff')
+            
+            # Update the order with assigned staff
+            order.assigned_to = staff
+            order.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Assigned order #{order.order_number} to staff {staff.username}"
+            )
+            
+            messages.success(request, f"Order successfully assigned to {staff.username}")
+        else:
+            messages.error(request, "No staff member selected")
+        
+        return redirect('warehouse_orders')
+    
+    # Get available staff members
+    staff_members = CustomUser.objects.filter(role='staff', is_active=True)
+    
+    return render(request, 'assign_order.html', {
+        'order': order,
+        'staff_members': staff_members
+    })

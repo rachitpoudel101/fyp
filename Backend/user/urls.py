@@ -1,12 +1,25 @@
 from django.urls import path
 from . import views
-from .views import add_user
 
 urlpatterns = [
+    # Authentication URLs
+    path('login/', views.user_login, name='login'),
+    path('logout/', views.user_logout, name='user_logout'),
+    path('profile/', views.profile_view, name='profile_view'),
+    
+    # Staff panel URLs
+    path('staff/dashboard/', views.staff_dashboard, name='staff_dashboard'),
+    path('staff/orders/', views.staff_order_management, name='staff_order_management'),
+    path('staff/deliveries/', views.staff_deliveries, name='staff_deliveries'),
+    path('staff/inventory/', views.staff_inventory_management, name='staff_inventory_management'),
+    path('staff/customers/', views.staff_customer_management, name='staff_customer_management'),
+    path('staff/update-stock/<int:product_id>/', views.staff_update_stock, name='staff_update_stock'),
+    path('update-delivery/<int:order_id>/', views.update_delivery_status, name='update_delivery_status'),
+    
+    # Add other URL patterns that may already be in your file
     path('', views.landing_page, name='landing_page'),  # Add this line at the top
     # User authentication URLs
     path('signup/', views.signup, name='signup'),  # Signup URL
-    path('login/', views.user_login, name='login'),  # Login URL
     path('logout/', views.user_logout, name='logout'),  # Logout URL
 
     # Dashboard URLs
@@ -15,6 +28,7 @@ urlpatterns = [
     path('warehouse-dashboard/', views.warehouse_dashboard, name='warehouse_dashboard'),  # Warehouse dashboard
     path('super_admin_dashboard/', views.super_admin_dashboard, name='super_admin_dashboard'),  # Super Admin dashboard
     path('customer/dashboard/', views.customer_dashboard, name='customer_dashboard'),  # Customer dashboard
+    path('staff/dashboard/', views.staff_dashboard, name='staff_dashboard'),  # Staff dashboard
 
     # Inventory and orders management URLs
     path('inventory/', views.inventory, name='inventory'),  # Inventory management (Admin/Warehouse)
@@ -109,4 +123,32 @@ urlpatterns = [
 
     # Add the new Khalti payment verification URL
     path('verify-khalti-payment/', views.verify_khalti_payment, name='verify_khalti_payment'),
+
+    # Staff-related URLs
+    path('staff/orders/', views.staff_order_management, name='staff_order_management'),
+    path('staff/deliveries/', views.staff_deliveries, name='staff_deliveries'),
+    path('staff/inventory/', views.staff_inventory_management, name='staff_inventory_management'),
+    path('staff/customers/', views.staff_customer_management, name='staff_customer_management'),
+    path('staff/update-stock/<int:product_id>/', views.staff_update_stock, name='staff_update_stock'),
+    path('staff/update-delivery/<int:order_id>/', views.update_delivery_status, name='update_delivery_status'),
+
+    # Add this new URL pattern for assigning staff to orders
+    path('assign-staff-to-order/<int:order_id>/', views.assign_staff_to_order, name='assign_staff_to_order'),
+
+    # Make sure these existing URLs are properly configured
+    path('warehouse/orders/', views.warehouse_orders, name='warehouse_orders'),
+    path('update-delivery-status/<int:order_id>/', views.update_delivery_status, name='update_delivery_status'),
+
+    # Profile and account settings URLs
+    path('account-settings/', views.account_settings, name='account_settings'),
+    path('change-password/', views.change_password, name='change_password'),
+    path('super-admin-profile/', views.super_admin_profile, name='super_admin_profile'),
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('reset-password/<str:token>/', views.reset_password, name='reset_password'),
+    
+    # Product related URLs
+    path('get-category-details/<int:category_id>/', views.get_category_details, name='get_category_details'),
+    
+    # Notification URL
+    path('notifications/', views.view_notifications, name='view_notifications'),
 ]

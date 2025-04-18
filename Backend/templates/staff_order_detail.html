@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Process Order #{{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header pb-0 p-3">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="mb-0">Order #{{ order.order_number }}</h6>
+                        </div>
+                        <div class="col-md-6 d-flex justify-content-end">
+                            <a href="{% url 'staff_order_management' %}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-arrow-left me-1"></i> Back to Orders
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    <!-- Order Summary -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <p class="text-sm text-uppercase text-muted mb-1">Customer</p>
+                            <p class="text-sm font-weight-bold mb-0">{{ order.customer.username }}</p>
+                            <p class="text-sm mb-0">{{ order.customer.email }}</p>
+                            {% if order.customer.phone_number %}
+                            <p class="text-sm mb-0">{{ order.customer.phone_number }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4">
+                            <p class="text-sm text-uppercase text-muted mb-1">Order Information</p>
+                            <p class="text-sm mb-0">Date: {{ order.created_at|date:"M d, Y H:i" }}</p>
+                            <p class="text-sm mb-0">Status: 
+                                <span class="badge bg-{{ order.status|yesno:'success,warning,danger' }}">
+                                    {{ order.status|title }}
+                                </span>
+                            </p>
+                            <p class="text-sm mb-0">Payment: 
+                                <span class="badge bg-{{ order.payment_status|yesno:'success,warning,danger' }}">
+                                    {{ order.payment_status|default:"Pending"|title }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="text-sm text-uppercase text-muted mb-1">Shipping Address</p>
+                            {% if order.shipping_address %}
+                            <p class="text-sm mb-0">{{ order.shipping_address }}</p>
+                            <p class="text-sm mb-0">
+                                {{ order.shipping_city }}{% if order.shipping_state %}, {{ order.shipping_state }}{% endif %}
+                                {% if order.shipping_zip %} {{ order.shipping_zip }}{% endif %}
+                            </p>
+                            <p class="text-sm mb-0">{{ order.shipping_country|default:"" }}</p>
+                            {% else %}
+                            <p class="text-sm mb-0 text-muted">No shipping address provided</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Order Status Update -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card bg-light">
+                                <div class="card-body p-3">
+                                    <h6 class="mb-3">Update Order Status</h6>
+                                    <form action="{% url 'update_delivery_status' order.id %}" method="post" class="d-flex">
+                                        {% csrf_token %}
+                                        <select name="status" class="form-select me-2">
+                                            <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
+                                            <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
+                                            <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                                            <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                            <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                        </select>
+                                        <button type="submit" class="btn btn-primary">Update Status</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Items -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="mb-3">Order Items</h6>
+                            <div class="table-responsive">
+                                <table class="table align-items-center mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Product</th>
+                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Price</th>
+                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Quantity</th>
+                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Total</th>
+                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Warehouse</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in order_items %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex px-2 py-1">
+                                                    {% if item.product.image %}
+                                                    <div class="me-2">
+                                                        <img src="{{ item.product.image.url }}" class="avatar avatar-sm me-3" alt="{{ item.product.name }}">
+                                                    </div>
+                                                    {% endif %}
+                                                    <div class="d-flex flex-column justify-content-center">
+                                                        <h6 class="mb-0 text-sm">{{ item.product.name }}</h6>
+                                                        <p class="text-xs text-secondary mb-0">
+                                                            {% if item.product.category %}
+                                                            {{ item.product.category.name }}
+                                                            {% endif %}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <p class="text-xs font-weight-bold mb-0">${{ item.price }}</p>
+                                            </td>
+                                            <td>
+                                                <p class="text-xs font-weight-bold mb-0">{{ item.quantity }}</p>
+                                            </td>
+                                            <td>
+                                                <p class="text-xs font-weight-bold mb-0">${{ item.price|floatformat:2|multiply:item.quantity }}</p>
+                                            </td>
+                                            <td>
+                                                <p class="text-xs text-secondary mb-0">
+                                                    {% if item.product.warehouse %}
+                                                    {{ item.product.warehouse.name }}
+                                                    {% else %}
+                                                    Not assigned
+                                                    {% endif %}
+                                                </p>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="3" class="text-end">
+                                                <strong>Total:</strong>
+                                            </td>
+                                            <td colspan="2">
+                                                <strong>${{ order.total_amount }}</strong>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+```
+
+{% block extra_js %}
+<script>
+    // You might need a custom filter for multiplication
+    // For now, this is a placeholder
+    function multiply(a, b) {
+        return a * b;
+    }
+</script>
+{% endblock %}
