@@ -604,12 +604,17 @@ def user_statistics(request):
     # Get all users with their creators (admins)
     users = CustomUser.objects.select_related('created_by').all().order_by('role')
     
+    # Get users specifically created by the current admin
+    users_created_by_me = CustomUser.objects.filter(created_by=request.user).select_related('created_by')
+    
     # Get ALL warehouse managers and staff members regardless of created_by field
-    warehouse_managers = CustomUser.objects.filter(role='warehouse_manager')
-    staff_members = CustomUser.objects.filter(role='staff', created_by=request.user)
+    # Added select_related('created_by') to efficiently load the creator information
+    warehouse_managers = CustomUser.objects.filter(role='warehouse_manager').select_related('created_by')
+    staff_members = CustomUser.objects.filter(role='staff').select_related('created_by')
     
     context = {
         'users': users,
+        'users_created_by_me': users_created_by_me,
         'warehouse_managers': warehouse_managers,
         'staff_members': staff_members,
     }
