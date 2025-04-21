@@ -1005,19 +1005,20 @@ def add_user(request):
             try:
                 user = form.save(commit=False)
                 user.set_password(form.cleaned_data['password1'])
-                user.is_email_verified = False  # Mark email as not verified
-                user.generate_verification_token()  # Generate token
-                user.role = request.POST.get('role')  # Save the role
+                user.is_email_verified = False
+                user.generate_verification_token()
+                user.role = request.POST.get('role')
+                user.created_by = request.user  # ✅ FIXED: Track who created the user
                 user.save()
                 
-                # Optionally send a verification email
+                # Send verification email
                 verification_link = request.build_absolute_uri(
                     reverse('verify_email', args=[user.verification_token])
                 )
                 send_mail(
                     'Verify your email',
                     f'Click the link to verify your email: {verification_link}',
-                    'your_email@example.com',  # Replace with your email
+                    'your_email@example.com',
                     [user.email],
                 )
                 messages.success(request, "User has been successfully created.")
@@ -1077,9 +1078,10 @@ def add_admin(request):
                 user.role = 'admin'  # Ensure role is set to admin
                 user.is_email_verified = False
                 user.verification_token = get_random_string(length=32)
+                user.created_by = request.user  # Set the creator to the current super admin
                 
                 # Debug with more details
-                print(f"DEBUG: About to save admin - username={user.username}, email={user.email}, role={user.role}")
+                print(f"DEBUG: About to save admin - username={user.username}, email={user.email}, role={user.role}, created_by={user.created_by.username}")
                 
                 # Save the user
                 user.save()
@@ -1146,20 +1148,23 @@ def add_staff(request):
         if form.is_valid():
             try:
                 user = form.save(commit=False)
-                user.created_by = request.user  # Set the creator
+                user.created_by = request.user  # ✅ FIXED
                 user.is_email_verified = False
-                user.tags = request.POST.getlist('tags')  # Get tags as list
-                user.save()
-                
-                # Generate verification token
-                token = generate_verification_token()
-                user.verification_token = token
+                user.generate_verification_token()
                 user.save()
                 
                 # Send verification email
-                resend_verification_email(user, token)
+                verification_link = request.build_absolute_uri(
+                    reverse('verify_email', args=[user.verification_token])
+                )
+                send_mail(
+                    'Verify your email',
+                    f'Click the link to verify your email: {verification_link}',
+                    'your_email@example.com',
+                    [user.email],
+                )
                 
-                messages.success(request, 'Staff member added successfully. Please check your email to verify your account.')
+                messages.success(request, 'Staff member added successfully.')
                 return redirect('admin_dashboard')
             except Exception as e:
                 messages.error(request, f'Error adding staff member: {str(e)}')
@@ -1167,6 +1172,7 @@ def add_staff(request):
         form = StaffCreationForm()
     
     return render(request, 'add_staff.html', {'form': form})
+
 
 @login_required
 def add_warehouse_manager(request):
@@ -1178,20 +1184,23 @@ def add_warehouse_manager(request):
         if form.is_valid():
             try:
                 user = form.save(commit=False)
-                user.created_by = request.user  # Set the creator
+                user.created_by = request.user  # ✅ FIXED
                 user.is_email_verified = False
-                user.tags = request.POST.getlist('tags')  # Get tags as list
-                user.save()
-                
-                # Generate verification token
-                token = generate_verification_token()
-                user.verification_token = token
+                user.generate_verification_token()
                 user.save()
                 
                 # Send verification email
-                resend_verification_email(user, token)
+                verification_link = request.build_absolute_uri(
+                    reverse('verify_email', args=[user.verification_token])
+                )
+                send_mail(
+                    'Verify your email',
+                    f'Click the link to verify your email: {verification_link}',
+                    'your_email@example.com',
+                    [user.email],
+                )
                 
-                messages.success(request, 'Warehouse manager added successfully. Please check your email to verify your account.')
+                messages.success(request, 'Warehouse manager added successfully.')
                 return redirect('admin_dashboard')
             except Exception as e:
                 messages.error(request, f'Error adding warehouse manager: {str(e)}')
@@ -1199,6 +1208,7 @@ def add_warehouse_manager(request):
         form = WarehouseForm()
     
     return render(request, 'add_warehouse_manager.html', {'form': form})
+
 
 @login_required
 def approve_admin(request, admin_id):
@@ -1301,7 +1311,7 @@ def request_verification(request):
         # Check if we have a verification message from the admin
         verification_message = request.POST.get('verification_message', '')
         
-        # Set status to mark as needing approval
+        # Set status to mark as needing approvaltion (change to True)
         request.user.is_approved = False
         
         # We don't have verification_request_date field, so we won't use it
@@ -1356,8 +1366,8 @@ def request_verification_form(request):
     if request.user.role != 'admin' or request.user.is_verified:
         return HttpResponseForbidden("You cannot request verification.")
     
-    # Check if there's already a pending request
-    has_pending_request = request.user.is_approved == False
+    # Check if there's already a pending request - updated condition
+    has_pending_request = request.user.is_approved == True and not request.user.is_verified
     
     return render(request, 'request_verification.html', {
         'has_pending_request': has_pending_request
