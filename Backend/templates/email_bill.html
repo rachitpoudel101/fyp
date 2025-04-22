@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Email Invoice{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4>Email Invoice for Order #{{ order.order_number }}</h4>
+                </div>
+                <div class="card-body">
+                    <h5>Order Details:</h5>
+                    <table class="table table-bordered">
+                        <tr>
+                            <th>Order Number:</th>
+                            <td>{{ order.order_number }}</td>
+                        </tr>
+                        <tr>
+                            <th>Date:</th>
+                            <td>{{ order.created_at }}</td>
+                        </tr>
+                        <tr>
+                            <th>Customer:</th>
+                            <td>{{ order.customer.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>{{ order.status }}</td>
+                        </tr>
+                        <tr>
+                            <th>Total Amount:</th>
+                            <td>${{ order.total_amount }}</td>
+                        </tr>
+                    </table>
+
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="email">Email Address:</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ order.customer.email }}" required>
+                            <small class="form-text text-muted">
+                                The invoice will be sent to this email address.
+                            </small>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> Send Invoice
+                            </button>
+                            <a href="{% url 'order_detail' order.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

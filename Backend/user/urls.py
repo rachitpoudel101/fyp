@@ -151,4 +151,11 @@ urlpatterns = [
     
     # Notification URL
     path('notifications/', views.view_notifications, name='view_notifications'),
+    
+    # Billing export routes
+    path('export-billing/', views.export_billing, name='export_billing'),
+    path('export-billing/<int:order_id>/', views.export_billing, name='export_billing_order'),
+    
+    # Email bill route
+    path('email-bill/<int:order_id>/', views.email_bill, name='email_bill'),
 ]

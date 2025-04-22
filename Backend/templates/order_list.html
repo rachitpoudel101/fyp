@@ -37,6 +37,16 @@
                 <button class="inline-flex items-center px-3 py-2 bg-gray-100 text-sm text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
                     <i class="fas fa-filter mr-1.5"></i> Filter
                 </button>
+                <!-- Add Export Options -->
+                <div class="dropdown">
+                    <button class="btn btn-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-download"></i> Export All Orders
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                        <li><a class="dropdown-item" href="{% url 'export_billing' %}?type=pdf"><i class="fas fa-file-pdf"></i> Export as PDF</a></li>
+                        <li><a class="dropdown-item" href="{% url 'export_billing' %}?type=csv"><i class="fas fa-file-csv"></i> Export as CSV</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
 
@@ -331,7 +341,7 @@
                 const quantity = 1; // Default quantity
                 
                 // Send AJAX request to add to cart
-                fetch('{% url 'add_to_cart' %}', {
+                fetch('{% url add_to_cart %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -363,7 +373,7 @@
                 const productId = this.getAttribute('data-product-id');
                 
                 // Send AJAX request to add to wishlist
-                fetch('{% url 'add_to_wishlist' %}', {
+                fetch('{% url add_to_wishlist %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

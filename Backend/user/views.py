@@ -898,7 +898,7 @@ def add_category(request):
                 'error': 'Category name cannot be empty'
             }, status=400)
         
-        # Case-insensitive check for existing category
+        # Case-insensitive check for existing category - FIX: Changed (name) to =name
         if Category.objects.filter(name__iexact=name).exists():
             print(f"ERROR: Category '{name}' already exists")
             return JsonResponse({
@@ -1823,7 +1823,8 @@ def edit_category(request, category_id):
                 return redirect('product_management')
             
             # Check if another category with this name exists (excluding current category)
-            if Category.objects.filter(name__iexact(name)).exclude(id=category_id).exists():
+            # FIX: Changed (name) to =name
+            if Category.objects.filter(name__iexact=name).exclude(id=category_id).exists():
                 messages.error(request, f'Category "{name}" already exists')
                 return redirect('product_management')
             
@@ -2978,3 +2979,220 @@ def assign_staff_to_order(request, order_id):
         'order': order,
         'staff_members': staff_members
     })
+
+@login_required
+def export_billing(request, order_id=None):
+    """View to export billing information as PDF or CSV"""
+    if request.user.role != 'customer' and not request.user.is_staff:
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    # Determine what to export based on parameters
+    export_type = request.GET.get('type', 'pdf')
+    
+    try:
+        # If specific order is requested, export just that order
+        if order_id:
+            order = get_object_or_404(Order, id=order_id)
+            
+            # Check permissions (only the customer or staff/managers can export)
+            if request.user.role == 'customer' and order.customer != request.user:
+                return HttpResponseForbidden("You cannot access this order")
+                
+            orders = [order]
+            filename = f"order_{order.order_number}"
+        else:
+            # Otherwise export all orders for the customer
+            if request.user.role == 'customer':
+                orders = Order.objects.filter(customer=request.user).order_by('-created_at')
+                filename = f"orders_{request.user.username}"
+            else:
+                # For staff/managers, they need a customer_id param
+                customer_id = request.GET.get('customer_id')
+                if not customer_id:
+                    return HttpResponseBadRequest("Customer ID is required")
+                
+                customer = get_object_or_404(CustomUser, id=customer_id, role='customer')
+                orders = Order.objects.filter(customer=customer).order_by('-created_at')
+                filename = f"orders_{customer.username}"
+        
+        if export_type == 'csv':
+            return export_orders_csv(orders, filename)
+        else:
+            return export_orders_pdf(orders, filename)
+            
+    except Exception as e:
+        messages.error(request, f"Error exporting billing information: {str(e)}")
+        return redirect('order_list')
+
+def export_orders_pdf(orders, filename):
+    """Helper function to generate PDF for orders"""
+    import io
+    from django.http import FileResponse
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.units import inch
+    from reportlab.lib.pagesizes import letter
+    
+    # Create a file-like buffer to receive PDF data
+    buffer = io.BytesIO()
+    
+    # Create the PDF object, using the buffer as its "file"
+    p = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Set up document
+    y_position = 750  # Starting y position on page
+    p.setTitle(f"Billing Information - {filename}")
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(100, y_position, "Billing Information")
+    y_position -= 30
+    
+    # Add each order
+    p.setFont("Helvetica", 12)
+    for order in orders:
+        p.drawString(100, y_position, f"Order #: {order.order_number}")
+        y_position -= 20
+        p.drawString(120, y_position, f"Date: {order.created_at.strftime('%Y-%m-%d %H:%M')}")
+        y_position -= 20
+        p.drawString(120, y_position, f"Status: {order.status}")
+        y_position -= 20
+        p.drawString(120, y_position, f"Total: ${order.total_amount}")
+        y_position -= 20
+        
+        # Add order items
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(120, y_position, "Items:")
+        y_position -= 15
+        p.setFont("Helvetica", 10)
+        
+        for item in order.items.all():
+            # Check if we need to start a new page
+            if y_position < 100:
+                p.showPage()
+                y_position = 750
+                p.setFont("Helvetica", 10)
+                
+            p.drawString(140, y_position, f"{item.product.name} x {item.quantity} @ ${item.price} = ${item.price * item.quantity}")
+            y_position -= 15
+            
+        y_position -= 20
+        
+        # Check if we need to start a new page for the next order
+        if y_position < 200 and order != orders.last():
+            p.showPage()
+            y_position = 750
+            p.setFont("Helvetica", 12)
+    
+    # Close the PDF object cleanly
+    p.showPage()
+    p.save()
+    
+    # FileResponse sets the Content-Disposition header so that browsers
+    # present the option to save the file.
+    buffer.seek(0)
+    return FileResponse(buffer, as_attachment=True, filename=f"{filename}.pdf")
+
+def export_orders_csv(orders, filename):
+    """Helper function to generate CSV for orders"""
+    import csv
+    from django.http import HttpResponse
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Order Number', 'Date', 'Status', 'Total Amount', 'Item Name', 'Quantity', 'Price', 'Subtotal'])
+    
+    for order in orders:
+        for item in order.items.all():
+            writer.writerow([
+                order.order_number,
+                order.created_at.strftime('%Y-%m-%d %H:%M'),
+                order.status,
+                order.total_amount,
+                item.product.name,
+                item.quantity,
+                item.price,
+                item.price * item.quantity
+            ])
+    
+    return response
+
+@login_required
+def email_bill(request, order_id):
+    """View to send billing information via email"""
+    order = get_object_or_404(Order, id=order_id)
+    
+    # Check permissions
+    if request.user.role == 'customer':
+        if order.customer != request.user:
+            return HttpResponseForbidden("You cannot access this order")
+    elif request.user.role in ['warehouse_manager', 'staff']:
+        # Staff can only email if they're assigned
+        if request.user.role == 'staff' and order.assigned_to != request.user:
+            return HttpResponseForbidden("You are not assigned to this order")
+    else:
+        if request.user.role != 'admin' and request.user.role != 'super_admin':
+            return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == "POST":
+        recipient_email = request.POST.get('email')
+        if not recipient_email:
+            recipient_email = order.customer.email
+        
+        # Generate email content with order details
+        email_subject = f"Your Order Invoice #{order.order_number}"
+        email_body = f"""
+        Dear {order.customer.username},
+
+        Thank you for your order. Here is your billing information:
+
+        Order Number: {order.order_number}
+        Date: {order.created_at.strftime('%Y-%m-%d %H:%M')}
+        Status: {order.status}
+        Total Amount: ${order.total_amount}
+
+        Order Items:
+        """
+        
+        # Add items to email body
+        for item in order.items.all():
+            email_body += f"\n- {item.product.name} x {item.quantity} @ ${item.price} = ${item.price * item.quantity}"
+        
+        email_body += f"""
+
+        If you have any questions about your order, please contact our customer service.
+
+        Thank you for shopping with us!
+        """
+        
+        # Send the email
+        try:
+            send_mail(
+                email_subject,
+                email_body,
+                'your_email@example.com',  # Replace with your system email
+                [recipient_email],
+                fail_silently=False,
+            )
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Sent invoice for order #{order.order_number} to {recipient_email}"
+            )
+            
+            messages.success(request, f"Invoice has been sent to {recipient_email}")
+            
+            # Redirect based on user role
+            if request.user.role == 'customer':
+                return redirect('order_detail', order_id=order.id)
+            elif request.user.role == 'staff':
+                return redirect('staff_deliveries')
+            else:
+                return redirect('warehouse_orders')
+                
+        except Exception as e:
+            messages.error(request, f"Error sending email: {str(e)}")
+            return redirect('order_detail', order_id=order.id)
+    
+    # For GET requests, show the email form
+    return render(request, 'email_bill.html', {'order': order})
