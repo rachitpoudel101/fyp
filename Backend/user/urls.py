@@ -14,7 +14,8 @@ urlpatterns = [
     path('staff/inventory/', views.staff_inventory_management, name='staff_inventory_management'),
     path('staff/customers/', views.staff_customer_management, name='staff_customer_management'),
     path('staff/update-stock/<int:product_id>/', views.staff_update_stock, name='staff_update_stock'),
-    path('update-delivery/<int:order_id>/', views.update_delivery_status, name='update_delivery_status'),
+    # Fix: Change update_delivery_status to update_order_status to match the existing view
+    path('update-delivery/<int:order_id>/', views.update_order_status, name='update_delivery_status'),
     
     # Add other URL patterns that may already be in your file
     path('', views.landing_page, name='landing_page'),  # Add this line at the top
@@ -130,14 +131,14 @@ urlpatterns = [
     path('staff/inventory/', views.staff_inventory_management, name='staff_inventory_management'),
     path('staff/customers/', views.staff_customer_management, name='staff_customer_management'),
     path('staff/update-stock/<int:product_id>/', views.staff_update_stock, name='staff_update_stock'),
-    path('staff/update-delivery/<int:order_id>/', views.update_delivery_status, name='update_delivery_status'),
+    # Fix: Use update_order_status instead of update_delivery_status (doesn't exist)
+    path('update-delivery-status/<int:order_id>/', views.update_order_status, name='update_delivery_status_alt'),
 
     # Add this new URL pattern for assigning staff to orders
     path('assign-staff-to-order/<int:order_id>/', views.assign_staff_to_order, name='assign_staff_to_order'),
 
     # Make sure these existing URLs are properly configured
     path('warehouse/orders/', views.warehouse_orders, name='warehouse_orders'),
-    path('update-delivery-status/<int:order_id>/', views.update_delivery_status, name='update_delivery_status'),
 
     # Profile and account settings URLs
     path('account-settings/', views.account_settings, name='account_settings'),
@@ -158,4 +159,8 @@ urlpatterns = [
     
     # Email bill route
     path('email-bill/<int:order_id>/', views.email_bill, name='email_bill'),
+    
+    # API endpoint for notification count
+    path('api/notification-count/', views.get_notification_count, name='notification_count'),
+
 ]

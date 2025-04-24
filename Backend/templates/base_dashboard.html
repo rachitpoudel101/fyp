@@ -12,6 +12,76 @@
     <link rel="shortcut icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
     <link rel="icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
     {% block extra_css %}{% endblock %}
+    <style>
+        /* Notification Styling */
+        .notification-dropdown .dropdown-menu {
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 0;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: none;
+        }
+        .notification-dropdown .dropdown-header {
+            background-color: #f8f9fa;
+            padding: 12px 15px;
+            font-weight: 600;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .notification-dropdown .dropdown-item {
+            white-space: normal;
+            padding: 10px 15px;
+            border-bottom: 1px solid #f1f1f1;
+            transition: all 0.2s ease;
+        }
+        .unread-notification {
+            background-color: rgba(13, 110, 253, 0.05);
+            position: relative;
+        }
+        .unread-notification:before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background-color: #0d6efd;
+        }
+        .notification-dropdown .dropdown-item:hover {
+            background-color: rgba(13, 110, 253, 0.1);
+        }
+        .notification-time {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+        .notification-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+        .notification-icon.info { background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; }
+        .notification-icon.warning { background-color: rgba(255, 193, 7, 0.1); color: #ffc107; }
+        .notification-icon.success { background-color: rgba(25, 135, 84, 0.1); color: #198754; }
+        .notification-icon.danger { background-color: rgba(220, 53, 69, 0.1); color: #dc3545; }
+        
+        .notification-content {
+            flex: 1;
+        }
+        .view-all-link {
+            background-color: #f8f9fa;
+            text-align: center;
+            font-weight: 500;
+            padding: 10px;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+    </style>
 </head>
 <body>
     <div class="container-fluid">
@@ -47,22 +117,56 @@
                         <h4 class="mb-0 ms-2">{% block page_title %}Dashboard{% endblock %}</h4>
                     </div>
                     <div class="d-flex align-items-center">
-                        <div class="dropdown me-3">
-                            <a href="#" class="position-relative text-decoration-none" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-bell fs-5"></i>
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                    3
-                                </span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationsDropdown">
-                                <li><a class="dropdown-item" href="#">Notification 1</a></li>
-                                <li><a class="dropdown-item" href="#">Notification 2</a></li>
-                                <li><a class="dropdown-item" href="#">Notification 3</a></li>
-                            </ul>
-                        </div>
                         <div class="user-profile d-flex align-items-center">
-                            <img src="https://via.placeholder.com/40" alt="User" class="rounded-circle me-2" width="40" height="40">
                             <span class="d-none d-md-inline">Welcome back!</span>
+                        </div>
+                        
+                        <!-- Notification Icon with Dropdown - FIX HERE -->
+                        <div class="dropdown notification-dropdown me-3">
+                            <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-bell"></i>
+                                {% if request.user.unread_notifications_count %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    {{ request.user.unread_notifications_count }}
+                                    <span class="visually-hidden">unread notifications</span>
+                                </span>
+                                {% endif %}
+                            </a>
+                            <div class="dropdown-menu dropdown-menu-end notification-menu" aria-labelledby="notificationDropdown">
+                                <div class="dropdown-header d-flex justify-content-between align-items-center">
+                                    <span>Notifications</span>
+                                    {% if request.user.unread_notifications_count %}
+                                    <span class="badge bg-primary">{{ request.user.unread_notifications_count }} new</span>
+                                    {% endif %}
+                                </div>
+                                {% if request.user.notifications.all %}
+                                    {% for notification in request.user.notifications.all|slice:":5" %}
+                                    <a class="dropdown-item {% if not notification.is_read %}unread-notification{% endif %}" href="{% url 'view_notifications' %}">
+                                        <div class="d-flex align-items-start">
+                                            {% if 'error' in notification.message|lower or 'failed' in notification.message|lower %}
+                                                <div class="notification-icon danger"><i class="fas fa-exclamation-circle"></i></div>
+                                            {% elif 'warning' in notification.message|lower or 'alert' in notification.message|lower %}
+                                                <div class="notification-icon warning"><i class="fas fa-exclamation-triangle"></i></div>
+                                            {% elif 'success' in notification.message|lower or 'completed' in notification.message|lower %}
+                                                <div class="notification-icon success"><i class="fas fa-check-circle"></i></div>
+                                            {% else %}
+                                                <div class="notification-icon info"><i class="fas fa-info-circle"></i></div>
+                                            {% endif %}
+                                            <div class="notification-content">
+                                                <div {% if not notification.is_read %}class="fw-medium"{% endif %}>{{ notification.message }}</div>
+                                                <div class="notification-time">{{ notification.created_at|date:"M d, H:i" }}</div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                    {% endfor %}
+                                    <a class="dropdown-item view-all-link" href="{% url 'view_notifications' %}">View All Notifications</a>
+                                {% else %}
+                                    <div class="dropdown-item text-center py-4">
+                                        <i class="fas fa-bell-slash fs-4 text-muted mb-2"></i>
+                                        <p class="text-muted mb-0">No notifications yet</p>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -87,6 +191,49 @@
             }
         });
     </script>
+    
+    <!-- Notification System JavaScript -->
+    <script>
+        // Function to fetch notifications count
+        function fetchNotificationCount() {
+            fetch('/api/notification-count/')
+                .then(response => response.json())
+                .then(data => {
+                    const notificationBadge = document.querySelector('#notificationDropdown .badge');
+                    if (data.count > 0) {
+                        // If we don't have a badge yet, create one
+                        if (!notificationBadge) {
+                            const newBadge = document.createElement('span');
+                            newBadge.className = 'position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger';
+                            newBadge.textContent = data.count;
+                            
+                            const visually_hidden = document.createElement('span');
+                            visually_hidden.className = 'visually-hidden';
+                            visually_hidden.textContent = 'unread notifications';
+                            
+                            newBadge.appendChild(visually_hidden);
+                            document.querySelector('#notificationDropdown').appendChild(newBadge);
+                        } else {
+                            // If we already have a badge, just update the count
+                            notificationBadge.textContent = data.count;
+                        }
+                    } else if (notificationBadge) {
+                        // Remove the badge if count is zero
+                        notificationBadge.remove();
+                    }
+                })
+                .catch(error => console.error('Error fetching notifications:', error));
+        }
+
+        // Fetch notifications every 30 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initial fetch
+            fetchNotificationCount();
+            // Set interval for periodic updates
+            setInterval(fetchNotificationCount, 30000);
+        });
+    </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>

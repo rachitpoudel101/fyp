@@ -257,6 +257,16 @@ def admin_dashboard(request):
     # Get low stock products
     low_stock_products = Product.objects.filter(stock__lte=F('min_stock'))
     
+    # Check for unread notifications - Add this block
+    has_unread_notifications = False
+    unread_notifications_count = 0
+    try:
+        if hasattr(request.user, 'notifications'):
+            unread_notifications_count = request.user.notifications.filter(is_read=False).count()
+            has_unread_notifications = unread_notifications_count > 0
+    except Exception as e:
+        print(f"Error checking notifications: {str(e)}")
+    
     context = {
         'warehouse_managers': warehouse_managers,
         'staff_members': staff_members,
@@ -264,7 +274,10 @@ def admin_dashboard(request):
         'available_managers': available_managers,
         'low_stock_products': low_stock_products,
         'user_form': CustomUserCreationForm(),
+        'has_unread_notifications': has_unread_notifications,
+        'unread_notifications_count': unread_notifications_count,
     }
+    
     return render(request, 'admin_dashboard.html', context)
 
 @login_required
@@ -414,8 +427,10 @@ def warehouse_orders(request):
         product__warehouse=warehouse
     ).values_list('order_id', flat=True).distinct()
     
-    # Apply status filter if provided
+    # Get those orders
     orders = Order.objects.filter(id__in=order_ids)
+    
+    # Apply status filter if provided
     if status_filter and status_filter != 'all':
         orders = orders.filter(status=status_filter)
     
@@ -960,7 +975,7 @@ def get_product_details(request, product_id):
             'category': product.category.id if product.category else None,
             'price': str(product.price),
             'stock': product.stock,
-            'description': product.description or '',
+            'description': product.description,
             'expires': product.expires.isoformat() if product.expires else None,
             'warehouse': product.warehouse.id if product.warehouse else None,  # Add warehouse ID
         }
@@ -1008,7 +1023,7 @@ def add_user(request):
                 user.is_email_verified = False
                 user.generate_verification_token()
                 user.role = request.POST.get('role')
-                user.created_by = request.user  # ✅ FIXED: Track who created the user
+                user.created_by = request.user  # Track who created the user
                 user.save()
                 
                 # Send verification email
@@ -1021,6 +1036,17 @@ def add_user(request):
                     'your_email@example.com',
                     [user.email],
                 )
+                
+                # Create notification for super admins
+                from .models import Notification, CustomUser
+                super_admins = CustomUser.objects.filter(role='super_admin')
+                for admin in super_admins:
+                    Notification.objects.create(
+                        user=admin,
+                        message=f"Admin {request.user.username} created a new {user.role}: {user.username}",
+                        is_read=False
+                    )
+                
                 messages.success(request, "User has been successfully created.")
                 return JsonResponse({'success': True})
             except Exception as e:
@@ -1558,7 +1584,7 @@ def assign_warehouse_manager(request, warehouse_id):
             messages.error(request, f'Error assigning manager: {str(e)}')
         return redirect('admin_dashboard')
     
-    return HttpResponseBadRequest("Invalid request method")
+    return render(request, 'assign_warehouse_manager.html', {'warehouse_id': warehouse_id})
 
 @login_required
 def warehouse_products(request, warehouse_id):
@@ -1804,6 +1830,34 @@ def delete_warehouse(request, warehouse_id):
     return render(request, 'delete_warehouse.html', {'warehouse': warehouse})
 
 @login_required
+def assign_staff_to_order(request, order_id):
+    if request.user.role != 'warehouse_manager':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+
+    order = get_object_or_404(Order, id=order_id)
+
+    if request.method == 'POST':
+        staff_id = request.POST.get('staff_id')
+        try:
+            staff = CustomUser.objects.get(id=staff_id, role='staff')
+            order.assigned_staff = staff
+            order.save()
+            messages.success(request, f"Staff {staff.username} assigned to order {order.order_number}")
+        except CustomUser.DoesNotExist:
+            messages.error(request, "Selected staff member does not exist.")
+        except Exception as e:
+            messages.error(request, f"Error assigning staff: {str(e)}")
+
+        return redirect('warehouse_orders')
+
+    staff_members = CustomUser.objects.filter(role='staff', is_active=True)
+    return render(request, 'assign_staff_to_order.html', {
+        'order': order,
+        'staff_members': staff_members
+    })
+
+
+@login_required
 def edit_category(request, category_id):
     """View function to edit a category"""
     if request.user.role != 'admin':
@@ -1815,18 +1869,26 @@ def edit_category(request, category_id):
         try:
             name = request.POST.get('name', '').strip()
             description = request.POST.get('description', '').strip()
-            # Get the expires field value
+            # Get the expires field value (checkbox)
             expires = request.POST.get('expires') == 'on'
             
+            print(f"CATEGORY DATA - Name: '{name}', Description: '{description}', Expires: {expires}")
+            
             if not name:
-                messages.error(request, "Category name cannot be empty")
-                return redirect('product_management')
+                print("ERROR: Category name is empty")
+                return JsonResponse({
+                    'success': False,
+                    'error': 'Category name cannot be empty'
+                }, status=400)
             
             # Check if another category with this name exists (excluding current category)
             # FIX: Changed (name) to =name
             if Category.objects.filter(name__iexact=name).exclude(id=category_id).exists():
-                messages.error(request, f'Category "{name}" already exists')
-                return redirect('product_management')
+                print(f"ERROR: Category '{name}' already exists")
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Category "{name}" already exists'
+                }, status=400)
             
             # Update category
             category.name = name
@@ -1840,12 +1902,21 @@ def edit_category(request, category_id):
                 action=f"Updated category: {category.name} (Expires: {expires})"
             )
             messages.success(request, f'Category "{category.name}" updated successfully!')
-            return redirect('product_management')
+            return JsonResponse({
+                'success': True,
+                'message': f'Category "{category.name}" updated successfully!'
+            })
             
         except Exception as e:
             messages.error(request, f'Error updating category: {str(e)}')
-            return redirect('product_management')
-    return redirect('product_management')
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=500)
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method'
+    }, status=405)
 
 @login_required
 def delete_category(request, category_id):
@@ -2001,7 +2072,7 @@ def update_cart_item(request):
                 'item_subtotal': 0
             })
         
-        # Check if there's enough stock
+        # Check if there's enough stock for the new quantity
         if cart_item.product.stock < new_quantity:
             return JsonResponse({
                 'success': False,
@@ -2106,7 +2177,7 @@ def clear_cart(request):
 def view_wishlist(request):
     """View to display the user's wishlist contents"""
     # Get or create wishlist for the user
-    wishlist, created = Wishlist.objects.get_or_create(user=request.user)
+    wishlist, created = Wishlist.objects.get_or_create(user(request.user))
     context = {
         'wishlist': wishlist,
         'wishlist_items': wishlist.items.all().select_related('product')
@@ -2126,7 +2197,7 @@ def add_to_wishlist(request):
         product = Product.objects.get(id=product_id)
         
         # Get or create the user's wishlist
-        wishlist, created = Wishlist.objects.get_or_create(user=request.user)
+        wishlist,created = Wishlist.objects.get_or_create(user=request.user)
         
         # Check if product already exists in wishlist
         _, item_created = WishlistItem.objects.get_or_create(
@@ -2150,6 +2221,17 @@ def add_to_wishlist(request):
         return JsonResponse({'success': False, 'message': 'Product not found'}, status=404)
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+@login_required
+def staff_deliveries(request):
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+
+    # Assuming `Order` model has a ForeignKey to staff like `assigned_staff`
+    deliveries = Order.objects.filter(assigned_staff=request.user).order_by('-created_at')
+
+    return render(request, 'staff_deliveries.html', {'deliveries': deliveries})
+
 
 @login_required
 @require_POST
@@ -2489,7 +2571,7 @@ def update_stock(request, product_id):
     if request.method == 'POST':
         try:
             product = get_object_or_404(Product, id=product_id)
-            stock_change = int(request.POST.get('stock_change', 0))
+            stock_change = int(request.POST.get('stock_change'))
             
             # Update the stock
             product.stock += stock_change
@@ -2509,7 +2591,7 @@ def update_stock(request, product_id):
         except Exception as e:
             messages.error(request, f"Error updating stock: {str(e)}")
     
-    return redirect('warehouse_dashboard')
+    return redirect('staff_inventory_management')
 
 @login_required
 def order_dashboard(request):
@@ -2713,177 +2795,6 @@ def staff_order_management(request):
     # Get status filter from query params
     status_filter = request.GET.get('status', '')
     
-    # Get all orders
-    orders = Order.objects.all()
-    
-    # Apply status filter if provided
-    if status_filter and status_filter != 'all':
-        orders = orders.filter(status=status_filter)
-    
-    # Order by most recent first
-    orders = orders.order_by('-created_at')
-    
-    context = {
-        'orders': orders,
-        'current_status': status_filter or 'all'
-    }
-    
-    return render(request, 'staff_order_management.html', context)
-
-@login_required
-def staff_process_order(request, order_id):
-    """View for staff to process a specific order"""
-    if request.user.role != 'staff':
-        return HttpResponseForbidden("You are not authorized to perform this action")
-    
-    order = get_object_or_404(Order, id=order_id)
-    
-    if request.method == "POST":
-        try:
-            status = request.POST.get('status')
-            old_status = order.status
-            order.status = status
-            order.save()
-            
-            # Log the status change
-            ActivityLog.objects.create(
-                admin=request.user,
-                action=f"Staff updated order {order.order_number} status from {old_status} to {status}"
-            )
-            messages.success(request, f"Order status successfully updated to {status}")
-        except Exception as e:
-            messages.error(request, f"Error updating order status: {str(e)}")
-        return redirect('staff_order_management')
-    
-    context = {
-        'order': order,
-        'order_items': order.items.all().select_related('product')
-    }
-    return render(request, 'staff_order_detail.html', context)
-
-@login_required
-def staff_inventory_management(request):
-    """View for staff to manage inventory"""
-    if request.user.role != 'staff':
-        return HttpResponseForbidden("You are not authorized to view this page")
-    
-    # Get all products
-    products = Product.objects.all().select_related('category', 'warehouse')
-    
-    # Get filter parameters
-    category_id = request.GET.get('category')
-    warehouse_id = request.GET.get('warehouse')
-    low_stock = request.GET.get('low_stock') == 'true'
-    
-    # Apply filters
-    if category_id:
-        products = products.filter(category_id=category_id)
-    
-    if warehouse_id:
-        products = products.filter(warehouse_id=warehouse_id)
-    
-    if low_stock:
-        products = products.filter(stock__lte=F('min_stock'))
-    
-    # Get all categories and warehouses for filter dropdowns
-    categories = Category.objects.all()
-    warehouses = Warehouse.objects.all()
-    
-    context = {
-        'products': products,
-        'categories': categories,
-        'warehouses': warehouses,
-        'selected_category': category_id,
-        'selected_warehouse': warehouse_id,
-        'show_low_stock': low_stock
-    }
-    
-    return render(request, 'staff_inventory.html', context)
-
-@login_required
-def staff_update_stock(request, product_id):
-    """View for staff to update product stock levels"""
-    if request.user.role != 'staff':
-        return HttpResponseForbidden("You are not authorized to perform this action")
-    
-    if request.method == 'POST':
-        try:
-            product = get_object_or_404(Product, id=product_id)
-            stock_change = int(request.POST.get('stock_change', 0))
-            
-            # Update the stock
-            old_stock = product.stock
-            product.stock += stock_change
-            
-            # Ensure stock doesn't go below zero
-            if product.stock < 0:
-                product.stock = 0
-                
-            product.save()
-            
-            # Log the activity
-            ActivityLog.objects.create(
-                admin=request.user,
-                action=f"Staff updated stock for {product.name} from {old_stock} to {product.stock} units"
-            )
-            
-            messages.success(request, f"Stock updated successfully for {product.name}")
-        except Exception as e:
-            messages.error(request, f"Error updating stock: {str(e)}")
-    
-    return redirect('staff_inventory_management')
-
-@login_required
-def staff_customer_management(request):
-    """View for staff to manage customers"""
-    if request.user.role != 'staff':
-        return HttpResponseForbidden("You are not authorized to view this page")
-    
-    # Get all customers
-    customers = CustomUser.objects.filter(role='customer')
-    
-    # Search functionality
-    search_query = request.GET.get('q', '')
-    if search_query:
-        customers = customers.filter(
-            Q(username__icontains=search_query) | 
-            Q(email__icontains=search_query) |
-            Q(first_name__icontains=search_query) |
-            Q(last_name__icontains=search_query)
-        )
-    
-    context = {
-        'customers': customers,
-        'search_query': search_query
-    }
-    
-    return render(request, 'staff_customer_management.html', context)
-
-@login_required
-def staff_view_customer(request, customer_id):
-    """View for staff to see customer details and orders"""
-    if request.user.role != 'staff':
-        return HttpResponseForbidden("You are not authorized to view this page")
-    
-    customer = get_object_or_404(CustomUser, id=customer_id, role='customer')
-    customer_orders = Order.objects.filter(customer=customer).order_by('-created_at')
-    
-    context = {
-        'customer': customer,
-        'orders': customer_orders
-    }
-    
-    return render(request, 'staff_customer_detail.html', context)
-
-@login_required
-def staff_deliveries(request):
-    """View for staff to manage assigned deliveries"""
-    if request.user.role != 'staff':
-        return HttpResponseForbidden("You are not authorized to view this page")
-    
-    # Filter by status if provided
-    status_filter = request.GET.get('status', '')
-    
     # Get all orders assigned to this staff
     assigned_deliveries = Order.objects.filter(assigned_to=request.user)
     
@@ -2910,75 +2821,6 @@ def staff_deliveries(request):
     }
     
     return render(request, 'staff_deliveries.html', context)
-
-@login_required
-def update_delivery_status(request, order_id):
-    """View for staff to update delivery status of an order"""
-    if request.user.role != 'staff':
-        return HttpResponseForbidden("You are not authorized to perform this action")
-    
-    # Get order and check if it's assigned to this staff member
-    order = get_object_or_404(Order, id=order_id)
-    
-    # Make sure order is assigned to this staff member
-    if order.assigned_to != request.user:
-        return HttpResponseForbidden("You are not assigned to handle this order")
-    
-    if request.method == "POST":
-        try:
-            status = request.POST.get('status')
-            old_status = order.status
-            order.status = status
-            order.save()    
-            
-            # Log the activity
-            ActivityLog.objects.create(
-                admin=request.user,
-                action=f"Staff updated delivery status for order {order.order_number} from {old_status} to {status}"
-            )
-            
-            messages.success(request, f"Order status successfully updated to {status}")
-        except Exception as e:
-            messages.error(request, f"Error updating order status: {str(e)}")
-    
-    return redirect('staff_deliveries')
-
-@login_required
-def assign_staff_to_order(request, order_id):
-    """View for warehouse managers to assign orders to staff members"""
-    if request.user.role != 'warehouse_manager':
-        return HttpResponseForbidden("You are not authorized to perform this action")
-    
-    order = get_object_or_404(Order, id=order_id)
-    
-    if request.method == "POST":
-        staff_id = request.POST.get('staff_id')
-        if staff_id:
-            staff = get_object_or_404(CustomUser, id=staff_id, role='staff')
-            
-            # Update the order with assigned staff
-            order.assigned_to = staff
-            order.save()
-            
-            # Log the activity
-            ActivityLog.objects.create(
-                admin=request.user,
-                action=f"Assigned order #{order.order_number} to staff {staff.username}"
-            )
-            
-            messages.success(request, f"Order successfully assigned to {staff.username}")
-        else:
-            messages.error(request, "No staff member selected")
-        
-        return redirect('warehouse_orders')
-    
-    # Get available staff members
-    staff_members = CustomUser.objects.filter(role='staff', is_active=True)
-    
-    return render(request, 'assign_order.html', {
-        'order': order,
-        'staff_members': staff_members
-    })
 
 @login_required
 def export_billing(request, order_id=None):
@@ -3108,7 +2950,6 @@ def export_orders_csv(orders, filename):
                 order.created_at.strftime('%Y-%m-%d %H:%M'),
                 order.status,
                 order.total_amount,
-                item.product.name,
                 item.quantity,
                 item.price,
                 item.price * item.quantity
@@ -3117,7 +2958,7 @@ def export_orders_csv(orders, filename):
     return response
 
 @login_required
-def email_bill(request, order_id):
+def email_bill(request, order_id=None):
     """View to send billing information via email"""
     order = get_object_or_404(Order, id=order_id)
     
@@ -3125,13 +2966,11 @@ def email_bill(request, order_id):
     if request.user.role == 'customer':
         if order.customer != request.user:
             return HttpResponseForbidden("You cannot access this order")
+                
     elif request.user.role in ['warehouse_manager', 'staff']:
         # Staff can only email if they're assigned
         if request.user.role == 'staff' and order.assigned_to != request.user:
-            return HttpResponseForbidden("You are not assigned to this order")
-    else:
-        if request.user.role != 'admin' and request.user.role != 'super_admin':
-            return HttpResponseForbidden("You are not authorized to perform this action")
+            return HttpResponseForbidden("You are not assigned to handle this order")
     
     if request.method == "POST":
         recipient_email = request.POST.get('email')
@@ -3196,3 +3035,942 @@ def email_bill(request, order_id):
     
     # For GET requests, show the email form
     return render(request, 'email_bill.html', {'order': order})
+
+@login_required
+def get_notification_count(request):
+    """API endpoint to get the count of unread notifications for the current user"""
+    try:
+        unread_count = request.user.notifications.filter(is_read=False).count()
+        return JsonResponse({'count': unread_count})
+    except Exception as e:
+        print(f"Error getting notification count: {str(e)}")
+        return JsonResponse({'count': 0})
+
+@login_required
+def staff_inventory_management(request):
+    """
+    View for staff members to manage inventory products.
+    Shows products, allows updating stock levels, and checking low stock items.
+    """
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get search and filter parameters
+    search_query = request.GET.get('q', '')
+    category_id = request.GET.get('category', '')
+    
+    # Start with all products
+    products = Product.objects.all().select_related('category', 'warehouse')
+    
+    # Apply search filter if provided
+    if search_query:
+        products = products.filter(
+            Q(name__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+    
+    # Apply category filter if provided
+    if category_id:
+        try:
+            products = products.filter(category_id=int(category_id))
+        except (ValueError, TypeError):
+            pass  # Invalid category_id, ignore filter
+    
+    # Get categories for the filter dropdown
+    categories = Category.objects.all()
+    
+    # Identify low stock products
+    low_stock_products = get_low_stock_products()
+    
+    context = {
+        'products': products,
+        'categories': categories,
+        'low_stock_products': low_stock_products,
+        'search_query': search_query,
+        'selected_category': category_id,
+        'total_products': products.count(),
+        'low_stock_count': low_stock_products.count()
+    }
+    
+    return render(request, 'staff_inventory.html', context)
+
+@login_required
+def staff_customer_management(request):
+    """
+    View for staff members to manage customer information and orders.
+    Shows customer list, allows searching, and viewing customer orders.
+    """
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get customers (all users with role='customer')
+    customers = CustomUser.objects.filter(role='customer').order_by('username')
+    
+    # Get search parameter
+    search_query = request.GET.get('q', '')
+    
+    # Apply search filter if provided
+    if search_query:
+        customers = customers.filter(
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query)
+        )
+    
+    # Get customer orders if a customer_id is provided
+    customer_id = request.GET.get('customer_id')
+    customer_orders = None
+    selected_customer = None
+    
+    if customer_id:
+        try:
+            selected_customer = CustomUser.objects.get(id=customer_id, role='customer')
+            customer_orders = Order.objects.filter(customer=selected_customer).order_by('-created_at')
+        except CustomUser.DoesNotExist:
+            messages.error(request, "Selected customer does not exist")
+    
+    context = {
+        'customers': customers,
+        'search_query': search_query,
+        'total_customers': customers.count(),
+        'customer_orders': customer_orders,
+        'selected_customer': selected_customer
+    }
+    
+    return render(request, 'staff_customers.html', context)
+
+@login_required
+def staff_update_stock(request, product_id):
+    """
+    View for staff members to update product's stock levels.
+    """
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == 'POST':
+        try:
+            product = get_object_or_404(Product, id=product_id)
+            stock_change = int(request.POST.get('stock_change'))
+            
+            # Update the stock
+            product.stock += stock_change
+            
+            # Ensure stock doesn't go below zero
+            if product.stock < 0:
+                product.stock = 0
+                
+            product.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Staff updated stock for {product.name} by {stock_change} units (New stock: {product.stock})"
+            )
+            messages.success(request, f"Stock updated successfully for {product.name}")
+        except Exception as e:
+            messages.error(request, f"Error updating stock: {str(e)}")
+    
+    return redirect('staff_inventory_management')
+
+@login_required
+def order_dashboard(request):
+    """View for order management dashboard"""
+    if request.user.role not in ['admin', 'warehouse_manager', 'super_admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get all orders with their status
+    all_orders = Order.objects.all().select_related('customer')
+    
+    # Get status filter from query params
+    status_filter = request.GET.get('status', '')
+    
+    # Apply status filter if provided
+    filtered_orders = all_orders
+    if status_filter and status_filter != 'all':
+        filtered_orders = all_orders.filter(status=status_filter)
+    
+    # Order by most recent first
+    filtered_orders = filtered_orders.order_by('-created_at')
+    
+    # Calculate order statistics
+    context = {
+        'recent_orders': filtered_orders[:10],  # Show 10 most recent orders
+        'total_orders': all_orders.count(),
+        'pending_orders': all_orders.filter(status='pending').count(),
+        'processing_orders': all_orders.filter(status='processing').count(),
+        'shipped_orders': all_orders.filter(status='shipped').count(),
+        'delivered_orders': all_orders.filter(status='delivered').count(),
+        'cancelled_orders': all_orders.filter(status='cancelled').count(),
+        'current_status': status_filter or 'all'
+    }
+    
+    return render(request, 'order_dashboard.html', context)
+
+@login_required
+@require_POST
+def verify_khalti_payment(request):
+    """Verify Khalti payment with Khalti server"""
+    if request.user.role != 'customer':
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+    
+    try:
+        # Parse the request data
+        payload = json.loads(request.body)
+        token = payload.get('token')
+        amount = payload.get('amount')
+        
+        if not token or not amount:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid payment data'
+            }, status=400)
+        
+        # Prepare verification data
+        verification_data = {
+            'token': token,
+            'amount': amount
+        }
+        
+        # Replace with your actual Khalti secret key
+        headers = {
+            'Authorization': "live_secret_key_68791341fdd94846a146f0457ff7b455"
+        }
+        
+        # Verify with Khalti server
+        response = requests.post(
+            'https://khalti.com/api/v2/payment/verify/',
+            data=verification_data,
+            headers=headers
+        )
+        
+        # Process the response
+        if response.status_code == 200:
+            # Payment verified successfully
+            verification_response = response.json()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Verified Khalti payment of NPR {amount/100} with token {token[:10]}..."
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'data': verification_response
+            })
+        else:
+            # Payment verification failed
+            error_data = response.json()
+            return JsonResponse({
+                'success': False,
+                'message': error_data.get('detail', 'Payment verification failed'),
+                'error': error_data
+            })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'message': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'message': str(e)
+        }, status=500)
+
+@login_required
+def staff_dashboard(request):
+    """
+    Dashboard view for staff members showing assigned orders, deliveries, and inventory status.
+    
+    This view displays:
+    - Recent assigned orders
+    - Pending deliveries
+    - Completed deliveries
+    - Low stock products
+    - Order statistics
+    """
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    try:
+        # Get the admin who created this staff member
+        created_by = request.user.created_by
+        
+        # Get staff's order data
+        staff_orders = get_staff_order_data(request.user)
+        
+        # Get low stock products that need attention
+        low_stock_products = get_low_stock_products()
+        
+        context = {
+            'recent_assigned_orders': staff_orders['recent_orders'],
+            'pending_deliveries': staff_orders['pending_deliveries'],
+            'completed_deliveries': staff_orders['completed_deliveries'],
+            'low_stock_products': low_stock_products,
+            'total_assigned_orders': staff_orders['total_count'],
+            'pending_deliveries_count': staff_orders['pending_count'],
+            'completed_deliveries_count': staff_orders['completed_count'],
+            'created_by': created_by
+        }
+        
+        return render(request, 'staff_dashboard.html', context)
+        
+    except Exception as e:
+        messages.error(request, f"Error loading dashboard: {str(e)}")
+        return render(request, 'staff_dashboard.html', {'error': str(e)})
+
+
+def get_staff_order_data(staff_user):
+    """
+    Helper function to get order data for a staff member.
+    
+    Args:
+        staff_user: The staff user object
+    
+    Returns:
+        dict: Dictionary containing order data
+    """
+    # Get orders assigned to this staff member
+    assigned_orders = Order.objects.filter(assigned_to=staff_user).order_by('-created_at')
+    recent_orders = assigned_orders[:5]
+    
+    # Get pending deliveries (orders in shipped status assigned to this staff)
+    pending_deliveries = assigned_orders.filter(status='shipped')
+    
+    # Get recently completed deliveries
+    completed_deliveries = assigned_orders.filter(status='delivered').order_by('-created_at')[:5]
+    
+    # Calculate order statistics
+    total_count = assigned_orders.count()
+    pending_count = pending_deliveries.count()
+    completed_count = assigned_orders.filter(status='delivered').count()
+    
+    return {
+        'recent_orders': recent_orders,
+        'pending_deliveries': pending_deliveries,
+        'completed_deliveries': completed_deliveries,
+        'total_count': total_count,
+        'pending_count': pending_count,
+        'completed_count': completed_count
+    }
+
+
+def get_low_stock_products():
+    """
+    Helper function to get products with stock at or below minimum level.
+    
+    Returns:
+        QuerySet: Products with low stock
+    """
+    return Product.objects.filter(stock__lte=F('min_stock'))
+
+@login_required
+def staff_order_management(request):
+    """View for staff to manage orders"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get status filter from query params
+    status_filter = request.GET.get('status', '')
+    
+    # Get all orders assigned to this staff
+    assigned_deliveries = Order.objects.filter(assigned_to=request.user)
+    
+    # Apply status filter if provided
+    if status_filter and status_filter != 'all':
+        assigned_deliveries = assigned_deliveries.filter(status=status_filter)
+    else:
+        # Default to show orders that need action (pending, processing, shipped)
+        assigned_deliveries = assigned_deliveries.filter(
+            status__in=['pending', 'processing', 'shipped']
+        )
+    
+    # Order by most recent first
+    assigned_deliveries = assigned_deliveries.order_by('-created_at')
+    
+    context = {
+        'assigned_deliveries': assigned_deliveries,
+        'assigned_deliveries_count': assigned_deliveries.count(),
+        'current_status': status_filter or 'active',
+        'pending_count': Order.objects.filter(assigned_to=request.user, status='pending').count(),
+        'processing_count': Order.objects.filter(assigned_to=request.user, status='processing').count(),
+        'shipped_count': Order.objects.filter(assigned_to=request.user, status='shipped').count(),
+        'delivered_count': Order.objects.filter(assigned_to=request.user, status='delivered').count()
+    }
+    
+    return render(request, 'staff_deliveries.html', context)
+
+@login_required
+def export_billing(request, order_id=None):
+    """View to export billing information as PDF or CSV"""
+    if request.user.role != 'customer' and not request.user.is_staff:
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    # Determine what to export based on parameters
+    export_type = request.GET.get('type', 'pdf')
+    
+    try:
+        # If specific order is requested, export just that order
+        if order_id:
+            order = get_object_or_404(Order, id=order_id)
+            
+            # Check permissions (only the customer or staff/managers can export)
+            if request.user.role == 'customer' and order.customer != request.user:
+                return HttpResponseForbidden("You cannot access this order")
+                
+            orders = [order]
+            filename = f"order_{order.order_number}"
+        else:
+            # Otherwise export all orders for the customer
+            if request.user.role == 'customer':
+                orders = Order.objects.filter(customer=request.user).order_by('-created_at')
+                filename = f"orders_{request.user.username}"
+            else:
+                # For staff/managers, they need a customer_id param
+                customer_id = request.GET.get('customer_id')
+                if not customer_id:
+                    return HttpResponseBadRequest("Customer ID is required")
+                
+                customer = get_object_or_404(CustomUser, id=customer_id, role='customer')
+                orders = Order.objects.filter(customer=customer).order_by('-created_at')
+                filename = f"orders_{customer.username}"
+        
+        if export_type == 'csv':
+            return export_orders_csv(orders, filename)
+        else:
+            return export_orders_pdf(orders, filename)
+            
+    except Exception as e:
+        messages.error(request, f"Error exporting billing information: {str(e)}")
+        return redirect('order_list')
+
+def export_orders_pdf(orders, filename):
+    """Helper function to generate PDF for orders"""
+    import io
+    from django.http import FileResponse
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.units import inch
+    from reportlab.lib.pagesizes import letter
+    
+    # Create a file-like buffer to receive PDF data
+    buffer = io.BytesIO()
+    
+    # Create the PDF object, using the buffer as its "file"
+    p = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Set up document
+    y_position = 750  # Starting y position on page
+    p.setTitle(f"Billing Information - {filename}")
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(100, y_position, "Billing Information")
+    y_position -= 30
+    
+    # Add each order
+    p.setFont("Helvetica", 12)
+    for order in orders:
+        p.drawString(100, y_position, f"Order #: {order.order_number}")
+        y_position -= 20
+        p.drawString(120, y_position, f"Date: {order.created_at.strftime('%Y-%m-%d %H:%M')}")
+        y_position -= 20
+        p.drawString(120, y_position, f"Status: {order.status}")
+        y_position -= 20
+        p.drawString(120, y_position, f"Total: ${order.total_amount}")
+        y_position -= 20
+        
+        # Add order items
+        p.setFont("Helvetica-Bold", 10)
+        p.drawString(120, y_position, "Items:")
+        y_position -= 15
+        p.setFont("Helvetica", 10)
+        
+        for item in order.items.all():
+            # Check if we need to start a new page
+            if y_position < 100:
+                p.showPage()
+                y_position = 750
+                p.setFont("Helvetica", 10)
+                
+            p.drawString(140, y_position, f"{item.product.name} x {item.quantity} @ ${item.price} = ${item.price * item.quantity}")
+            y_position -= 15
+            
+        y_position -= 20
+        
+        # Check if we need to start a new page for the next order
+        if y_position < 200 and order != orders.last():
+            p.showPage()
+            y_position = 750
+            p.setFont("Helvetica", 12)
+    
+    # Close the PDF object cleanly
+    p.showPage()
+    p.save()
+    
+    # FileResponse sets the Content-Disposition header so that browsers
+    # present the option to save the file.
+    buffer.seek(0)
+    return FileResponse(buffer, as_attachment=True, filename=f"{filename}.pdf")
+
+def export_orders_csv(orders, filename):
+    """Helper function to generate CSV for orders"""
+    import csv
+    from django.http import HttpResponse
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Order Number', 'Date', 'Status', 'Total Amount', 'Item Name', 'Quantity', 'Price', 'Subtotal'])
+    
+    for order in orders:
+        for item in order.items.all():
+            writer.writerow([
+                order.order_number,
+                order.created_at.strftime('%Y-%m-%d %H:%M'),
+                order.status,
+                order.total_amount,
+                item.quantity,
+                item.price,
+                item.price * item.quantity
+            ])
+    
+    return response
+
+@login_required
+def email_bill(request, order_id=None):
+    """View to send billing information via email"""
+    order = get_object_or_404(Order, id=order_id)
+    
+    # Check permissions
+    if request.user.role == 'customer':
+        if order.customer != request.user:
+            return HttpResponseForbidden("You cannot access this order")
+                
+    elif request.user.role in ['warehouse_manager', 'staff']:
+        # Staff can only email if they're assigned
+        if request.user.role == 'staff' and order.assigned_to != request.user:
+            return HttpResponseForbidden("You are not assigned to handle this order")
+    
+    if request.method == "POST":
+        recipient_email = request.POST.get('email')
+        if not recipient_email:
+            recipient_email = order.customer.email
+        
+        # Generate email content with order details
+        email_subject = f"Your Order Invoice #{order.order_number}"
+        email_body = f"""
+        Dear {order.customer.username},
+
+        Thank you for your order. Here is your billing information:
+
+        Order Number: {order.order_number}
+        Date: {order.created_at.strftime('%Y-%m-%d %H:%M')}
+        Status: {order.status}
+        Total Amount: ${order.total_amount}
+
+        Order Items:
+        """
+        
+        # Add items to email body
+        for item in order.items.all():
+            email_body += f"\n- {item.product.name} x {item.quantity} @ ${item.price} = ${item.price * item.quantity}"
+        
+        email_body += f"""
+
+        If you have any questions about your order, please contact our customer service.
+
+        Thank you for shopping with us!
+        """
+        
+        # Send the email
+        try:
+            send_mail(
+                email_subject,
+                email_body,
+                'your_email@example.com',  # Replace with your system email
+                [recipient_email],
+                fail_silently=False,
+            )
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Sent invoice for order #{order.order_number} to {recipient_email}"
+            )
+            
+            messages.success(request, f"Invoice has been sent to {recipient_email}")
+            
+            # Redirect based on user role
+            if request.user.role == 'customer':
+                return redirect('order_detail', order_id=order.id)
+            elif request.user.role == 'staff':
+                return redirect('staff_deliveries')
+            else:
+                return redirect('warehouse_orders')
+                
+        except Exception as e:
+            messages.error(request, f"Error sending email: {str(e)}")
+            return redirect('order_detail', order_id=order.id)
+    
+    # For GET requests, show the email form
+    return render(request, 'email_bill.html', {'order': order})
+
+@login_required
+def get_notification_count(request):
+    """API endpoint to get the count of unread notifications for the current user"""
+    try:
+        unread_count = request.user.notifications.filter(is_read=False).count()
+        return JsonResponse({'count': unread_count})
+    except Exception as e:
+        print(f"Error getting notification count: {str(e)}")
+        return JsonResponse({'count': 0})
+
+@login_required
+def staff_inventory_management(request):
+    """
+    View for staff members to manage inventory products.
+    Shows products, allows updating stock levels, and checking low stock items.
+    """
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get search and filter parameters
+    search_query = request.GET.get('q', '')
+    category_id = request.GET.get('category', '')
+    
+    # Start with all products
+    products = Product.objects.all().select_related('category', 'warehouse')
+    
+    # Apply search filter if provided
+    if search_query:
+        products = products.filter(
+            Q(name__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+    
+    # Apply category filter if provided
+    if category_id:
+        try:
+            products = products.filter(category_id=int(category_id))
+        except (ValueError, TypeError):
+            pass  # Invalid category_id, ignore filter
+    
+    # Get categories for the filter dropdown
+    categories = Category.objects.all()
+    
+    # Identify low stock products
+    low_stock_products = get_low_stock_products()
+    
+    context = {
+        'products': products,
+        'categories': categories,
+        'low_stock_products': low_stock_products,
+        'search_query': search_query,
+        'selected_category': category_id,
+        'total_products': products.count(),
+        'low_stock_count': low_stock_products.count()
+    }
+    
+    return render(request, 'staff_inventory.html', context)
+
+@login_required
+def staff_customer_management(request):
+    """
+    View for staff members to manage customer information and orders.
+    Shows customer list, allows searching, and viewing customer orders.
+    """
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get customers (all users with role='customer')
+    customers = CustomUser.objects.filter(role='customer').order_by('username')
+    
+    # Get search parameter
+    search_query = request.GET.get('q', '')
+    
+    # Apply search filter if provided
+    if search_query:
+        customers = customers.filter(
+            Q(username__icontains=search_query) |
+            Q(email__icontains=search_query) |
+            Q(first_name__icontains=search_query) |
+            Q(last_name__icontains=search_query)
+        )
+    
+    # Get customer orders if a customer_id is provided
+    customer_id = request.GET.get('customer_id')
+    customer_orders = None
+    selected_customer = None
+    
+    if customer_id:
+        try:
+            selected_customer = CustomUser.objects.get(id=customer_id, role='customer')
+            customer_orders = Order.objects.filter(customer=selected_customer).order_by('-created_at')
+        except CustomUser.DoesNotExist:
+            messages.error(request, "Selected customer does not exist")
+    
+    context = {
+        'customers': customers,
+        'search_query': search_query,
+        'total_customers': customers.count(),
+        'customer_orders': customer_orders,
+        'selected_customer': selected_customer
+    }
+    
+    return render(request, 'staff_customers.html', context)
+
+@login_required
+def staff_update_stock(request, product_id):
+    """
+    View for staff members to update product's stock levels.
+    """
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to perform this action")
+    
+    if request.method == 'POST':
+        try:
+            product = get_object_or_404(Product, id=product_id)
+            stock_change = int(request.POST.get('stock_change'))
+            
+            # Update the stock
+            product.stock += stock_change
+            
+            # Ensure stock doesn't go below zero
+            if product.stock < 0:
+                product.stock = 0
+                
+            product.save()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Staff updated stock for {product.name} by {stock_change} units (New stock: {product.stock})"
+            )
+            messages.success(request, f"Stock updated successfully for {product.name}")
+        except Exception as e:
+            messages.error(request, f"Error updating stock: {str(e)}")
+    
+    return redirect('staff_inventory_management')
+
+@login_required
+def order_dashboard(request):
+    """View for order management dashboard"""
+    if request.user.role not in ['admin', 'warehouse_manager', 'super_admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get all orders with their status
+    all_orders = Order.objects.all().select_related('customer')
+    
+    # Get status filter from query params
+    status_filter = request.GET.get('status', '')
+    
+    # Apply status filter if provided
+    filtered_orders = all_orders
+    if status_filter and status_filter != 'all':
+        filtered_orders = all_orders.filter(status=status_filter)
+    
+    # Order by most recent first
+    filtered_orders = filtered_orders.order_by('-created_at')
+    
+    # Calculate order statistics
+    context = {
+        'recent_orders': filtered_orders[:10],  # Show 10 most recent orders
+        'total_orders': all_orders.count(),
+        'pending_orders': all_orders.filter(status='pending').count(),
+        'processing_orders': all_orders.filter(status='processing').count(),
+        'shipped_orders': all_orders.filter(status='shipped').count(),
+        'delivered_orders': all_orders.filter(status='delivered').count(),
+        'cancelled_orders': all_orders.filter(status='cancelled').count(),
+        'current_status': status_filter or 'all'
+    }
+    
+    return render(request, 'order_dashboard.html', context)
+
+@login_required
+@require_POST
+def verify_khalti_payment(request):
+    """Verify Khalti payment with Khalti server"""
+    if request.user.role != 'customer':
+        return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+    
+    try:
+        # Parse the request data
+        payload = json.loads(request.body)
+        token = payload.get('token')
+        amount = payload.get('amount')
+        
+        if not token or not amount:
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid payment data'
+            }, status=400)
+        
+        # Prepare verification data
+        verification_data = {
+            'token': token,
+            'amount': amount
+        }
+        
+        # Replace with your actual Khalti secret key
+        headers = {
+            'Authorization': "live_secret_key_68791341fdd94846a146f0457ff7b455"
+        }
+        
+        # Verify with Khalti server
+        response = requests.post(
+            'https://khalti.com/api/v2/payment/verify/',
+            data=verification_data,
+            headers=headers
+        )
+        
+        # Process the response
+        if response.status_code == 200:
+            # Payment verified successfully
+            verification_response = response.json()
+            
+            # Log the activity
+            ActivityLog.objects.create(
+                admin=request.user,
+                action=f"Verified Khalti payment of NPR {amount/100} with token {token[:10]}..."
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'data': verification_response
+            })
+        else:
+            # Payment verification failed
+            error_data = response.json()
+            return JsonResponse({
+                'success': False,
+                'message': error_data.get('detail', 'Payment verification failed'),
+                'error': error_data
+            })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'message': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'message': str(e)
+        }, status=500)
+
+@login_required
+def staff_dashboard(request):
+    """
+    Dashboard view for staff members showing assigned orders, deliveries, and inventory status.
+    
+    This view displays:
+    - Recent assigned orders
+    - Pending deliveries
+    - Completed deliveries
+    - Low stock products
+    - Order statistics
+    """
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    try:
+        # Get the admin who created this staff member
+        created_by = request.user.created_by
+        
+        # Get staff's order data
+        staff_orders = get_staff_order_data(request.user)
+        
+        # Get low stock products that need attention
+        low_stock_products = get_low_stock_products()
+        
+        context = {
+            'recent_assigned_orders': staff_orders['recent_orders'],
+            'pending_deliveries': staff_orders['pending_deliveries'],
+            'completed_deliveries': staff_orders['completed_deliveries'],
+            'low_stock_products': low_stock_products,
+            'total_assigned_orders': staff_orders['total_count'],
+            'pending_deliveries_count': staff_orders['pending_count'],
+            'completed_deliveries_count': staff_orders['completed_count'],
+            'created_by': created_by
+        }
+        
+        return render(request, 'staff_dashboard.html', context)
+        
+    except Exception as e:
+        messages.error(request, f"Error loading dashboard: {str(e)}")
+        return render(request, 'staff_dashboard.html', {'error': str(e)})
+
+
+def get_staff_order_data(staff_user):
+    """
+    Helper function to get order data for a staff member.
+    
+    Args:
+        staff_user: The staff user object
+    
+    Returns:
+        dict: Dictionary containing order data
+    """
+    # Get orders assigned to this staff member
+    assigned_orders = Order.objects.filter(assigned_to=staff_user).order_by('-created_at')
+    recent_orders = assigned_orders[:5]
+    
+    # Get pending deliveries (orders in shipped status assigned to this staff)
+    pending_deliveries = assigned_orders.filter(status='shipped')
+    
+    # Get recently completed deliveries
+    completed_deliveries = assigned_orders.filter(status='delivered').order_by('-created_at')[:5]
+    
+    # Calculate order statistics
+    total_count = assigned_orders.count()
+    pending_count = pending_deliveries.count()
+    completed_count = assigned_orders.filter(status='delivered').count()
+    
+    return {
+        'recent_orders': recent_orders,
+        'pending_deliveries': pending_deliveries,
+        'completed_deliveries': completed_deliveries,
+        'total_count': total_count,
+        'pending_count': pending_count,
+        'completed_count': completed_count
+    }
+
+
+def get_low_stock_products():
+    """
+    Helper function to get products with stock at or below minimum level.
+    
+    Returns:
+        QuerySet: Products with low stock
+    """
+    return Product.objects.filter(stock__lte=F('min_stock'))
+
+@login_required
+def staff_order_management(request):
+    """View for staff to manage orders"""
+    if request.user.role != 'staff':
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    # Get status filter from query params
+    status_filter = request.GET.get('status', '')
+    
+    # Get all orders assigned to this staff
+    assigned_deliveries = Order.objects.filter(assigned_to=request.user)
+    
+    # Apply status filter if provided
+    if status_filter and status_filter != 'all':
+        assigned_deliveries = assigned_deliveries.filter(status=status_filter)
+    else:
+        # Default to show orders that need action (pending, processing, shipped)
+        assigned_deliveries = assigned_deliveries.filter(
+            status__in=['pending', 'processing', 'shipped']
+        )
+    
+    # Order by most recent first
+    assigned_deliveries = assigned_deliveries.order_by('-created_at')
+    
+    context = {
+        'assigned_deliveries': assigned_deliveries,
+        'assigned_deliveries_count': assigned_deliveries
+    }

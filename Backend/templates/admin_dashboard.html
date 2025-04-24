@@ -69,12 +69,70 @@
 
 <div class="tab-content">
     <div class="tab-pane fade show active" id="dashboardTab">
-        <!-- Existing dashboard content -->
+        <!-- Dashboard Overview with Visualization -->
         <div class="row mb-4">
-            <div class="col-12">
-                <div class="metric-card">
-                    <h6 class="text-muted mb-3">Dashboard Content</h6>
-                    <!-- Add your existing dashboard content here -->
+            <div class="col-md-3 mb-4">
+                <div class="metric-card h-100">
+                    <div class="metric-icon bg-primary-light">
+                        <i class="fas fa-users text-primary"></i>
+                    </div>
+                    <h3 class="metric-value">{{ total_users }}</h3>
+                    <p class="metric-label">Total Users</p>
+                    <div class="metric-trend text-success">
+                        <i class="fas fa-arrow-up"></i> 5% from last month
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="metric-card h-100">
+                    <div class="metric-icon bg-success-light">
+                        <i class="fas fa-box text-success"></i>
+                    </div>
+                    <h3 class="metric-value">{{ total_products }}</h3>
+                    <p class="metric-label">Total Products</p>
+                    <div class="metric-trend text-success">
+                        <i class="fas fa-arrow-up"></i> 12% from last month
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="metric-card h-100">
+                    <div class="metric-icon bg-warning-light">
+                        <i class="fas fa-warehouse text-warning"></i>
+                    </div>
+                    <h3 class="metric-value">{{ warehouses.count }}</h3>
+                    <p class="metric-label">Warehouses</p>
+                    <div class="metric-trend">
+                        <i class="fas fa-equals text-muted"></i> Same as last month
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4">
+                <div class="metric-card h-100">
+                    <div class="metric-icon bg-danger-light">
+                        <i class="fas fa-exclamation-triangle text-danger"></i>
+                    </div>
+                    <h3 class="metric-value">{{ low_stock_products|length }}</h3>
+                    <p class="metric-label">Low Stock Items</p>
+                    <div class="metric-trend text-danger">
+                        <i class="fas fa-arrow-up"></i> 3% from last week
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="metric-card h-100">
+                    <h6 class="text-muted mb-3">Inventory Distribution by Warehouse</h6>
+                    <canvas id="warehouseDistributionChart" height="250"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="metric-card h-100">
+                    <h6 class="text-muted mb-3">Stock Levels Overview</h6>
+                    <canvas id="stockLevelsChart" height="250"></canvas>
                 </div>
             </div>
         </div>
@@ -83,7 +141,10 @@
         <div class="row mb-4">
             <div class="col-12">
                 <div class="metric-card">
-                    <h6 class="text-muted mb-3">Low Stock Alert</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="text-muted mb-0">Low Stock Alert</h6>
+                        <span class="badge bg-danger">{{ low_stock_products|length }} items need attention</span>
+                    </div>
                     {% if low_stock_products %}
                     <div class="table-responsive">
                         <table class="table">
@@ -92,6 +153,8 @@
                                     <th>Product ID</th>
                                     <th>Name</th>
                                     <th>Stock</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -99,14 +162,40 @@
                                 <tr>
                                     <td>{{ product.id }}</td>
                                     <td>{{ product.name }}</td>
-                                    <td>{{ product.stock }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 6px;">
+                                            {% if product.stock < 5 %}
+                                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ product.stock }}0%"></div>
+                                            {% elif product.stock < 10 %}
+                                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ product.stock }}0%"></div>
+                                            {% else %}
+                                                <div class="progress-bar bg-info" role="progressbar" style="width: {{ product.stock }}0%"></div>
+                                            {% endif %}
+                                        </div>
+                                        <span class="small mt-1 d-inline-block">{{ product.stock }} items</span>
+                                    </td>
+                                    <td>
+                                        {% if product.stock < 5 %}
+                                            <span class="badge bg-danger">Critical</span>
+                                        {% elif product.stock < 10 %}
+                                            <span class="badge bg-warning">Warning</span>
+                                        {% else %}
+                                            <span class="badge bg-info">Low</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'restock_product' product.id %}" class="btn btn-sm btn-outline-primary">Restock</a>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
                     {% else %}
-                    <p class="text-success">All products are sufficiently stocked.</p>
+                    <div class="text-center py-4">
+                        <i class="fas fa-check-circle text-success fs-1 mb-3"></i>
+                        <p class="text-success">All products are sufficiently stocked.</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
@@ -475,7 +564,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             `;
         });
-    });
 
     // Add User Form Submission
     const addUserForm = document.getElementById('addUserForm');
@@ -518,6 +606,102 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>`;
                 document.getElementById('notifications').innerHTML = alert;
             });
+        });
+    }
+
+    // Chart initialization
+    if (document.getElementById('warehouseDistributionChart')) {
+        // Sample data - replace with actual data from your backend
+        const warehouseData = {
+            labels: [{% for warehouse in warehouses %}'{{ warehouse.name }}',{% endfor %}],
+            datasets: [{
+                label: 'Number of Products',
+                data: [{% for warehouse in warehouses %}{{ warehouse.product_count|default:0 }},{% endfor %}],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(255, 159, 64, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(255, 205, 86, 0.6)',
+                    'rgba(255, 99, 132, 0.6)'
+                ],
+                borderColor: [
+                    'rgb(54, 162, 235)',
+                    'rgb(75, 192, 192)',
+                    'rgb(255, 159, 64)',
+                    'rgb(153, 102, 255)',
+                    'rgb(255, 205, 86)',
+                    'rgb(255, 99, 132)'
+                ],
+                borderWidth: 1
+            }]
+        };
+
+        new Chart(document.getElementById('warehouseDistributionChart'), {
+            type: 'doughnut',
+            data: warehouseData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    title: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+
+    if (document.getElementById('stockLevelsChart')) {
+        // Sample data - replace with actual data from your backend
+        const stockData = {
+            labels: ['Optimal', 'Moderate', 'Low', 'Critical'],
+            datasets: [{
+                label: 'Stock Levels',
+                data: [65, 20, 10, 5],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 205, 86, 0.6)',
+                    'rgba(255, 99, 132, 0.6)'
+                ],
+                borderColor: [
+                    'rgb(75, 192, 192)',
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 205, 86)',
+                    'rgb(255, 99, 132)'
+                ],
+                borderWidth: 1
+            }]
+        };
+
+        new Chart(document.getElementById('stockLevelsChart'), {
+            type: 'bar',
+            data: stockData,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Products'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Stock Level Category'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
         });
     }
 });
@@ -577,3 +761,60 @@ function editTags(userId) {
 </div>
 
 {% endblock %}
+
+<style>
+/* Dashboard Styles */
+.metric-card {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 15px;
+}
+
+.bg-primary-light { background-color: rgba(13, 110, 253, 0.1); }
+.bg-success-light { background-color: rgba(25, 135, 84, 0.1); }
+.bg-warning-light { background-color: rgba(255, 193, 7, 0.1); }
+.bg-danger-light { background-color: rgba(220, 53, 69, 0.1); }
+
+.metric-value {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    line-height: 1;
+}
+
+.metric-label {
+    color: #6c757d;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.metric-trend {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.table th {
+    font-weight: 600;
+    border-top: none;
+}
+
+.progress {
+    margin-top: 8px;
+}
+</style>
