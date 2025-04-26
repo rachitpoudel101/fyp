@@ -2,6 +2,181 @@
 
 {% block title %}User Statistics - Rachit{% endblock %}
 
+{% block head_extras %}
+<style>
+    /* Custom purple theme */
+    :root {
+        --primary-purple: #6a1b9a;
+        --light-purple: #9c4dcc;
+        --dark-purple: #38006b;
+        --purple-hover: #7b1fa2;
+        --purple-accent: #e1bee7;
+        --success-green: #2e7d32;
+        --light-green: #4caf50;
+        --dark-green: #1b5e20;
+    }
+    
+    /* Base font size adjustment - further reduced */
+    html, body {
+        font-size: 0.92rem;
+    }
+    
+    /* Table font size - even smaller for data */
+    .table td {
+        font-size: 0.9rem;
+    }
+    
+    .table th {
+        font-size: 0.93rem;
+    }
+    
+    /* Sidebar styling */
+    .sidebar {
+        background-color: #f8f9fa;
+        border-right: 1px solid #e9ecef;
+    }
+    
+    .nav-link {
+        color: #555;
+        border-radius: 4px;
+        transition: all 0.3s ease;
+        padding: 10px 15px;
+        margin-bottom: 5px;
+    }
+    
+    .nav-link:hover {
+        background-color: var(--purple-accent);
+        color: var(--dark-purple);
+        transform: translateX(5px);
+    }
+    
+    .nav-link.active {
+        background-color: var(--primary-purple);
+        color: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .nav-link i {
+        width: 20px;
+        text-align: center;
+    }
+    
+    /* Button styling */
+    .btn-primary {
+        background-color: var(--primary-purple);
+        border-color: var(--primary-purple);
+    }
+    
+    .btn-primary:hover {
+        background-color: var(--purple-hover);
+        border-color: var(--purple-hover);
+    }
+    
+    /* Special highlight for add user link - changed to green */
+    .nav-item .nav-link[href="{% url 'add_user_page' %}"] {
+        border-left: 3px solid var(--success-green);
+        font-weight: 500;
+    }
+    
+    .nav-item .nav-link[href="{% url 'add_user_page' %}"]:hover {
+        background-color: var(--light-green);
+        color: white;
+    }
+    
+    /* Add User button styling */
+    .btn-add-user {
+        background-color: var(--success-green);
+        border-color: var(--success-green);
+        color: white;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-add-user:hover {
+        background-color: var(--dark-green);
+        border-color: var(--dark-green);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    /* Badge styling */
+    .badge.bg-success {
+        background-color: #4caf50 !important;
+    }
+    
+    .badge.bg-warning {
+        background-color: #ff9800 !important;
+    }
+    
+    .badge.bg-danger {
+        background-color: #f44336 !important;
+    }
+    
+    /* Action buttons in tables */
+    .btn-action {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+        margin: 0 2px;
+    }
+    
+    .btn-edit {
+        background-color: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+    }
+    
+    .btn-edit:hover {
+        background-color: #e0a800;
+        border-color: #e0a800;
+    }
+    
+    .btn-delete {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+    
+    .btn-delete:hover {
+        background-color: #c82333;
+        border-color: #c82333;
+    }
+    
+    .btn-view {
+        background-color: var(--primary-purple);
+        border-color: var(--primary-purple);
+        color: white;
+    }
+    
+    .btn-view:hover {
+        background-color: var(--purple-hover);
+        border-color: var(--purple-hover);
+    }
+    
+    /* Table styling - enhanced */
+    .table {
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .table thead th {
+        background-color: var(--primary-purple);
+        color: white;
+        border-bottom: none;
+    }
+    
+    /* Card styling for sections */
+    .section-card {
+        border-radius: 8px;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 25px;
+        border-top: 4px solid var(--primary-purple);
+    }
+</style>
+{% endblock %}
+
 {% block sidebar_menu %}
 <ul class="nav flex-column">
     <li class="nav-item">
@@ -40,8 +215,11 @@
         </div>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'add_user_page' %}">
-            <i class="fas fa-user-plus me-2"></i> Add Users
+        <a class="nav-link special-link" href="{% url 'add_user_page' %}">
+            <i class="fas fa-user-plus me-2"></i> <span>Add Users</span>
+            <div class="float-end d-none d-md-block">
+                <i class="fas fa-arrow-circle-right text-success"></i>
+            </div>
         </a>
     </li>
 </ul>
@@ -49,164 +227,200 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>User Management</h2>
+    <h2 class="mb-4 text-purple fw-bold"><i class="fas fa-users me-2"></i> User Management</h2>
     
     <!-- Current User Information -->
-    <h3 class="mt-4">Your Account Information</h3>
-    <p class="text-muted">This section shows information about your account.</p>
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>User ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Added By</th>
-                    <th>Email Verified</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>{{ request.user.id }}</td>
-                    <td>{{ request.user.username }}</td>
-                    <td>{{ request.user.email }}</td>
-                    <td>{{ request.user.get_role_display }}</td>
-                    <td>
-                        {% if request.user.created_by %}
-                            {{ request.user.created_by.username }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if request.user.is_email_verified %}
-                            <span class="badge bg-success">Verified</span>
-                        {% else %}
-                            <span class="badge bg-warning">Not Verified</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if request.user.is_active %}
-                            <span class="badge bg-success">Active</span>
-                        {% else %}
-                            <span class="badge bg-danger">Inactive</span>
-                        {% endif %}
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+    <div class="section-card">
+        <h3 class="mb-3 text-purple"><i class="fas fa-user-circle me-2"></i> Your Account Information</h3>
+        <p class="text-muted mb-4">This section shows information about your account.</p>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Added By</th>
+                        <th>Email Verified</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>{{ request.user.id }}</td>
+                        <td>{{ request.user.username }}</td>
+                        <td>{{ request.user.email }}</td>
+                        <td>{{ request.user.get_role_display }}</td>
+                        <td>
+                            {% if request.user.created_by %}
+                                {{ request.user.created_by.username }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if request.user.is_email_verified %}
+                                <span class="badge bg-success">Verified</span>
+                            {% else %}
+                                <span class="badge bg-warning">Not Verified</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if request.user.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-action btn-edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Warehouse Managers Section -->
-    <h3 class="mt-5">Warehouse Managers</h3>
-    <p class="text-muted">Showing all warehouse managers in the system.</p>
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>User ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Added By</th>
-                    <th>Email Verified</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for manager in warehouse_managers %}
-                <tr>
-                    <td>{{ manager.id }}</td>
-                    <td>{{ manager.username }}</td>
-                    <td>{{ manager.email }}</td>
-                    <td>
-                        {% if manager.created_by %}
-                            {{ manager.created_by.username }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if manager.is_email_verified %}
-                            <span class="badge bg-success">Verified</span>
-                        {% else %}
-                            <span class="badge bg-warning">Not Verified</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if manager.is_active %}
-                            <span class="badge bg-success">Active</span>
-                        {% else %}
-                            <span class="badge bg-danger">Inactive</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="text-center">No warehouse managers found.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="section-card">
+        <h3 class="mb-3 text-purple"><i class="fas fa-user-tie me-2"></i> Warehouse Managers</h3>
+        <p class="text-muted mb-4">Showing all warehouse managers in the system.</p>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Added By</th>
+                        <th>Email Verified</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for manager in warehouse_managers %}
+                    <tr>
+                        <td>{{ manager.id }}</td>
+                        <td>{{ manager.username }}</td>
+                        <td>{{ manager.email }}</td>
+                        <td>
+                            {% if manager.created_by %}
+                                {{ manager.created_by.username }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if manager.is_email_verified %}
+                                <span class="badge bg-success">Verified</span>
+                            {% else %}
+                                <span class="badge bg-warning">Not Verified</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if manager.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-action btn-view">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="#" class="btn btn-action btn-edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="#" class="btn btn-action btn-delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center">No warehouse managers found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Staff Members Section -->
-    <h3 class="mt-5">Staff Members</h3>
-    <p class="text-muted">Showing all staff members in the system.</p>
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>User ID</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Added By</th>
-                    <th>Email Verified</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for staff in staff_members %}
-                <tr>
-                    <td>{{ staff.id }}</td>
-                    <td>{{ staff.username }}</td>
-                    <td>{{ staff.email }}</td>
-                    <td>
-                        {% if staff.created_by %}
-                            {{ staff.created_by.username }}
-                        {% else %}
-                            -
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if staff.is_email_verified %}
-                            <span class="badge bg-success">Verified</span>
-                        {% else %}
-                            <span class="badge bg-warning">Not Verified</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if staff.is_active %}
-                            <span class="badge bg-success">Active</span>
-                        {% else %}
-                            <span class="badge bg-danger">Inactive</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="6" class="text-center">No staff members found.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="section-card">
+        <h3 class="mb-3 text-purple"><i class="fas fa-user-friends me-2"></i> Staff Members</h3>
+        <p class="text-muted mb-4">Showing all staff members in the system.</p>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Added By</th>
+                        <th>Email Verified</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for staff in staff_members %}
+                    <tr>
+                        <td>{{ staff.id }}</td>
+                        <td>{{ staff.username }}</td>
+                        <td>{{ staff.email }}</td>
+                        <td>
+                            {% if staff.created_by %}
+                                {{ staff.created_by.username }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if staff.is_email_verified %}
+                                <span class="badge bg-success">Verified</span>
+                            {% else %}
+                                <span class="badge bg-warning">Not Verified</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if staff.is_active %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-action btn-view">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="#" class="btn btn-action btn-edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="#" class="btn btn-action btn-delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center">No staff members found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
     
-    <!-- Add button to create new users -->
-    <div class="mt-4">
-        <a href="{% url 'add_user_page' %}" class="btn btn-primary">
-            <i class="fas fa-user-plus me-2"></i> Add New User
+    <!-- Add button to create new users - with enhanced color -->
+    <div class="mt-4 text-center">
+        <a href="{% url 'add_user_page' %}" class="btn btn-lg btn-add-user" style="background-color: #00c853; border-color: #00c853; color: white; font-weight: 500; padding: 12px 30px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <i class="fas fa-user-plus me-2" style="font-size: 1.1rem;"></i> Add New User
         </a>
     </div>
 </div>

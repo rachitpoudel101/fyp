@@ -3,6 +3,61 @@
 {% block title %}Product Management - Admin{% endblock %}
 
 {% block content %}
+<style>
+    /* Custom color scheme - replacing default blue */
+    :root {
+        --primary-color: #6f42c1; /* Purple as primary color instead of green */
+        --secondary-color: #6c757d;
+        --highlight-color: #ffc107; /* Yellow for highlights */
+    }
+
+    /* Button styling with new colors */
+    .btn-primary {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+    }
+    
+    .btn-primary:hover, .btn-primary:focus {
+        background-color: #5a32a3; /* Darker purple for hover state */
+        border-color: #4b2b87; /* Even darker purple for border */
+    }
+    
+    /* Active tab styling */
+    .nav-tabs .nav-link.active {
+        color: #fff;
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        font-weight: bold;
+    }
+    
+    .nav-tabs .nav-link {
+        color: var(--primary-color);
+        border: 1px solid transparent;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        border-color: #e9ecef #e9ecef #dee2e6;
+        background-color: rgba(111, 66, 193, 0.1); /* Light purple background on hover */
+    }
+    
+    /* Sidebar active link */
+    .nav-link.active {
+        background-color: var(--primary-color);
+        color: white !important;
+    }
+    
+    /* Table headers */
+    .table thead th {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    
+    /* Card headers */
+    .card-header {
+        background-color: rgba(111, 66, 193, 0.1); /* Light purple background */
+    }
+</style>
+
 <div class="container-fluid">
     <!-- Tabs -->
     <ul class="nav nav-tabs mb-4">
@@ -443,6 +498,34 @@
                     alert('An error occurred. Please try again.');
                 });
             });
+        }
+
+        // Add active tab handling
+        const tabLinks = document.querySelectorAll('.nav-tabs .nav-link');
+        
+        // Function to handle tab switching
+        function handleTabSwitch(e) {
+            tabLinks.forEach(link => {
+                link.classList.remove('active');
+            });
+            e.target.classList.add('active');
+            
+            // Store active tab in localStorage
+            localStorage.setItem('activeProductTab', e.target.getAttribute('href'));
+        }
+        
+        // Add event listener to all tab links
+        tabLinks.forEach(link => {
+            link.addEventListener('click', handleTabSwitch);
+        });
+        
+        // Check if there's a stored active tab
+        const activeTab = localStorage.getItem('activeProductTab');
+        if (activeTab) {
+            const tabToActivate = document.querySelector(`.nav-link[href="${activeTab}"]`);
+            if (tabToActivate) {
+                tabToActivate.click();
+            }
         }
 
         // Category change handler - show/hide expiry date based on category

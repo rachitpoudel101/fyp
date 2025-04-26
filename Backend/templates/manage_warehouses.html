@@ -48,9 +48,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Warehouse Management</h1>
-    <p class="text-muted">Manage storage facilities and assign managers</p>
+<div class="pt-4 pb-3 mb-4 border-bottom">
+    <h1 class="h2 fw-bold text-purple">Warehouse Management</h1>
+    <p class="text-muted lead">Manage storage facilities and assign managers</p>
 </div>
 
 <!-- Notifications Section -->
@@ -58,7 +58,8 @@
     {% if messages %}
     <div class="alert-container">
         {% for message in messages %}
-        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+            <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'info' %}fa-info-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% endif %} me-2"></i>
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -67,12 +68,12 @@
     {% endif %}
 </div>
 
-<!-- Add this at the top of your content block to debug -->
+<!-- Debug Info (keep if needed) -->
 {% if request.user.is_superuser %}
-<div class="alert alert-info">
-    <h6>Debug Info:</h6>
+<div class="alert alert-info shadow-sm mb-4">
+    <h6 class="fw-bold"><i class="fas fa-bug me-2"></i>Debug Info:</h6>
     <p>Available Managers Count: {{ available_managers|length }}</p>
-    <ul>
+    <ul class="mb-0">
         {% for manager in available_managers %}
             <li>{{ manager.username }} (ID: {{ manager.id }})</li>
         {% empty %}
@@ -84,17 +85,19 @@
 
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Warehouses</h5>
-                <a href="{% url 'create_warehouse' %}" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Add New Warehouse
+        <div class="card shadow border-0 rounded-3 overflow-hidden">
+            <div class="card-header bg-gradient-purple text-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="card-title mb-0 fw-bold">
+                    <i class="fas fa-warehouse me-2"></i>Warehouses
+                </h5>
+                <a href="{% url 'create_warehouse' %}" class="btn btn-light shadow-sm animate-hover">
+                    <i class="fas fa-plus text-purple me-2"></i>Add New Warehouse
                 </a>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
                             <tr>
                                 <th>ID</th>
                                 <th>Name</th>
@@ -107,50 +110,56 @@
                         </thead>
                         <tbody>
                             {% for warehouse in warehouses %}
-                            <tr data-warehouse-id="{{ warehouse.id }}">
-                                <td>{{ warehouse.id }}</td>
+                            <tr data-warehouse-id="{{ warehouse.id }}" class="align-middle">
+                                <td class="fw-bold text-secondary">{{ warehouse.id }}</td>
                                 <td>{{ warehouse.name }}</td>
-                                <td>{{ warehouse.location }}</td>
+                                <td><i class="fas fa-map-marker-alt text-orange me-1"></i> {{ warehouse.location }}</td>
                                 <td>
                                     {% if warehouse.manager %}
-                                        {{ warehouse.manager.username }}
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-teal rounded-circle text-white me-2 d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-user-tie"></i>
+                                            </div>
+                                            <span>{{ warehouse.manager.username }}</span>
+                                        </div>
                                     {% else %}
-                                        <span class="text-muted">Unassigned</span>
+                                        <span class="text-muted"><i class="fas fa-user-slash me-1"></i> Unassigned</span>
                                     {% endif %}
                                 </td>
                                 <td>
                                     {% if warehouse.manager %}
-                                        <span class="badge bg-success">Active</span>
+                                        <span class="badge bg-success rounded-pill px-3 py-2"><i class="fas fa-check me-1"></i> Active</span>
                                     {% else %}
-                                        <span class="badge bg-warning">Pending Manager</span>
+                                        <span class="badge bg-warning rounded-pill px-3 py-2"><i class="fas fa-clock me-1"></i> Pending Manager</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <!-- Display product count -->
                                     {% with product_count=warehouse.product_set.count %}
                                         {% if product_count > 0 %}
-                                            <span class="badge bg-info product-count" data-count="{{ product_count }}">
-                                                {{ product_count }} products
+                                            <span class="badge bg-info rounded-pill px-3 py-2 product-count" data-count="{{ product_count }}">
+                                                <i class="fas fa-boxes me-1"></i> {{ product_count }} products
                                             </span>
                                         {% else %}
-                                            <span class="badge bg-secondary product-count" data-count="0">Empty</span>
+                                            <span class="badge bg-secondary rounded-pill px-3 py-2 product-count" data-count="0">
+                                                <i class="fas fa-box-open me-1"></i> Empty
+                                            </span>
                                         {% endif %}
                                     {% endwith %}
                                 </td>
                                 <td>
                                     <div class="btn-group">
-                                        <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                            Actions
+                                        <button type="button" class="btn btn-sm btn-gradient-red rounded dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-cog me-1"></i> Actions
                                         </button>
-                                        <ul class="dropdown-menu">
+                                        <ul class="dropdown-menu shadow">
                                             <li>
                                                 <a class="dropdown-item" href="{% url 'edit_warehouse' warehouse.id %}">
-                                                    <i class="fas fa-edit me-2"></i>Edit
+                                                    <i class="fas fa-edit me-2 text-orange"></i>Edit
                                                 </a>
                                             </li>
                                             <li>
                                                 <a class="dropdown-item" href="{% url 'warehouse_products' warehouse.id %}">
-                                                    <i class="fas fa-box me-2"></i>View Products
+                                                    <i class="fas fa-box me-2 text-teal"></i>View Products
                                                 </a>
                                             </li>
                                             <li><hr class="dropdown-divider"></li>
@@ -166,7 +175,16 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="7" class="text-center">No warehouses found.</td>
+                                <td colspan="7" class="text-center py-5">
+                                    <div class="empty-state">
+                                        <i class="fas fa-warehouse text-muted mb-3" style="font-size: 3rem;"></i>
+                                        <h5 class="text-muted">No warehouses found</h5>
+                                        <p class="text-muted small">Create a warehouse to get started</p>
+                                        <a href="{% url 'create_warehouse' %}" class="btn btn-outline-primary">
+                                            <i class="fas fa-plus me-2"></i>Add Warehouse
+                                        </a>
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -177,17 +195,18 @@
     </div>
 </div>
 
-<!-- Manager Assignment Card -->
 <div class="row">
     <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Assign Managers</h5>
+        <div class="card shadow border-0 rounded-3">
+            <div class="card-header bg-gradient-green text-white py-3">
+                <h5 class="card-title mb-0 fw-bold">
+                    <i class="fas fa-user-check me-2"></i>Assign Managers
+                </h5>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table">
-                        <thead>
+                    <table class="table align-middle">
+                        <thead class="table-light">
                             <tr>
                                 <th>Warehouse</th>
                                 <th>Current Manager</th>
@@ -197,18 +216,23 @@
                         <tbody>
                             {% for warehouse in warehouses %}
                             <tr>
-                                <td>{{ warehouse.name }}</td>
+                                <td class="fw-bold">{{ warehouse.name }}</td>
                                 <td>
                                     {% if warehouse.manager %}
-                                        {{ warehouse.manager.username }}
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-teal rounded-circle text-white me-2 d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-user-tie"></i>
+                                            </div>
+                                            <span>{{ warehouse.manager.username }}</span>
+                                        </div>
                                     {% else %}
-                                        <span class="text-muted">Unassigned</span>
+                                        <span class="text-muted"><i class="fas fa-user-slash me-1"></i> Unassigned</span>
                                     {% endif %}
                                 </td>
                                 <td>
                                     <form method="POST" action="{% url 'assign_warehouse_manager' warehouse.id %}" class="d-flex align-items-center">
                                         {% csrf_token %}
-                                        <select name="manager_id" class="form-select form-select-sm me-2" required>
+                                        <select name="manager_id" class="form-select form-select-sm me-2 rounded" required>
                                             <option value="">Select Manager</option>
                                             {% for manager in available_managers %}
                                                 <option value="{{ manager.id }}" {% if warehouse.manager and warehouse.manager.id == manager.id %}selected{% endif %}>
@@ -216,15 +240,20 @@
                                                 </option>
                                             {% endfor %}
                                         </select>
-                                        <button type="submit" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-user-check"></i> Assign
+                                        <button type="submit" class="btn btn-sm btn-gradient-green rounded animate-hover">
+                                            <i class="fas fa-user-check me-1"></i> Assign
                                         </button>
                                     </form>
                                 </td>
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="3" class="text-center">No warehouses found.</td>
+                                <td colspan="3" class="text-center py-5">
+                                    <div class="empty-state">
+                                        <i class="fas fa-warehouse text-muted mb-3" style="font-size: 3rem;"></i>
+                                        <h5 class="text-muted">No warehouses found</h5>
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -235,34 +264,64 @@
     </div>
 
     <div class="col-md-6 mb-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Warehouse Statistics</h5>
+        <div class="card shadow border-0 rounded-3">
+            <div class="card-header bg-gradient-blue text-white py-3">
+                <h5 class="card-title mb-0 fw-bold">
+                    <i class="fas fa-chart-pie me-2"></i>Warehouse Statistics
+                </h5>
             </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <h6 class="text-muted">Total Warehouses</h6>
-                            <h2 class="mb-0">{{ warehouses|length }}</h2>
+                        <div class="p-3 bg-gradient-purple-light rounded-3 hover-scale">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-purple mb-1">Total Warehouses</h6>
+                                    <h2 class="mb-0 fw-bold text-dark">{{ warehouses|length }}</h2>
+                                </div>
+                                <div class="icon-box bg-gradient-purple text-white rounded-circle">
+                                    <i class="fas fa-warehouse"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <h6 class="text-muted">Active Warehouses</h6>
-                            <h2 class="mb-0">{{ active_warehouses|length }}</h2>
+                        <div class="p-3 bg-gradient-green-light rounded-3 hover-scale">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-success mb-1">Active Warehouses</h6>
+                                    <h2 class="mb-0 fw-bold text-dark">{{ active_warehouses|length }}</h2>
+                                </div>
+                                <div class="icon-box bg-gradient-green text-white rounded-circle">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <h6 class="text-muted">Total Products</h6>
-                            <h2 class="mb-0">{{ total_products }}</h2>
+                        <div class="p-3 bg-gradient-blue-light rounded-3 hover-scale">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-info mb-1">Total Products</h6>
+                                    <h2 class="mb-0 fw-bold text-dark">{{ total_products }}</h2>
+                                </div>
+                                <div class="icon-box bg-gradient-blue text-white rounded-circle">
+                                    <i class="fas fa-boxes"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="p-3 bg-light rounded">
-                            <h6 class="text-muted">Managers</h6>
-                            <h2 class="mb-0">{{ available_managers|length }}</h2>
+                        <div class="p-3 bg-gradient-orange-light rounded-3 hover-scale">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="text-orange mb-1">Managers</h6>
+                                    <h2 class="mb-0 fw-bold text-dark">{{ available_managers|length }}</h2>
+                                </div>
+                                <div class="icon-box bg-gradient-orange text-white rounded-circle">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -274,13 +333,13 @@
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteWarehouseModal" tabindex="-1">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Delete Warehouse</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-gradient-red text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Delete Warehouse</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to delete the warehouse <strong id="warehouseName"></strong>?</p>
+                <p>Are you sure you want to delete the warehouse <strong id="warehouseName" class="text-danger"></strong>?</p>
                 <p class="text-danger">This action cannot be undone and may impact products stored in this warehouse.</p>
                 
                 <div id="productWarning" class="alert alert-warning d-none">
@@ -289,15 +348,137 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
                 <form id="deleteWarehouseForm" method="POST">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-danger">Delete Warehouse</button>
+                    <button type="submit" class="btn btn-gradient-red">
+                        <i class="fas fa-trash me-1"></i> Delete Warehouse
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<style>
+    /* Add custom styles for better UI */
+    .hover-scale {
+        transition: transform 0.2s ease;
+    }
+    .hover-scale:hover {
+        transform: scale(1.03);
+    }
+    .animate-hover {
+        transition: all 0.2s ease;
+    }
+    .animate-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .avatar-sm {
+        width: 32px;
+        height: 32px;
+        font-size: 14px;
+    }
+    .icon-box {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+    .table th {
+        font-weight: 600;
+        color: #495057;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(111, 66, 193, 0.02);
+    }
+    .alert-container {
+        position: relative;
+        z-index: 1000;
+        margin-bottom: 1.5rem;
+    }
+    .badge {
+        font-weight: 500;
+    }
+
+    /* New color styles */
+    .text-purple {
+        color: #6f42c1;
+    }
+    .text-teal {
+        color: #20c997;
+    }
+    .text-orange {
+        color: #fd7e14;
+    }
+    .bg-gradient-purple {
+        background: linear-gradient(135deg, #6f42c1 0%, #8250df 100%);
+    }
+    .bg-gradient-green {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+    .bg-gradient-blue {
+        background: linear-gradient(135deg, #0d6efd 0%, #0dcaf0 100%);
+    }
+    .bg-gradient-orange {
+        background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%);
+    }
+    .bg-gradient-red {
+        background: linear-gradient(135deg, #dc3545 0%, #f86565 100%);
+    }
+    .bg-teal {
+        background-color: #20c997;
+    }
+    .btn-gradient-purple {
+        background: linear-gradient(135deg, #6f42c1 0%, #8250df 100%);
+        color: white;
+        border: none;
+    }
+    .btn-gradient-purple:hover {
+        background: linear-gradient(135deg, #5e35b1 0%, #6f42c1 100%);
+        color: white;
+    }
+    .btn-gradient-green {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border: none;
+    }
+    .btn-gradient-green:hover {
+        background: linear-gradient(135deg, #218838 0%, #1ba87e 100%);
+        color: white;
+    }
+    .btn-gradient-red {
+        background: linear-gradient(135deg, #dc3545 0%, #f86565 100%);
+        color: white;
+        border: none;
+    }
+    .btn-gradient-red:hover {
+        background: linear-gradient(135deg, #c82333 0%, #e74c3c 100%);
+        color: white;
+    }
+    .bg-gradient-purple-light {
+        background: linear-gradient(135deg, rgba(111, 66, 193, 0.1) 0%, rgba(130, 80, 223, 0.1) 100%);
+    }
+    .bg-gradient-green-light {
+        background: linear-gradient(135deg, rgba(40, 167, 69, 0.1) 0%, rgba(32, 201, 151, 0.1) 100%);
+    }
+    .bg-gradient-blue-light {
+        background: linear-gradient(135deg, rgba(13, 110, 253, 0.1) 0%, rgba(13, 202, 240, 0.1) 100%);
+    }
+    .bg-gradient-orange-light {
+        background: linear-gradient(135deg, rgba(253, 126, 20, 0.1) 0%, rgba(255, 193, 7, 0.1) 100%);
+    }
+</style>
 
 <script>
     function confirmDelete(warehouseId, warehouseName) {
