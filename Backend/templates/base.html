@@ -41,11 +41,18 @@
     <header class="bg-white shadow-sm sticky top-0 z-50">
         <nav class="container mx-auto px-4 py-4">
             <div class="flex items-center justify-between">
-                <a href="{% url 'landing_page' %}" class="flex items-center space-x-3 group">
+                <a href="{% url 'landing_page' %}" class="flex items-center space-x-4 group">
                     <img src="https://www.shutterstock.com/image-vector/inventory-management-icon-monochrome-simple-260nw-2361436289.jpg" 
-                            alt="Logo"
+                         alt="Logo"
                          class="h-12 w-auto transform transition-transform group-hover:scale-105">
-                    <span class="text-2xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">Inventory Management System</span>
+                    <div class="flex flex-col">
+                        <span class="text-2xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+                            Inventory Management System
+                        </span>
+                        <span class="text-sm text-gray-500 group-hover:text-gray-700 transition-colors">
+                            Simplify your warehouse operations
+                        </span>
+                    </div>
                 </a>
 
                 <button class="lg:hidden focus:outline-none" id="menu-toggle">
