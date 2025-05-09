@@ -1,6 +1,7 @@
 from django.http import HttpResponseForbidden
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
+from user.models import Cart, Wishlist
 from .models import Order, OrderItem, Product
 from .forms import OrderForm, OrderItemForm
 
