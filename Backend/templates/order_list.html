@@ -341,7 +341,7 @@
                 const quantity = 1; // Default quantity
                 
                 // Send AJAX request to add to cart
-                fetch('{% url add_to_cart %}', {
+                fetch('{% url 'add_to_cart' %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -373,7 +373,7 @@
                 const productId = this.getAttribute('data-product-id');
                 
                 // Send AJAX request to add to wishlist
-                fetch('{% url add_to_wishlist %}', {
+                fetch('{% url 'add_to_wishlist' %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
