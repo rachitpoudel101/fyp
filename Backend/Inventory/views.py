@@ -1,9 +1,9 @@
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from user.models import Cart, Wishlist
-from .models import Order, OrderItem, Product
-from .forms import OrderForm, OrderItemForm
+from .models import Order, OrderItem, Product, Category
+from .forms import OrderForm, OrderItemForm, ProductForm, CategoryForm
 
 @login_required
 def create_order(request):
@@ -97,3 +97,117 @@ def order_list(request):
     
     else:
         return HttpResponseForbidden("You are not authorized to view this page")
+
+@login_required
+def products(request):
+    """View all products for admin"""
+    if request.user.role not in ['admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    products = Product.objects.all()
+    return render(request, 'products.html', {'products': products})
+
+@login_required
+def add_product(request):
+    """Add a new product"""
+    if request.user.role not in ['admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    if request.method == "POST":
+        form = ProductForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('products')  # Changed from admin_products to products
+    else:
+        form = ProductForm()
+    
+    return render(request, 'add_product.html', {'form': form})
+
+@login_required
+def update_product(request, product_id):
+    """Update an existing product"""
+    if request.user.role not in ['admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    product = get_object_or_404(Product, id=product_id)
+    
+    if request.method == "POST":
+        form = ProductForm(request.POST, request.FILES, instance=product)
+        if form.is_valid():
+            form.save()
+            return redirect('products')  # Changed from admin_products to products
+    else:
+        form = ProductForm(instance=product)
+    
+    return render(request, 'update_product.html', {'form': form, 'product': product})
+
+@login_required
+def delete_product(request, product_id):
+    """Delete a product"""
+    if request.user.role not in ['admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    product = get_object_or_404(Product, id=product_id)
+    
+    if request.method == "POST":
+        product.delete()
+        return redirect('products')  # Changed from admin_products to products
+    
+    return render(request, 'delete_product.html', {'product': product})
+
+@login_required
+def categories(request):
+    """View all categories for admin"""
+    if request.user.role not in ['admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    categories = Category.objects.all()
+    return render(request, 'categories.html', {'categories': categories})
+
+@login_required
+def add_category(request):
+    """Add a new category"""
+    if request.user.role not in ['admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    if request.method == "POST":
+        form = CategoryForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('categories')  # Changed from admin_categories to categories
+    else:
+        form = CategoryForm()
+    
+    return render(request, 'add_category.html', {'form': form})
+
+@login_required
+def update_category(request, category_id):
+    """Update an existing category"""
+    if request.user.role not in ['admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    category = get_object_or_404(Category, id=category_id)
+    
+    if request.method == "POST":
+        form = CategoryForm(request.POST, instance=category)
+        if form.is_valid():
+            form.save()
+            return redirect('categories')  # Changed from admin_categories to categories
+    else:
+        form = CategoryForm(instance=category)
+    
+    return render(request, 'update_category.html', {'form': form, 'category': category})
+
+@login_required
+def delete_category(request, category_id):
+    """Delete a category"""
+    if request.user.role not in ['admin']:
+        return HttpResponseForbidden("You are not authorized to view this page")
+    
+    category = get_object_or_404(Category, id=category_id)
+    
+    if request.method == "POST":
+        category.delete()
+        return redirect('categories')  # Changed from admin_categories to categories
+    
+    return render(request, 'delete_category.html', {'category': category})

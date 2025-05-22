@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from Inventory import views as inventory_views
 
 urlpatterns = [
     # Authentication URLs
@@ -48,13 +49,17 @@ urlpatterns = [
     # User statistics URL
     path('user_statistics/', views.user_statistics, name='user_statistics'),  # User statistics (Admin)
 
-    # Additional management URLs
-    path('product_management/', views.product_management, name='product_management'),  # Product management (Admin)
-    path('update-product/<int:product_id>/', views.update_product, name='update_product'),
-    path('add-category/', views.add_category, name='add_category'),
-    path('edit-category/<int:category_id>/', views.edit_category, name='edit_category'),
-    path('delete-category/<int:category_id>/', views.delete_category, name='delete_category'),
-    path('manage-categories/', views.manage_categories, name='manage_categories'),
+# Admin Product Management
+    path('products/', inventory_views.products, name='products'),
+    path('products/<int:product_id>/update/', inventory_views.update_product, name='update_product'),
+    path('products/add/', inventory_views.add_product, name='add_product'),
+    path('products/<int:product_id>/delete/', inventory_views.delete_product, name='delete_product'),
+    
+    # Admin Category Management
+    path('categories/', inventory_views.categories, name='categories'),
+    path('categories/add/', inventory_views.add_category, name='add_category'),
+    path('categories/<int:category_id>/update/', inventory_views.update_category, name='update_category'),
+    path('categories/<int:category_id>/delete/', inventory_views.delete_category, name='delete_category'),
     path('billing/', views.billing, name='billing'),  # Billing management (Admin)
 
     # Warehouse management URLs
@@ -66,7 +71,6 @@ urlpatterns = [
     path('add-staff/', views.add_staff, name='add_staff'),  # Add staff URL
     path('assign-warehouse-manager/<int:warehouse_id>/', views.assign_warehouse_manager, name='assign_warehouse_manager'),
     path('warehouse/<int:warehouse_id>/products/', views.warehouse_products, name='warehouse_products'),
-    path('delete_product/<int:product_id>/', views.delete_product, name='delete_product'),
 
     # Add user URLs
     path('add_user/', views.add_user, name='add_user'),  # Existing API endpoint

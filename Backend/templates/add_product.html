@@ -1,0 +1,120 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Add New Product - Admin Panel{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'admin_dashboard' %}">
+            <i class="fas fa-home me-2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'user_statistics' %}">
+            <i class="fas fa-users me-2"></i> User Management
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'products' %}">
+            <i class="fas fa-box me-2"></i> Products
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'categories' %}">
+            <i class="fas fa-box me-2"></i> Categories
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#warehouseManagement" data-bs-toggle="collapse" role="button">
+            <i class="fas fa-warehouse me-2"></i> Warehouses
+            <i class="fas fa-chevron-down float-end mt-1"></i>
+        </a>
+        <div class="collapse" id="warehouseManagement">
+            <ul class="nav flex-column ms-3 mt-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'create_warehouse' %}">
+                        <i class="fas fa-plus me-2"></i> Create Warehouse
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'manage_warehouses' %}">
+                        <i class="fas fa-list me-2"></i> View All
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'add_user_page' %}">
+            <i class="fas fa-user-plus me-2"></i> Add Users
+        </a>
+    </li>
+</ul>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">Add New Product</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label">
+                                {{ field.label }}{% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            
+                            {% if field.field.widget.input_type == 'file' %}
+                                <div class="input-group">
+                                    <label for="{{ field.id_for_label }}" class="input-group-text">
+                                        <i class="fas fa-file-upload"></i>
+                                    </label>
+                                    {{ field }}
+                                </div>
+                            {% elif field.field.widget.input_type == 'checkbox' %}
+                                <div class="form-check">
+                                    {{ field }}
+                                    <label class="form-check-label" for="{{ field.id_for_label }}">
+                                        {{ field.help_text|safe }}
+                                    </label>
+                                </div>
+                            {% else %}
+                                {{ field|safe }}
+                                <script>
+                                    document.getElementById('{{ field.id_for_label }}').classList.add('form-control');
+                                </script>
+                            {% endif %}
+                            
+                            {% if field.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in field.errors %}
+                                    <p>{{ error }}</p>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            
+                            {% if field.help_text and field.field.widget.input_type != 'checkbox' %}
+                            <div class="form-text text-muted small mt-1">
+                                {{ field.help_text|safe }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'products' %}" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-success">Add Product</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

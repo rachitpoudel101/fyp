@@ -87,16 +87,21 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'product_management' %}">
+        <a class="nav-link " href="{% url 'products' %}">
             <i class="fas fa-box me-2"></i> Products
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link active" href="#warehouseManagement" data-bs-toggle="collapse" role="button">
+        <a class="nav-link " href="{% url 'categories' %}">
+            <i class="fas fa-box me-2"></i> Categories
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="#warehouseManagement" data-bs-toggle="collapse" role="button">
             <i class="fas fa-warehouse me-2"></i> Warehouses
             <i class="fas fa-chevron-down float-end mt-1"></i>
         </a>
-        <div class="collapse show" id="warehouseManagement">
+        <div class="collapse" id="warehouseManagement">
             <ul class="nav flex-column ms-3 mt-2">
                 <li class="nav-item">
                     <a class="nav-link active" href="{% url 'create_warehouse' %}">

@@ -190,8 +190,13 @@
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'product_management' %}">
+        <a class="nav-link " href="{% url 'products' %}">
             <i class="fas fa-box me-2"></i> Products
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link " href="{% url 'categories' %}">
+            <i class="fas fa-box me-2"></i> Categories
         </a>
     </li>
     <li class="nav-item">
@@ -215,11 +220,8 @@
         </div>
     </li>
     <li class="nav-item">
-        <a class="nav-link special-link" href="{% url 'add_user_page' %}">
-            <i class="fas fa-user-plus me-2"></i> <span>Add Users</span>
-            <div class="float-end d-none d-md-block">
-                <i class="fas fa-arrow-circle-right text-success"></i>
-            </div>
+        <a class="nav-link" href="{% url 'add_user_page' %}">
+            <i class="fas fa-user-plus me-2"></i> Add Users
         </a>
     </li>
 </ul>
