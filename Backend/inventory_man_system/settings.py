@@ -140,6 +140,24 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ] 
 
+# Include Whitenoise in installed apps if not there already
+if 'whitenoise.runserver_nostatic' not in INSTALLED_APPS:
+    INSTALLED_APPS.insert(INSTALLED_APPS.index('django.contrib.staticfiles'), 'whitenoise.runserver_nostatic')
+
+# Make sure Whitenoise middleware is included
+if 'whitenoise.middleware.WhiteNoiseMiddleware' not in MIDDLEWARE:
+    # Add after SecurityMiddleware
+    security_index = MIDDLEWARE.index('django.middleware.security.SecurityMiddleware')
+    MIDDLEWARE.insert(security_index + 1, 'whitenoise.middleware.WhiteNoiseMiddleware')
+
+# Add these additional settings
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+WHITENOISE_USE_FINDERS = True
+
+# Set allowed hosts to accept Render domains
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com'] + ALLOWED_HOSTS if ALLOWED_HOSTS else ['localhost', '127.0.0.1', '.onrender.com']
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
