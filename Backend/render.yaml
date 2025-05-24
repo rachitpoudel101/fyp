@@ -1,6 +1,0 @@
-services:
-  - type: web
-    name: inventory-management-system
-    runtime: python
-    buildCommand: chmod +x build.sh && ./build.sh
-    # ...rest of configuration...
