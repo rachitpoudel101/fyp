@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Order Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-dark shadow-lg">
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h1 class="text-white font-weight-bold">Order Management</h1>
+                            <p class="text-white opacity-8 mb-0">
+                                Manage your assigned orders and track their status
+                            </p>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end align-items-center">
+                            <a href="{% url 'staff_dashboard' %}" class="btn btn-sm btn-white">Back to Dashboard</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header p-3">
+                    <h6 class="mb-0">Filter Orders</h6>
+                </div>
+                <div class="card-body p-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'order_management' %}?assigned=true" class="btn btn-outline-primary {% if current_status == 'all' and is_assigned_view %}active{% endif %}">All Assigned</a>
+                                <a href="{% url 'order_management' %}?status=pending&assigned=true" class="btn btn-outline-primary {% if current_status == 'pending' %}active{% endif %}">Pending</a>
+                                <a href="{% url 'order_management' %}?status=processing&assigned=true" class="btn btn-outline-primary {% if current_status == 'processing' %}active{% endif %}">Processing</a>
+                                <a href="{% url 'order_management' %}?status=shipped&assigned=true" class="btn btn-outline-primary {% if current_status == 'shipped' %}active{% endif %}">Shipped</a>
+                                <a href="{% url 'order_management' %}?status=delivered&assigned=true" class="btn btn-outline-primary {% if current_status == 'delivered' %}active{% endif %}">Delivered</a>
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <div class="form-check form-switch d-inline-block me-3">
+                                <input class="form-check-input" type="checkbox" id="showAssignedOnly" {% if is_assigned_view %}checked{% endif %} onchange="toggleAssignedView()">
+                                <label class="form-check-label" for="showAssignedOnly">Show assigned to me only</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header pb-0 p-3">
+                    <h6 class="mb-0">Orders</h6>
+                    <p class="text-sm text-muted">
+                        {% if current_status == 'all' %}
+                            All orders
+                        {% else %}
+                            {{ current_status|title }} orders
+                        {% endif %}
+                        {% if is_assigned_view %}
+                            assigned to you
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="card-body p-3">
+                    <div class="table-responsive">
+                        <table class="table align-items-center mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Order ID</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Customer</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Amount</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Date</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders %}
+                                <tr>
+                                    <td>
+                                        <p class="text-xs font-weight-bold mb-0">{{ order.order_number }}</p>
+                                    </td>
+                                    <td>
+                                        <p class="text-xs text-secondary mb-0">{{ order.customer.username }}</p>
+                                    </td>
+                                    <td>
+                                        <p class="text-xs font-weight-bold mb-0">${{ order.total_amount }}</p>
+                                    </td>
+                                    <td>
+                                        {% if order.status == 'pending' %}
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        {% elif order.status == 'processing' %}
+                                            <span class="badge bg-info">Processing</span>
+                                        {% elif order.status == 'shipped' %}
+                                            <span class="badge bg-primary">Shipped</span>
+                                        {% elif order.status == 'delivered' %}
+                                            <span class="badge bg-success">Delivered</span>
+                                        {% elif order.status == 'cancelled' %}
+                                            <span class="badge bg-danger">Cancelled</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ order.status|title }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <p class="text-xs text-secondary mb-0">{{ order.created_at|date:"M d, Y" }}</p>
+                                    </td>
+                                    <td>
+                                        {% if order.assigned_staff == request.user %}
+                                            <a href="{% url 'process_order' order.id %}" class="btn btn-sm btn-primary">Process</a>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Not assigned</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        No orders found
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleAssignedView() {
+        const checkbox = document.getElementById('showAssignedOnly');
+        const currentUrl = new URL(window.location.href);
+        
+        // Update the 'assigned' parameter based on checkbox state
+        if (checkbox.checked) {
+            // When checked, show only assigned orders
+            currentUrl.searchParams.set('assigned', 'true');
+        } else {
+            // When unchecked, explicitly set assigned=false to hide assigned orders
+            currentUrl.searchParams.set('assigned', 'false');
+        }
+        
+        // Navigate to the updated URL
+        window.location.href = currentUrl.toString();
+    }
+</script>
+{% endblock %}

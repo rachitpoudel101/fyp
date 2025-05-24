@@ -1,0 +1,92 @@
+{% extends 'base_dashboard.html' %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="pt-3 pb-2 mb-3 border-bottom">
+    <div class="d-flex justify-content-between align-items-center">
+        <h1 class="h2">Notifications</h1>
+        {% if notifications %}
+        <form method="POST" action="{% url 'view_notifications' %}">
+            {% csrf_token %}
+            <input type="hidden" name="mark_all_read" value="true">
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fas fa-check-double me-1"></i> Mark All Read
+            </button>
+        </form>
+        {% endif %}
+    </div>
+    <p class="text-muted">You have {{ unread_count }} unread notification{{ unread_count|pluralize }}</p>
+</div>
+
+<div class="notifications-container">
+    {% if notifications %}
+        <div class="list-group">
+            {% for notification in notifications %}
+                <div class="list-group-item {% if not notification.is_read %}list-group-item-light{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            {% if not notification.is_read %}
+                                <span class="badge bg-primary me-2">New</span>
+                            {% endif %}
+                            <p class="mb-1">{{ notification.message }}</p>
+                            <small class="text-muted">{{ notification.created_at|date:"M d, Y H:i" }}</small>
+                        </div>
+                        {% if not notification.is_read %}
+                            <form method="POST" action="{% url 'view_notifications' %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="notification_id" value="{{ notification.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-check"></i> Mark Read
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-bell-slash me-2"></i> You have no notifications.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block sidebar_menu %}
+<ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'dashboard' %}">
+            <i class="fas fa-home me-2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'view_notifications' %}">
+            <i class="fas fa-bell me-2"></i> Notifications
+        </a>
+    </li>
+    {% if user.role == 'warehouse_manager' %}
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'warehouse_orders' %}">
+            <i class="fas fa-box me-2"></i> Orders
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'inventory' %}">
+            <i class="fas fa-boxes me-2"></i> Inventory
+        </a>
+    </li>
+    {% elif user.role == 'customer' %}
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'order_list' %}">
+            <i class="fas fa-clipboard-list me-2"></i> Orders
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'product_catalog' %}">
+            <i class="fas fa-shopping-bag me-2"></i> Shop
+        </a>
+    </li>
+    {% endif %}
+</ul>
+{% endblock %}

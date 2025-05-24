@@ -49,6 +49,11 @@
             <i class="fas fa-user-plus me-2"></i> Add Users
         </a>
     </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'profile' %}">
+            <i class="fas fa-user-circle me-2"></i> My Profile
+        </a>
+    </li>
 </ul>
 {% endblock %}
 
@@ -434,6 +439,7 @@
                                     <th>Manager</th>
                                     <th>Type</th>
                                     <th>Status</th>
+                                    <th>Product Count</th>
                                     <th>Products</th>
                                 </tr>
                             </thead>
@@ -465,6 +471,9 @@
                                         {% endif %}
                                     </td>
                                     <td>
+                                        <span class="badge bg-primary">{{ warehouse.product_count|default:"0" }}</span>
+                                    </td>
+                                    <td>
                                         <a href="{% url 'warehouse_products' warehouse.id %}" class="btn btn-sm btn-info">
                                             <i class="fas fa-box me-1"></i> View Products
                                         </a>
@@ -472,7 +481,7 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="7" class="text-center">No warehouses found.</td>
+                                    <td colspan="8" class="text-center">No warehouses found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -616,47 +625,66 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Chart initialization
     if (document.getElementById('warehouseDistributionChart')) {
-        // Sample data - replace with actual data from your backend
-        const warehouseData = {
-            labels: [{% for warehouse in warehouses %}'{{ warehouse.name }}',{% endfor %}],
-            datasets: [{
-                label: 'Number of Products',
-                data: [{% for warehouse in warehouses %}{{ warehouse.product_count|default:0 }},{% endfor %}],
-                backgroundColor: [
-                    'rgba(54, 162, 235, 0.6)',
-                    'rgba(75, 192, 192, 0.6)',
-                    'rgba(255, 159, 64, 0.6)',
-                    'rgba(153, 102, 255, 0.6)',
-                    'rgba(255, 205, 86, 0.6)',
-                    'rgba(255, 99, 132, 0.6)'
-                ],
-                borderColor: [
-                    'rgb(54, 162, 235)',
-                    'rgb(75, 192, 192)',
-                    'rgb(255, 159, 64)',
-                    'rgb(153, 102, 255)',
-                    'rgb(255, 205, 86)',
-                    'rgb(255, 99, 132)'
-                ],
-                borderWidth: 1
-            }]
-        };
+        // Create arrays for warehouse data
+        const warehouseLabels = [];
+        const warehouseProductCounts = [];
+        const backgroundColors = [
+            'rgba(54, 162, 235, 0.6)',
+            'rgba(75, 192, 192, 0.6)',
+            'rgba(255, 159, 64, 0.6)',
+            'rgba(153, 102, 255, 0.6)',
+            'rgba(255, 205, 86, 0.6)',
+            'rgba(255, 99, 132, 0.6)'
+        ];
+        const borderColors = [
+            'rgb(54, 162, 235)',
+            'rgb(75, 192, 192)',
+            'rgb(255, 159, 64)',
+            'rgb(153, 102, 255)',
+            'rgb(255, 205, 86)',
+            'rgb(255, 99, 132)'
+        ];
+        
+        // Only include warehouses with products
+        {% for warehouse in warehouses %}
+            {% if warehouse.product_count|default:0 > 0 %}
+                warehouseLabels.push('{{ warehouse.name }}');
+                warehouseProductCounts.push({{ warehouse.product_count|default:0 }});
+            {% endif %}
+        {% endfor %}
+        
+        // Only create chart if there are warehouses with products
+        if (warehouseLabels.length > 0) {
+            const warehouseData = {
+                labels: warehouseLabels,
+                datasets: [{
+                    label: 'Number of Products',
+                    data: warehouseProductCounts,
+                    backgroundColor: backgroundColors.slice(0, warehouseLabels.length),
+                    borderColor: borderColors.slice(0, warehouseLabels.length),
+                    borderWidth: 1
+                }]
+            };
 
-        new Chart(document.getElementById('warehouseDistributionChart'), {
-            type: 'doughnut',
-            data: warehouseData,
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                    },
-                    title: {
-                        display: false
+            new Chart(document.getElementById('warehouseDistributionChart'), {
+                type: 'doughnut',
+                data: warehouseData,
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                        },
+                        title: {
+                            display: false
+                        }
                     }
                 }
-            }
-        });
+            });
+        } else {
+            // Display a message if no warehouses have products
+            document.getElementById('warehouseDistributionChart').parentNode.innerHTML = '<div class="text-center py-4"><p class="text-muted">No warehouses with products to display</p></div>';
+        }
     }
 
     if (document.getElementById('stockLevelsChart')) {
@@ -706,8 +734,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         display: false
                     }
                 }
-            }
-        });
+            });
     }
 });
 

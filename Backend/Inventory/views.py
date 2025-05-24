@@ -4,6 +4,9 @@ from django.contrib.auth.decorators import login_required
 from user.models import Cart, Wishlist
 from .models import Order, OrderItem, Product, Category
 from .forms import OrderForm, OrderItemForm, ProductForm, CategoryForm
+import io
+import xlsxwriter
+from django.http import HttpResponse
 
 @login_required
 def create_order(request):
@@ -211,3 +214,138 @@ def delete_category(request, category_id):
         return redirect('categories')  # Changed from admin_categories to categories
     
     return render(request, 'delete_category.html', {'category': category})
+
+def download_receipt(request, order_id):
+    """Generate and download an Excel receipt for an order"""
+    try:
+        # Get the order with all related data
+        order = Order.objects.get(id=order_id)
+        
+        # Security check - only allow staff or the order owner to download
+        if not (request.user.is_staff or request.user == order.customer):
+            return HttpResponse("Permission denied", status=403)
+        
+        # Create an in-memory output file
+        output = io.BytesIO()
+        
+        try:
+            # Create a workbook with more explicit options
+            workbook = xlsxwriter.Workbook(output, {'in_memory': True, 'constant_memory': False})
+            worksheet = workbook.add_worksheet('Receipt')
+            
+            # Add formats
+            bold = workbook.add_format({'bold': True})
+            title = workbook.add_format({'bold': True, 'font_size': 14})
+            header = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0', 'border': 1})
+            cell_format = workbook.add_format({'border': 1})
+            money_format = workbook.add_format({'border': 1, 'num_format': '$#,##0.00'})
+            date_format = workbook.add_format({'num_format': 'yyyy-mm-dd hh:mm'})
+            
+            # Write receipt header
+            worksheet.merge_range('A1:E1', 'ORDER RECEIPT', title)
+            worksheet.write('A3', 'Order Number:', bold)
+            worksheet.write('B3', str(order.order_number))  # Ensure string
+            worksheet.write('A4', 'Date:', bold)
+            worksheet.write('B4', order.created_at.strftime('%Y-%m-%d %H:%M'))
+            worksheet.write('A5', 'Customer:', bold)
+            customer_name = order.customer.get_full_name() if order.customer else 'Guest'
+            worksheet.write('B5', str(customer_name))  # Ensure string
+            worksheet.write('A6', 'Status:', bold)
+            worksheet.write('B6', str(order.status).title())  # Ensure string
+            
+            # Write item headers
+            row = 8
+            worksheet.write(row, 0, 'Product', header)
+            worksheet.write(row, 1, 'Quantity', header)
+            worksheet.write(row, 2, 'Price', header)
+            worksheet.write(row, 3, 'Total', header)
+            row += 1
+            
+            # Write items - safely get items 
+            if hasattr(order, 'orderitem_set'):
+                items = order.orderitem_set.all()
+            elif hasattr(order, 'items'):
+                items = order.items.all()
+            else:
+                items = OrderItem.objects.filter(order=order)
+                
+            # Handle case of no items
+            if not items:
+                worksheet.write(row, 0, "No items in this order", cell_format)
+                worksheet.write(row, 1, 0, cell_format)
+                worksheet.write(row, 2, 0, money_format)
+                worksheet.write(row, 3, 0, money_format)
+                row += 1
+            else:
+                for item in items:
+                    # Safely get product name
+                    product_name = "Unknown Product"
+                    if hasattr(item, 'product') and item.product:
+                        product_name = item.product.name
+                    
+                    worksheet.write(row, 0, str(product_name), cell_format)
+                    
+                    # Ensure quantity is a number
+                    quantity = int(item.quantity) if hasattr(item, 'quantity') else 0
+                    worksheet.write(row, 1, quantity, cell_format)
+                    
+                    # Safely get the price as a float
+                    price = 0.0
+                    if hasattr(item, 'price'):
+                        try:
+                            price = float(item.price) if item.price is not None else 0.0
+                        except (ValueError, TypeError):
+                            price = 0.0
+                    
+                    worksheet.write(row, 2, price, money_format)
+                    worksheet.write(row, 3, price * quantity, money_format)
+                    row += 1
+            
+            # Write totals
+            total_amount = 0.0
+            if hasattr(order, 'total_amount'):
+                try:
+                    total_amount = float(order.total_amount) if order.total_amount is not None else 0.0
+                except (ValueError, TypeError):
+                    total_amount = 0.0
+            
+            worksheet.write(row + 1, 2, 'Total Amount:', bold)
+            worksheet.write(row + 1, 3, total_amount, money_format)
+            
+            # Set column widths
+            worksheet.set_column('A:A', 30)
+            worksheet.set_column('B:D', 15)
+            
+            # Close workbook explicitly
+            workbook.close()
+            
+            # Rewind the buffer and get its contents
+            output.seek(0)
+            content = output.getvalue()
+            
+            # Set up the HttpResponse with proper headers
+            response = HttpResponse(
+                content,
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            filename = f'Receipt-{order.order_number}.xlsx'
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Content-Length'] = len(content)
+            
+            # Return the response
+            return response
+            
+        except Exception as inner_e:
+            import traceback
+            print(f"Inner error in Excel generation: {str(inner_e)}")
+            print(traceback.format_exc())
+            return HttpResponse(f"Error generating Excel: {str(inner_e)}", status=500)
+        
+    except Order.DoesNotExist:
+        return HttpResponse("Order not found", status=404)
+    except Exception as e:
+        # Log the error with full traceback
+        import traceback
+        print(f"Error generating receipt: {str(e)}")
+        print(traceback.format_exc())
+        return HttpResponse(f"Error generating receipt: {str(e)}", status=500)

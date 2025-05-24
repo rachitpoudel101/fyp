@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Inventory Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-success shadow-lg">
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h1 class="text-white font-weight-bold">Inventory Management</h1>
+                            <p class="text-white opacity-8 mb-0">
+                                Monitor product stock levels and update inventory
+                            </p>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end align-items-center">
+                            <a href="{% url 'staff_dashboard' %}" class="btn btn-sm btn-white">Back to Dashboard</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header p-3">
+                    <h6 class="mb-0">Filter Products</h6>
+                </div>
+                <div class="card-body p-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'inventory_management' %}" class="btn btn-outline-primary {% if not is_low_stock_view %}active{% endif %}">All Products</a>
+                                <a href="{% url 'inventory_management' %}?low_stock=true" class="btn btn-outline-danger {% if is_low_stock_view %}active{% endif %}">Low Stock Items</a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <form class="form-inline" method="get">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" name="search" placeholder="Search products...">
+                                    <button class="btn btn-outline-primary" type="submit">Search</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header pb-0 p-3">
+                    <h6 class="mb-0">Products</h6>
+                    <p class="text-sm text-muted">
+                        {% if is_low_stock_view %}
+                            Products with low stock levels
+                        {% else %}
+                            All products in inventory
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="card-body p-3">
+                    <div class="table-responsive">
+                        <table class="table align-items-center mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Product</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Category</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Price</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Stock</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Status</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex px-2 py-1">
+                                            {% if product.image %}
+                                            <div class="me-2">
+                                                <img src="{{ product.image.url }}" class="avatar avatar-sm" alt="{{ product.name }}">
+                                            </div>
+                                            {% endif %}
+                                            <div class="d-flex flex-column justify-content-center">
+                                                <h6 class="mb-0 text-sm">{{ product.name }}</h6>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <p class="text-xs text-secondary mb-0">{{ product.category.name|default:"No Category" }}</p>
+                                    </td>
+                                    <td>
+                                        <p class="text-xs font-weight-bold mb-0">${{ product.price }}</p>
+                                    </td>
+                                    <td>
+                                        <p class="text-xs font-weight-bold mb-0">{{ product.stock }}</p>
+                                    </td>
+                                    <td>
+                                        {% if product.stock <= 0 %}
+                                            <span class="badge bg-danger">Out of Stock</span>
+                                        {% elif product.stock <= product.min_stock %}
+                                            <span class="badge bg-warning text-dark">Low Stock</span>
+                                        {% else %}
+                                            <span class="badge bg-success">In Stock</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#updateStock{{ product.id }}">
+                                            Update Stock
+                                        </button>
+                                        
+                                        <!-- Update Stock Modal -->
+                                        <div class="modal fade" id="updateStock{{ product.id }}" tabindex="-1" aria-labelledby="updateStockLabel{{ product.id }}" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title" id="updateStockLabel{{ product.id }}">Update Stock for {{ product.name }}</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <form action="{% url 'update_stock' product.id %}" method="post">
+                                                        {% csrf_token %}
+                                                        <div class="modal-body">
+                                                            <div class="mb-3">
+                                                                <label for="currentStock{{ product.id }}" class="form-label">Current Stock</label>
+                                                                <input type="number" class="form-control" id="currentStock{{ product.id }}" value="{{ product.stock }}" disabled>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label for="stockChange{{ product.id }}" class="form-label">Add Stock</label>
+                                                                <input type="number" class="form-control" id="stockChange{{ product.id }}" name="stock_change" min="1" value="1" required>
+                                                                <small class="form-text text-muted">Enter a positive number to add stock, or a negative number to remove stock.</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                            <button type="submit" class="btn btn-primary">Update Stock</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        No products found
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

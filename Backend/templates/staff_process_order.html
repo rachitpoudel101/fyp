@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Process Order{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card bg-gradient-warning shadow-lg">
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h1 class="text-white font-weight-bold">Process Order #{{ order.order_number }}</h1>
+                            <p class="text-white opacity-8 mb-0">
+                                Current Status: <span class="badge bg-light text-dark">{{ order.status|title }}</span>
+                            </p>
+                        </div>
+                        <div class="col-md-4 d-flex justify-content-end align-items-center">
+                            <a href="{% url 'order_management' %}" class="btn btn-sm btn-white me-2">Back to Orders</a>
+                            <a href="{% url 'staff_dashboard' %}" class="btn btn-sm btn-white">Dashboard</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Order Details -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header pb-0 p-3">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="mb-0">Order Items</h6>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <p class="text-sm mb-0">
+                                Order Date: <span class="font-weight-bold">{{ order.created_at|date:"F d, Y" }}</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-3">
+                    <div class="table-responsive">
+                        <table class="table align-items-center mb-0">
+                            <thead>
+                                <tr>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Product</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Quantity</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Price</th>
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order_items %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex px-2 py-1">
+                                            {% if item.product.image %}
+                                            <div class="me-2">
+                                                <img src="{{ item.product.image.url }}" class="avatar avatar-sm" alt="{{ item.product.name }}">
+                                            </div>
+                                            {% endif %}
+                                            <div class="d-flex flex-column justify-content-center">
+                                                <h6 class="mb-0 text-sm">{{ item.product.name }}</h6>
+                                                <p class="text-xs text-secondary mb-0">SKU: {{ item.product.sku|default:"N/A" }}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <p class="text-xs font-weight-bold mb-0">{{ item.quantity }}</p>
+                                    </td>
+                                    <td>
+                                        <p class="text-xs font-weight-bold mb-0">${{ item.price }}</p>
+                                    </td>
+                                    <td>
+                                        <p class="text-xs font-weight-bold mb-0">${{ item.price|floatformat:2|default:0 }}</p>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-3">
+                                        No items in this order
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <tr>
+                                    <td colspan="3" class="text-end font-weight-bold">Total:</td>
+                                    <td class="font-weight-bold">${{ order.total_amount|floatformat:2 }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header pb-0 p-3">
+                    <h6 class="mb-0">Customer Information</h6>
+                </div>
+                <div class="card-body p-3">
+                    <div class="d-flex flex-column">
+                        <h6 class="mb-1">{{ order.customer.first_name }} {{ order.customer.last_name }}</h6>
+                        <p class="text-sm mb-1">{{ order.customer.email }}</p>
+                        <p class="text-sm mb-1">{{ order.customer.phone_number|default:"No phone number" }}</p>
+                    </div>
+                    <hr class="horizontal dark my-3">
+                    <div class="d-flex flex-column">
+                        <h6 class="mb-1">Shipping Address</h6>
+                        <p class="text-sm mb-1">
+                            {% if order.shipping_address %}
+                                {{ order.shipping_address }}<br>
+                                {% if order.shipping_city %}{{ order.shipping_city }},{% endif %}
+                                {% if order.shipping_state %}{{ order.shipping_state }}{% endif %}
+                                {% if order.shipping_zip %}{{ order.shipping_zip }}{% endif %}<br>
+                                {% if order.shipping_country %}{{ order.shipping_country }}{% endif %}
+                            {% elif order.customer.shipping_address %}
+                                {{ order.customer.shipping_address }}<br>
+                                {% if order.customer.shipping_city %}{{ order.customer.shipping_city }},{% endif %}
+                                {% if order.customer.shipping_state %}{{ order.customer.shipping_state }}{% endif %}
+                                {% if order.customer.shipping_zip %}{{ order.customer.shipping_zip }}{% endif %}<br>
+                                {% if order.customer.shipping_country %}{{ order.customer.shipping_country }}{% endif %}
+                            {% else %}
+                                No shipping address provided
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card shadow-sm">
+                <div class="card-header pb-0 p-3">
+                    <h6 class="mb-0">Update Order Status</h6>
+                </div>
+                <div class="card-body p-3">
+                    <form action="{% url 'process_order' order.id %}" method="post">
+                        {% csrf_token %}
+                        <div class="form-group mb-3">
+                            <label for="status" class="form-label">Select Status</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="" disabled>Select a status</option>
+                                <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
+                                <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                                <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group mb-3" id="tracking-group" {% if order.status != 'shipped' %}style="display: none;"{% endif %}>
+                            <label for="tracking_number" class="form-label">Tracking Number</label>
+                            <input type="text" class="form-control" id="tracking_number" name="tracking_number" value="{{ order.tracking_number|default:'' }}">
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ order.notes|default:'' }}</textarea>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Update Order</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Show/hide tracking number field based on status selection
+    document.getElementById('status').addEventListener('change', function() {
+        const trackingGroup = document.getElementById('tracking-group');
+        if (this.value === 'shipped') {
+            trackingGroup.style.display = 'block';
+        } else {
+            trackingGroup.style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

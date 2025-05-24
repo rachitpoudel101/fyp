@@ -1,21 +1,15 @@
 from django.urls import path
 from . import views
 from Inventory import views as inventory_views
+from django.views.decorators.csrf import csrf_exempt
 
-urlpatterns = [
+urlpatterns = [ 
     # Authentication URLs
     path('login/', views.user_login, name='login'),
     path('logout/', views.user_logout, name='user_logout'),
     path('profile/', views.profile_view, name='profile_view'),
     
     # Staff panel URLs
-    path('staff/dashboard/', views.staff_dashboard, name='staff_dashboard'),
-    path('staff/orders/', views.staff_order_management, name='staff_order_management'),
-    path('staff/deliveries/', views.staff_deliveries, name='staff_deliveries'),
-    path('staff/inventory/', views.staff_inventory_management, name='staff_inventory_management'),
-    path('staff/customers/', views.staff_customer_management, name='staff_customer_management'),
-    path('staff/update-stock/<int:product_id>/', views.staff_update_stock, name='staff_update_stock'),
-    # Fix: Change update_delivery_status to update_order_status to match the existing view
     path('update-delivery/<int:order_id>/', views.update_order_status, name='update_delivery_status'),
     
     # Add other URL patterns that may already be in your file
@@ -31,7 +25,6 @@ urlpatterns = [
     path('super_admin_dashboard/', views.super_admin_dashboard, name='super_admin_dashboard'),  # Super Admin dashboard
     path('customer/dashboard/', views.customer_dashboard, name='customer_dashboard'),  # Customer dashboard
     path('staff/dashboard/', views.staff_dashboard, name='staff_dashboard'),  # Staff dashboard
-
     # Inventory and orders management URLs
     path('inventory/', views.inventory, name='inventory'),  # Inventory management (Admin/Warehouse)
     path('orders/', views.orders, name='orders'),  # Orders management (Admin/Warehouse)
@@ -49,7 +42,7 @@ urlpatterns = [
     # User statistics URL
     path('user_statistics/', views.user_statistics, name='user_statistics'),  # User statistics (Admin)
 
-# Admin Product Management
+    # Admin Product Management
     path('products/', inventory_views.products, name='products'),
     path('products/<int:product_id>/update/', inventory_views.update_product, name='update_product'),
     path('products/add/', inventory_views.add_product, name='add_product'),
@@ -127,19 +120,10 @@ urlpatterns = [
     path('update-stock/<int:product_id>/', views.update_stock, name='update_stock'),
 
     # Add the new Khalti payment verification URL
-    path('verify-khalti-payment/', views.verify_khalti_payment, name='verify_khalti_payment'),
+    path('verify-khalti/', csrf_exempt(views.verify_khalti_payment), name='verify_khalti_payment'),
 
-    # Staff-related URLs
-    path('staff/orders/', views.staff_order_management, name='staff_order_management'),
-    path('staff/deliveries/', views.staff_deliveries, name='staff_deliveries'),
-    path('staff/inventory/', views.staff_inventory_management, name='staff_inventory_management'),
-    path('staff/customers/', views.staff_customer_management, name='staff_customer_management'),
-    path('staff/update-stock/<int:product_id>/', views.staff_update_stock, name='staff_update_stock'),
     # Fix: Use update_order_status instead of update_delivery_status (doesn't exist)
     path('update-delivery-status/<int:order_id>/', views.update_order_status, name='update_delivery_status_alt'),
-
-    # Add this new URL pattern for assigning staff to orders
-    path('assign-staff-to-order/<int:order_id>/', views.assign_staff_to_order, name='assign_staff_to_order'),
 
     # Make sure these existing URLs are properly configured
     path('warehouse/orders/', views.warehouse_orders, name='warehouse_orders'),
@@ -167,4 +151,21 @@ urlpatterns = [
     # API endpoint for notification count
     path('api/notification-count/', views.get_notification_count, name='notification_count'),
 
+    # Add the missing URL pattern for assign_staff_to_order
+    path('assign-staff-to-order/<int:order_id>/', views.assign_staff_to_order, name='assign_staff_to_order'),
+
+    # Add the new URL pattern for assigning order to warehouse
+    path('assign-order-to-warehouse/<int:order_id>/', views.assign_order_to_warehouse, name='assign_order_to_warehouse'),
+
+    # Staff management URLs
+    path('staff/order-management/', views.staff_order_management, name='order_management'),
+    path('staff/inventory-management/', views.staff_inventory_management, name='inventory_management'),
+    path('staff/customer-management/', views.staff_customer_management, name='customer_management'),
+    path('staff/deliveries/', views.staff_deliveries, name='deliveries'),
+    path('staff/process-order/<int:order_id>/', views.staff_process_order, name='process_order'),
+
+    # Staff account management URLs
+    path('staff/account/', views.staff_account, name='staff_account'),
+    path('staff/account/update/', views.staff_update_profile, name='staff_update_profile'),
+    path('staff/account/change-password/', views.staff_change_password, name='staff_change_password'),
 ]

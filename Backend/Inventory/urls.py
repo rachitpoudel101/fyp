@@ -7,6 +7,7 @@ urlpatterns = [
     path('order/<int:order_id>/', views.order_detail, name='order_detail'),
     path('order/<int:order_id>/update/', views.update_order_status, name='update_order_status'),
     path('orders/', views.order_list, name='order_list'),
+    path('orders/<int:order_id>/receipt/', views.download_receipt, name='download_receipt'),
     
     # # Admin Product Management
     # path('admin/products/', views.products, name='products'),

@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Assign Order to Warehouse{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Assign Order #{{ order.order_number }} to Warehouse</h5>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="warehouse_id" class="form-label">Select Warehouse:</label>
+                    <select name="warehouse_id" id="warehouse_id" class="form-select" required>
+                        <option value="">-- Select Warehouse --</option>
+                        {% for warehouse in warehouses %}
+                        <option value="{{ warehouse.id }}">{{ warehouse.name }} ({{ warehouse.location }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Order Details:</h6>
+                    <p><strong>Customer:</strong> {{ order.customer.username }}</p>
+                    <p><strong>Total Amount:</strong> ${{ order.total_amount }}</p>
+                    <p><strong>Current Status:</strong> {{ order.status }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6>Order Items:</h6>
+                    <ul class="list-group">
+                        {% for item in order.items.all %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ item.product.name }}
+                            <span class="badge bg-primary rounded-pill">Qty: {{ item.quantity }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <p class="text-muted"><small>Note: Assigning this order to a warehouse will update the status to 'processing'.</small></p>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{% url 'warehouse_orders' %}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Assign to Warehouse</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

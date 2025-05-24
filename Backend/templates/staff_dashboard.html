@@ -21,9 +21,20 @@
                             </p>
                         </div>
                         <div class="col-md-4 d-flex justify-content-end align-items-center">
-                            <a href="{% url 'staff_order_management' %}" class="btn btn-sm btn-white me-2">Orders</a>
-                            <a href="{% url 'staff_inventory_management' %}" class="btn btn-sm btn-white me-2">Inventory</a>
-                            <a href="{% url 'staff_customer_management' %}" class="btn btn-sm btn-white">Customers</a>
+                            <a href="{% url 'order_management' %}" class="btn btn-sm btn-white me-2">Orders</a>
+                            <a href="{% url 'inventory_management' %}" class="btn btn-sm btn-white me-2">Inventory</a>
+                            <a href="{% url 'customer_management' %}" class="btn btn-sm btn-white me-2">Customers</a>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-white dropdown-toggle" type="button" id="accountDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-user-cog me-1"></i>Account
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="accountDropdown">
+                                    <li><a class="dropdown-item" href="{% url 'staff_account' %}">My Profile</a></li>
+                                    <li><a class="dropdown-item" href="{% url 'staff_change_password' %}">Change Password</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="{% url 'logout' %}">Logout</a></li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -39,12 +50,12 @@
                     <div class="row">
                         <div class="col-8">
                             <div class="numbers">
-                                <p class="text-sm mb-0 text-uppercase font-weight-bold text-muted">Pending Orders</p>
+                                <p class="text-sm mb-0 text-uppercase font-weight-bold text-muted">Your Assigned Pending Orders</p>
                                 <h5 class="font-weight-bolder mb-0">
                                     {{ pending_orders }}
                                 </h5>
                                 <p class="mb-0 text-sm">
-                                    <a href="{% url 'staff_order_management' %}?status=pending" class="text-primary font-weight-bold">View all</a>
+                                    <a href="{% url 'order_management' %}?status=pending&assigned=true" class="text-primary font-weight-bold">View all</a>
                                 </p>
                             </div>
                         </div>
@@ -64,12 +75,12 @@
                     <div class="row">
                         <div class="col-8">
                             <div class="numbers">
-                                <p class="text-sm mb-0 text-uppercase font-weight-bold text-muted">Processing Orders</p>
+                                <p class="text-sm mb-0 text-uppercase font-weight-bold text-muted">Your Assigned Processing Orders</p>
                                 <h5 class="font-weight-bolder mb-0">
                                     {{ processing_orders }}
                                 </h5>
                                 <p class="mb-0 text-sm">
-                                    <a href="{% url 'staff_order_management' %}?status=processing" class="text-primary font-weight-bold">View all</a>
+                                    <a href="{% url 'order_management' %}?status=processing&assigned=true" class="text-primary font-weight-bold">View all</a>
                                 </p>
                             </div>
                         </div>
@@ -94,7 +105,7 @@
                                     {{ total_products }}
                                 </h5>
                                 <p class="mb-0 text-sm">
-                                    <a href="{% url 'staff_inventory_management' %}" class="text-primary font-weight-bold">Manage inventory</a>
+                                    <a href="{% url 'inventory_management' %}" class="text-primary font-weight-bold">Manage inventory</a>
                                 </p>
                             </div>
                         </div>
@@ -114,12 +125,12 @@
                     <div class="row">
                         <div class="col-8">
                             <div class="numbers">
-                                <p class="text-sm mb-0 text-uppercase font-weight-bold text-muted">Total Orders</p>
+                                <p class="text-sm mb-0 text-uppercase font-weight-bold text-muted">Your Total Assigned Orders</p>
                                 <h5 class="font-weight-bolder mb-0">
                                     {{ total_orders }}
                                 </h5>
                                 <p class="mb-0 text-sm">
-                                    <a href="{% url 'staff_order_management' %}" class="text-primary font-weight-bold">View all orders</a>
+                                    <a href="{% url 'order_management' %}?assigned=true" class="text-primary font-weight-bold">View all orders</a>
                                 </p>
                             </div>
                         </div>
@@ -144,25 +155,25 @@
                 <div class="card-body p-3">
                     <div class="row">
                         <div class="col-md-3 col-6 mb-3">
-                            <a href="{% url 'staff_order_management' %}?status=pending" class="btn btn-outline-primary w-100 py-3">
+                            <a href="{% url 'order_management' %}?status=pending&assigned=true" class="btn btn-outline-primary w-100 py-3">
                                 <i class="fas fa-clipboard-list mb-2 fa-2x"></i>
-                                <div>Process Orders</div>
+                                <div>Process Your Orders</div>
                             </a>
                         </div>
                         <div class="col-md-3 col-6 mb-3">
-                            <a href="{% url 'staff_deliveries' %}" class="btn btn-outline-success w-100 py-3">
+                            <a href="{% url 'deliveries' %}" class="btn btn-outline-success w-100 py-3">
                                 <i class="fas fa-truck mb-2 fa-2x"></i>
                                 <div>Manage Deliveries</div>
                             </a>
                         </div>
                         <div class="col-md-3 col-6 mb-3">
-                            <a href="{% url 'staff_inventory_management' %}?low_stock=true" class="btn btn-outline-warning w-100 py-3">
+                            <a href="{% url 'inventory_management' %}?low_stock=true" class="btn btn-outline-warning w-100 py-3">
                                 <i class="fas fa-exclamation-triangle mb-2 fa-2x"></i>
                                 <div>Check Low Stock</div>
                             </a>
                         </div>
                         <div class="col-md-3 col-6 mb-3">
-                            <a href="{% url 'staff_customer_management' %}" class="btn btn-outline-info w-100 py-3">
+                            <a href="{% url 'customer_management' %}" class="btn btn-outline-info w-100 py-3">
                                 <i class="fas fa-users mb-2 fa-2x"></i>
                                 <div>Customer Info</div>
                             </a>
@@ -180,9 +191,10 @@
             <div class="card shadow-sm">
                 <div class="card-header pb-0 p-3">
                     <div class="d-flex justify-content-between">
-                        <h6 class="mb-0">Recent Orders</h6>
-                        <a href="{% url 'staff_order_management' %}" class="btn btn-link text-sm">View All</a>
+                        <h6 class="mb-0">Your Recent Assigned Orders</h6>
+                        <a href="{% url 'order_management' %}?assigned=true" class="btn btn-link text-sm">View All</a>
                     </div>
+                    <p class="text-xs text-muted mt-1 mb-0">Only showing orders assigned to you by the manager</p>
                 </div>
                 <div class="card-body p-3">
                     <div class="table-responsive">
@@ -218,7 +230,7 @@
                                         <p class="text-xs text-secondary mb-0">{{ order.created_at|date:"M d, Y" }}</p>
                                     </td>
                                     <td>
-                                        <a href="{% url 'staff_process_order' order.id %}" class="btn btn-sm btn-primary">Process</a>
+                                        <a href="{% url 'process_order' order.id %}" class="btn btn-sm btn-primary">Process</a>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -241,7 +253,7 @@
                 <div class="card-header pb-0 p-3">
                     <div class="d-flex justify-content-between">
                         <h6 class="mb-0">Low Stock Items</h6>
-                        <a href="{% url 'staff_inventory_management' %}?low_stock=true" class="btn btn-link text-sm">View All</a>
+                        <a href="{% url 'inventory_management' %}?low_stock=true" class="btn btn-link text-sm">View All</a>
                     </div>
                 </div>
                 <div class="card-body p-3">
@@ -270,7 +282,7 @@
                                                 <h5 class="modal-title" id="updateStockLabel{{ product.id }}">Update Stock for {{ product.name }}</h5>
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
-                                            <form action="{% url 'staff_update_stock' product.id %}" method="post">
+                                            <form action="{% url 'update_stock' product.id %}" method="post">
                                                 {% csrf_token %}
                                                 <div class="modal-body">
                                                     <div class="mb-3">
@@ -304,7 +316,7 @@
                         {% if low_stock_products.count > 5 %}
                         <li class="list-group-item border-0 d-flex justify-content-between ps-0 mb-2 border-radius-lg">
                             <div class="d-flex flex-column">
-                                <a href="{% url 'staff_inventory_management' %}?low_stock=true" class="text-primary text-sm">
+                                <a href="{% url 'inventory_management' %}?low_stock=true" class="text-primary text-sm">
                                     + {{ low_stock_products.count|add:"-5" }} more items with low stock
                                 </a>
                             </div>

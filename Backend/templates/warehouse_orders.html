@@ -5,28 +5,26 @@
 {% block sidebar_menu %}
 <ul class="nav flex-column">
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'warehouse_dashboard' %}">
+        <a class="nav-link active" href="{% url 'warehouse_dashboard' %}">
             <i class="fas fa-home me-2"></i> Dashboard
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link active" href="{% url 'warehouse_orders' %}">
-            <i class="fas fa-box me-2"></i> Orders
+        <a class="nav-link" href="{% url 'inventory' %}">
+            <i class="fas fa-box me-2"></i> Inventory
         </a>
     </li>
-    <li class="nav-item">
+       <li class="nav-item">
         <a class="nav-link" href="{% url 'view_notifications' %}">
             <i class="fas fa-bell me-2"></i> Notifications
-            {% with unread_count=request.user.notifications.filter.is_read=False.count %}
-                {% if unread_count > 0 %}
-                <span class="badge bg-danger">{{ unread_count }}</span>
-                {% endif %}
-            {% endwith %}
+            {% if notification_count > 0 %}
+                <span class="badge bg-danger">{{ notification_count }}</span>
+            {% endif %}
         </a>
     </li>
     <li class="nav-item">
-        <a class="nav-link" href="{% url 'warehouse_products' warehouse.id %}">
-            <i class="fas fa-boxes me-2"></i> Products
+        <a class="nav-link" href="{% url 'warehouse_orders' %}">
+            <i class="fas fa-truck me-2"></i> Deliveries
         </a>
     </li>
 </ul>
@@ -87,6 +85,7 @@
                         <th>Customer</th>
                         <th>Date</th>
                         <th>Status</th>
+                        <th>Assigned To</th>
                         <th>Total</th>
                         <th>Actions</th>
                     </tr>
@@ -101,6 +100,18 @@
                             <span class="badge bg-{% if order.status == 'pending' %}warning{% elif order.status == 'processing' %}info{% elif order.status == 'shipped' %}primary{% elif order.status == 'delivered' %}success{% else %}secondary{% endif %}">
                                 {{ order.status|title }}
                             </span>
+                        </td>
+                        <td>
+                            {% if order.assigned_staff %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-user-check me-1"></i>
+                                    {{ order.assigned_staff.get_full_name|default:order.assigned_staff.username }}
+                                </span>
+                            {% else %}
+                                <a href="{% url 'assign_staff_to_order' order.id %}" class="btn btn-sm btn-outline-warning">
+                                    <i class="fas fa-user-plus"></i> Assign Staff
+                                </a>
+                            {% endif %}
                         </td>
                         <td>${{ order.total_amount }}</td>
                         <td>
@@ -138,6 +149,12 @@
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
+                                        <a href="{% url 'assign_staff_to_order' order.id %}" class="dropdown-item text-info">
+                                            <i class="fas fa-user-tie me-1"></i> Assign Staff
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
                                         <form method="post" action="{% url 'update_order_status' order.id %}">
                                             {% csrf_token %}
                                             <input type="hidden" name="status" value="cancelled">
@@ -150,7 +167,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center">No orders found.</td>
+                        <td colspan="7" class="text-center">No orders found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

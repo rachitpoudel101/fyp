@@ -75,12 +75,12 @@
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Image</th>
                     <th>Name</th>
                     <th>Category</th>
                     <th>Price</th>
                     <th>Stock</th>
                     <th>Warehouse</th>
+                    <th>Expires Date</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -88,18 +88,12 @@
                 {% for product in products %}
                 <tr>
                     <td>{{ product.id }}</td>
-                    <td>
-                        {% if product.image %}
-                        <img src="{{ product.image.url }}" alt="{{ product.name }}" style="max-width: 50px; max-height: 50px;">
-                        {% else %}
-                        No Image
-                        {% endif %}
-                    </td>
                     <td>{{ product.name }}</td>
                     <td>{{ product.category.name }}</td>
                     <td>${{ product.price }}</td>
                     <td>{{ product.stock }}</td>
                     <td>{{ product.warehouse.name }}</td>
+                    <td>{{ product.expires_date|default:"N/A" }}</td>
                     <td>
                         <a href="{% url 'update_product' product.id %}" class="btn btn-sm btn-warning">Edit</a>
                         <a href="{% url 'delete_product' product.id %}" class="btn btn-sm btn-danger">Delete</a>

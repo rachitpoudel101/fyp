@@ -15,9 +15,12 @@
             <i class="fas fa-box me-2"></i> Inventory
         </a>
     </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{% url 'orders' %}">
-            <i class="fas fa-clipboard-list me-2"></i> Orders
+       <li class="nav-item">
+        <a class="nav-link" href="{% url 'view_notifications' %}">
+            <i class="fas fa-bell me-2"></i> Notifications
+            {% if notification_count > 0 %}
+                <span class="badge bg-danger">{{ notification_count }}</span>
+            {% endif %}
         </a>
     </li>
     <li class="nav-item">
@@ -250,7 +253,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form method="POST" action="{% url 'assign_delivery' order.id %}">
+                <form method="POST" action="{% url 'assign_staff_to_order' order.id %}">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="warehouse_dashboard">
                     <div class="mb-3">

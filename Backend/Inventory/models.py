@@ -65,6 +65,7 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    assigned_staff = models.ForeignKey('user.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_orders')
 
     PAYMENT_METHOD_CHOICES = [
         ('cash_on_delivery', 'Cash on Delivery'),
