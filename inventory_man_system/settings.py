@@ -21,19 +21,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-qej&*iv62fa=m^dh(u^k_(_lh@t)=9=v@024*svs*q5bkg#3tz'
+SECRET_KEY = os.environ.get('SECRET_KEY','django-insecure-qej&*iv62fa=m^dh(u^k_(_lh@t)=9=v@024*svs*q5bkg#3tz')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com' 
-EMAIL_PORT = 587  
-EMAIL_USE_TLS = True  
-EMAIL_HOST_USER = 'poudelrachit4@gmail.com'  
-EMAIL_HOST_PASSWORD = 'adxm gczk bwtl axtb'  
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'poudelrachit4@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'adxm gczk bwtl axtb')
+
+# For production email verification links
+SITE_URL = os.environ.get('SITE_URL', 'https://fyp-8xow.onrender.com/')
 
 # Application definition
 
@@ -95,7 +99,7 @@ WSGI_APPLICATION = 'inventory_man_system.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         # Replace this value with your local database's connection string.
-        default='postgresql://fyp_l34a_user:nMcfBz7lhdK5vU81lvVGxLLOghvxCZav@dpg-d0k4h7ruibrs7396uihg-a.oregon-postgres.render.com/fyp_l34a',
+        default=os.environ.get('DATABASE_URL','postgresql://fyp_l34a_user:nMcfBz7lhdK5vU81lvVGxLLOghvxCZav@dpg-d0k4h7ruibrs7396uihg-a.oregon-postgres.render.com/fyp_l34a'),
         conn_max_age=600
     )
 }
