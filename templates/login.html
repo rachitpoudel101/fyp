@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="{% static 'css/login.css' %}" rel="stylesheet">
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
+    <script src="{% static 'js/login.js' %}"></script>
 </head>
 <body class="bg-gradient-to-br from-indigo-800 via-blue-700 to-sky-600 min-h-screen flex items-center justify-center p-6">
     <!-- Error Messages - Fixed at top right -->
@@ -103,7 +104,7 @@
                         </div>
                     {% endfor %}
                     
-                    <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                    <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105" id="loginButton">
                         Sign In
                     </button>
                     
@@ -189,44 +190,5 @@
             right: 2rem;
         }
     </style>
-    
-    <!-- Load the external JavaScript file -->
-    <script src="{% static 'js/login.js' %}"></script>
-    
-    <!-- Password visibility toggle script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize password toggle buttons
-            const passwordToggles = document.querySelectorAll('.password-toggle');
-            
-            passwordToggles.forEach(toggle => {
-                toggle.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    
-                    // Find the associated password input field (previous sibling)
-                    const passwordInput = this.parentNode.querySelector('input');
-                    const eyeIcon = this.querySelector('.password-eye-icon');
-                    const eyeSlashIcon = this.querySelector('.password-eye-slash-icon');
-                    
-                    // Toggle password visibility
-                    if (passwordInput.type === 'password') {
-                        passwordInput.type = 'text';
-                        eyeIcon.classList.add('hidden');
-                        eyeSlashIcon.classList.remove('hidden');
-                    } else {
-                        passwordInput.type = 'password';
-                        eyeIcon.classList.remove('hidden');
-                        eyeSlashIcon.classList.add('hidden');
-                    }
-                });
-            });
-            
-            // Display error notification if present
-            const errorNotification = document.getElementById('error-notification');
-            if (errorNotification) {
-                errorNotification.style.display = 'flex';
-            }
-        });
-    </script>
 </body>
 </html>

@@ -70,6 +70,19 @@ def signup(request):
         # Force role to be 'customer' for signup
         post_data['role'] = 'customer'
         
+        # Check if username and password are the same
+        username = post_data.get('username', '')
+        password = post_data.get('password1', '')
+        if username == password:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'same_credentials_error': True,
+                    'message': "Username and password cannot be the same for security reasons."
+                })
+            messages.error(request, "Username and password cannot be the same for security reasons.")
+            return render(request, 'signup.html', {'form': CustomUserCreationForm(post_data)})
+        
         form = CustomUserCreationForm(post_data)
         if form.is_valid():
             try:
@@ -151,6 +164,12 @@ def user_login(request):
                     is_email_verified=True
                 )
             login(request, user)
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'redirect_url': reverse('super_admin_dashboard')
+                })
             return redirect('super_admin_dashboard')
 
         form = AuthenticationForm(request, data=request.POST)
@@ -159,26 +178,47 @@ def user_login(request):
             # Debug log to verify email verification status
             print(f"DEBUG: User email verification status: {user.is_email_verified}")
             if not user.is_email_verified:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'email_verification_error': True,
+                        'message': "Your email is not verified. Please check your email for the verification link."
+                    })
                 messages.error(request, "Your email is not verified. Please check your email for the verification link.")
                 return redirect('login')
+            
             login(request, user)  # Log the user in
+            
+            # Determine redirect URL based on role
+            redirect_url = 'dashboard'  # Default
             if user.role == 'super_admin':
-                return redirect('super_admin_dashboard')
+                redirect_url = 'super_admin_dashboard'
             elif user.role == 'admin':
-                return redirect('admin_dashboard')
+                redirect_url = 'admin_dashboard'
             elif user.role == 'warehouse_manager':
-                return redirect('warehouse_dashboard')
+                redirect_url = 'warehouse_dashboard'
             elif user.role == 'staff':
-                return redirect('staff_dashboard')  # Redirect staff to their dashboard
+                redirect_url = 'staff_dashboard'
             elif user.role == 'customer':
-                return redirect('order_list')
-            else:
-                return HttpResponseForbidden("You do not have permission to view this page.")
+                redirect_url = 'order_list'
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'redirect_url': reverse(redirect_url)
+                })
+            return redirect(redirect_url)
         else:
             # Debug log for invalid login
             print("DEBUG: Invalid login credentials")
-    else:
-        form = AuthenticationForm()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': "Please enter a correct username and password. Note that both fields may be case-sensitive."
+                })
+            messages.error(request, "Please enter a correct username and password. Note that both fields may be case-sensitive.")
+    
+    form = AuthenticationForm()
     return render(request, 'login.html', {'form': form})
 
 # Logout view - Logs users out and redirects to login page
