@@ -26,7 +26,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY','django-insecure-qej&*iv62fa=m^dh(u^k_(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["fyp-8xow.onrender.com"]
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
