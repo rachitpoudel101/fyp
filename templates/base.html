@@ -75,11 +75,34 @@
                                     <i class="fas fa-warehouse"></i>
                                     <span>Dashboard</span>
                                 </a>
-                            {% else %}
+                            {% elif user.role == 'staff' %}
+                                <a href="{% url 'staff_dashboard' %}" 
+                                   class="nav-link flex items-center space-x-2">
+                                    <i class="fas fa-users"></i>
+                                    <span>Dashboard</span>
+                                </a>
+                            {% elif user.role == 'customer' %}
+                                <a href="{% url 'customer_dashboard' %}" 
+                                   class="nav-link flex items-center space-x-2">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <span>Dashboard</span>
+                                </a>
                                 <a href="{% url 'order_list' %}" 
                                    class="nav-link flex items-center space-x-2">
                                     <i class="fas fa-shopping-cart"></i>
-                                    <span>Orders</span>
+                                    <span>My Orders</span>
+                                </a>
+                            {% elif user.role == 'super_admin' %}
+                                <a href="{% url 'super_admin_dashboard' %}" 
+                                   class="nav-link flex items-center space-x-2">
+                                    <i class="fas fa-crown"></i>
+                                    <span>Dashboard</span>
+                                </a>
+                            {% else %}
+                                <a href="{% url 'dashboard' %}" 
+                                   class="nav-link flex items-center space-x-2">
+                                    <i class="fas fa-home"></i>
+                                    <span>Dashboard</span>
                                 </a>
                             {% endif %}
                             
@@ -91,6 +114,34 @@
                                     <span>{{ user.username }}</span>
                                 </button>
                                 <div class="absolute right-0 w-48 mt-2 py-2 bg-white rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300">
+                                    {% if user.role == 'admin' %}
+                                        <a href="{% url 'admin_dashboard' %}" class="block px-4 py-2 hover:bg-gray-100">
+                                            <i class="fas fa-chart-line mr-2"></i>Dashboard
+                                        </a>
+                                    {% elif user.role == 'warehouse_manager' %}
+                                        <a href="{% url 'warehouse_dashboard' %}" class="block px-4 py-2 hover:bg-gray-100">
+                                            <i class="fas fa-warehouse mr-2"></i>Dashboard
+                                        </a>
+                                    {% elif user.role == 'staff' %}
+                                        <a href="{% url 'staff_dashboard' %}" class="block px-4 py-2 hover:bg-gray-100">
+                                            <i class="fas fa-users mr-2"></i>Dashboard
+                                        </a>
+                                    {% elif user.role == 'customer' %}
+                                        <a href="{% url 'customer_dashboard' %}" class="block px-4 py-2 hover:bg-gray-100">
+                                            <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                                        </a>
+                                        <a href="{% url 'order_list' %}" class="block px-4 py-2 hover:bg-gray-100">
+                                            <i class="fas fa-shopping-cart mr-2"></i>My Orders
+                                        </a>
+                                    {% elif user.role == 'super_admin' %}
+                                        <a href="{% url 'super_admin_dashboard' %}" class="block px-4 py-2 hover:bg-gray-100">
+                                            <i class="fas fa-crown mr-2"></i>Dashboard
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'dashboard' %}" class="block px-4 py-2 hover:bg-gray-100">
+                                            <i class="fas fa-home mr-2"></i>Dashboard
+                                        </a>
+                                    {% endif %}
                                     <a href="{% url 'profile' %}" class="block px-4 py-2 hover:bg-gray-100">
                                         <i class="fas fa-user mr-2"></i>Profile
                                     </a>
@@ -120,8 +171,15 @@
                             <a href="{% url 'admin_dashboard' %}" class="block nav-link">Dashboard</a>
                         {% elif user.role == 'warehouse_manager' %}
                             <a href="{% url 'warehouse_dashboard' %}" class="block nav-link">Dashboard</a>
+                        {% elif user.role == 'staff' %}
+                            <a href="{% url 'staff_dashboard' %}" class="block nav-link">Dashboard</a>
+                        {% elif user.role == 'customer' %}
+                            <a href="{% url 'customer_dashboard' %}" class="block nav-link">Dashboard</a>
+                            <a href="{% url 'order_list' %}" class="block nav-link">My Orders</a>
+                        {% elif user.role == 'super_admin' %}
+                            <a href="{% url 'super_admin_dashboard' %}" class="block nav-link">Dashboard</a>
                         {% else %}
-                            <a href="{% url 'order_list' %}" class="block nav-link">Orders</a>
+                            <a href="{% url 'dashboard' %}" class="block nav-link">Dashboard</a>
                         {% endif %}
                         <a href="{% url 'profile' %}" class="block nav-link">Profile</a>
                         <a href="{% url 'logout' %}" class="block nav-link text-red-600">Logout</a>

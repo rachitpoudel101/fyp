@@ -24,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY','django-insecure-qej&*iv62fa=m^dh(u^k_(_lh@t)=9=v@024*svs*q5bkg#3tz')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = []
 
@@ -35,9 +35,6 @@ EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'poudelrachit4@gmail.com')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'adxm gczk bwtl axtb')
-
-# For production email verification links
-SITE_URL = os.environ.get('SITE_URL', 'https://fyp-8xow.onrender.com/')
 
 # Application definition
 
@@ -97,11 +94,7 @@ WSGI_APPLICATION = 'inventory_man_system.wsgi.application'
 # }
 
 DATABASES = {
-    'default': dj_database_url.config(
-        # Replace this value with your local database's connection string.
-        default=os.environ.get('DATABASE_URL','postgresql://fyp_l34a_user:nMcfBz7lhdK5vU81lvVGxLLOghvxCZav@dpg-d0k4h7ruibrs7396uihg-a.oregon-postgres.render.com/fyp_l34a'),
-        conn_max_age=600
-    )
+    'default': dj_database_url.parse("postgresql://ims_7o4k_user:MkGfDIrGpPjkxDEjoOK6X1YSAyxNBtTH@dpg-d1mdhpm3jp1c73em3050-a.oregon-postgres.render.com/ims_7o4k"),
 }
 
 # Password validation
@@ -157,10 +150,6 @@ if 'whitenoise.middleware.WhiteNoiseMiddleware' not in MIDDLEWARE:
 # Add these additional settings
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 WHITENOISE_USE_FINDERS = True
-
-# Set allowed hosts to accept Render domains
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com'] + ALLOWED_HOSTS if ALLOWED_HOSTS else ['localhost', '127.0.0.1', '.onrender.com']
-
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

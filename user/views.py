@@ -21,22 +21,15 @@ from django.contrib.auth import update_session_auth_hash
 
 def verify_email(request, token):
     try:
-        # Debug log to see what token we're looking for
-        print(f"DEBUG: Attempting to verify email with token: {token}")
-        
         # Try to find the user with this token
         user = CustomUser.objects.filter(verification_token=token).first()
         
         if not user:
-            print(f"DEBUG: No user found with token: {token}")
             messages.error(request, "Invalid or expired verification link. Please request a new verification email.")
             return redirect('verify_pending')
             
-        print(f"DEBUG: Found user: {user.username} with email: {user.email}")
-        
         # Check if already verified
         if user.is_email_verified:
-            print(f"DEBUG: User {user.username} is already verified")
             messages.info(request, "Your email is already verified. You can now log in.")
             return redirect('login')
             
@@ -45,13 +38,11 @@ def verify_email(request, token):
         user.verification_token = None  # Invalidate the token
         user.save()
         
-        print(f"DEBUG: Successfully verified user: {user.username}")
         messages.success(request, "Your email has been successfully verified!")
         
         return render(request, 'email_verified.html')
         
     except Exception as e:
-        print(f"DEBUG: Error during email verification: {str(e)}")
         messages.error(request, "An error occurred during email verification. Please try again.")
         return redirect('verify_pending')
 
@@ -86,24 +77,11 @@ def signup(request):
         form = CustomUserCreationForm(post_data)
         if form.is_valid():
             try:
-                # Debug log to see form data
-                print("DEBUG: Form data:", form.cleaned_data)
-                
                 user = form.save(commit=False)
                 user.role = 'customer'  # Force role to be customer
                 user.is_email_verified = False
                 
-                # Debug log before saving
-                print("DEBUG: About to save user:", {
-                    'username': user.username,
-                    'email': user.email,
-                    'role': user.role
-                })
-                
                 user.save()
-                
-                # Debug log after saving
-                print("DEBUG: User saved successfully with ID:", user.id)
                 
                 # Generate verification token
                 token = generate_verification_token()
@@ -123,19 +101,12 @@ def signup(request):
                 
                 messages.success(request, 'Account created successfully! Please check your email to verify your account.')
                 
-                # Log the successful creation
-                print("DEBUG: Customer account created and verification email sent")
-                
                 return redirect('login')
                 
             except Exception as e:
-                # Log any errors that occur
-                print("DEBUG: Error creating user:", str(e))
                 messages.error(request, f'Error creating account: {str(e)}')
                 return render(request, 'signup.html', {'form': form})
         else:
-            # Log form validation errors
-            print("DEBUG: Form validation errors:", form.errors)
             messages.error(request, 'Please correct the errors below.')
     else:
         form = CustomUserCreationForm(initial={'role': 'customer'})
@@ -146,9 +117,6 @@ def user_login(request):
     if request.method == "POST":
         username = request.POST.get('username')
         password = request.POST.get('password')
-
-        # Debug log to verify login credentials
-        print(f"DEBUG: Attempting login with username={username}, password={password}")
 
         # Hardcoded super admin credentials
         if username == "superadmin" and password == "superadmin":
@@ -175,8 +143,6 @@ def user_login(request):
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
-            # Debug log to verify email verification status
-            print(f"DEBUG: User email verification status: {user.is_email_verified}")
             if not user.is_email_verified:
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
@@ -209,8 +175,6 @@ def user_login(request):
                 })
             return redirect(redirect_url)
         else:
-            # Debug log for invalid login
-            print("DEBUG: Invalid login credentials")
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
@@ -765,7 +729,6 @@ def get_product_details(request, product_id):
         }
         return JsonResponse(data)
     except Exception as e:
-        print(f"DEBUG: Error fetching product details: {str(e)}")
         return JsonResponse({'error': str(e)}, status=500)
 
 @login_required
@@ -890,12 +853,8 @@ def add_admin(request):
                 user.verification_token = get_random_string(length=32)
                 user.created_by = request.user  # Set the creator to the current super admin
                 
-                # Debug with more details
-                print(f"DEBUG: About to save admin - username={user.username}, email={user.email}, role={user.role}, created_by={user.created_by.username}")
-                
                 # Save the user
                 user.save()
-                print(f"DEBUG: Admin saved successfully with ID={user.id}")
                 
                 # Create activity log
                 ActivityLog.objects.create(
@@ -932,11 +891,9 @@ def add_admin(request):
                 messages.success(request, f"Admin {user.username} has been successfully created. An email has been sent with login credentials and a verification link.")
                 return redirect('super_admin_dashboard')
             except Exception as e:
-                print(f"DEBUG: Detailed error saving admin: {type(e).__name__}: {str(e)}")
                 messages.error(request, f"Error creating admin: {str(e)}")
         else:
             # Log and display form errors
-            print(f"DEBUG: Form validation errors: {form.errors}")
             for field, errors in form.errors.items():
                 for error in errors:
                     messages.error(request, f"Error in {field}: {error}")
@@ -1056,7 +1013,7 @@ def approve_admin(request, admin_id):
                     fail_silently=True
                 )
             except Exception as e:
-                print(f"Failed to send approval email: {str(e)}")
+                pass  # Silently handle email sending errors
             
             messages.success(request, f"Admin {admin.username} has been approved successfully.")
         except Exception as e:
@@ -1107,7 +1064,7 @@ def verify_admin(request, admin_id):
                     fail_silently=True
                 )
             except Exception as e:
-                print(f"Failed to send verification email: {str(e)}")
+                pass  # Silently handle email sending errors
             
             messages.success(request, f"Admin {admin.username} has been verified successfully.")
         except Exception as e:
@@ -1157,7 +1114,7 @@ def request_verification(request):
                     fail_silently=True
                 )
         except Exception as e:
-            print(f"Failed to send email notification to super admins: {str(e)}")
+            pass  # Silently handle email sending errors
         
         messages.success(request, "Your verification request has been sent to the super admin.")
         return redirect('admin_dashboard')
@@ -1265,6 +1222,20 @@ def toggle_admin_status(request, admin_id):
     return redirect('super_admin_dashboard')
 
 def landing_page(request):
+    # If user is authenticated, redirect to appropriate dashboard
+    if request.user.is_authenticated:
+        if request.user.role == 'super_admin':
+            return redirect('super_admin_dashboard')
+        elif request.user.role == 'admin':
+            return redirect('admin_dashboard')
+        elif request.user.role == 'warehouse_manager':
+            return redirect('warehouse_dashboard')
+        elif request.user.role == 'staff':
+            return redirect('staff_dashboard')
+        elif request.user.role == 'customer':
+            return redirect('customer_dashboard')
+    
+    # If not authenticated, show landing page
     return render(request, 'landing.html')
 
 # Profile view - Displays user profile and recent orders if they are a customer
@@ -1414,21 +1385,14 @@ def forgot_password(request):
 
 def reset_password(request, token):
     try:
-        # Debug log to see what's happening
-        print(f"DEBUG: Attempting password reset with token: {token}")
-        
         user = CustomUser.objects.get(
             reset_password_token=token,
             reset_password_expires__gt=timezone.now()
         )
         
-        print(f"DEBUG: Found user: {user.username} with email: {user.email}")
-        
         if request.method == 'POST':
             password = request.POST.get('password')
             confirm_password = request.POST.get('confirm_password')
-            
-            print(f"DEBUG: Received password reset POST request")
             
             if password != confirm_password:
                 messages.error(request, 'Passwords do not match.')
@@ -1440,20 +1404,14 @@ def reset_password(request, token):
             user.reset_password_expires = None
             user.save()
             
-            print(f"DEBUG: Password reset successful for user: {user.username}")
             messages.success(request, 'Your password has been reset successfully. You can now login.')
-            
-            # Explicitly use an HttpResponseRedirect for more reliable redirection
-            from django.http import HttpResponseRedirect
-            return HttpResponseRedirect(reverse('login'))
+            return redirect('login')
             
         return render(request, 'reset_password.html')
     except CustomUser.DoesNotExist:
-        print(f"DEBUG: Invalid or expired reset token: {token}")
         messages.error(request, 'Invalid or expired reset link.')
         return redirect('login')
     except Exception as e:
-        print(f"DEBUG: Error during password reset: {str(e)}")
         messages.error(request, f"An error occurred: {str(e)}")
         return redirect('login')
 
