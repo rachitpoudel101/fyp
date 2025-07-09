@@ -6,30 +6,45 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('user', '0003_activitylog'),
+        ("user", "0003_activitylog"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customuser',
-            name='created_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_users', to=settings.AUTH_USER_MODEL),
+            model_name="customuser",
+            name="created_by",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="created_users",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='is_staff',
+            model_name="customuser",
+            name="is_staff",
             field=models.BooleanField(default=False),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='role',
-            field=models.CharField(choices=[('super_admin', 'Super Admin'), ('admin', 'Admin'), ('warehouse_manager', 'Warehouse Manager'), ('staff', 'Staff'), ('customer', 'Customer')], default='customer', max_length=20),
+            model_name="customuser",
+            name="role",
+            field=models.CharField(
+                choices=[
+                    ("super_admin", "Super Admin"),
+                    ("admin", "Admin"),
+                    ("warehouse_manager", "Warehouse Manager"),
+                    ("staff", "Staff"),
+                    ("customer", "Customer"),
+                ],
+                default="customer",
+                max_length=20,
+            ),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='verification_token',
+            model_name="customuser",
+            name="verification_token",
             field=models.CharField(blank=True, max_length=100, null=True),
         ),
     ]

@@ -4,30 +4,46 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('Inventory', '0004_merge_migrations'),
+        ("Inventory", "0004_merge_migrations"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='order',
-            name='payment_date',
+            model_name="order",
+            name="payment_date",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='order',
-            name='payment_details',
+            model_name="order",
+            name="payment_details",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
         migrations.AddField(
-            model_name='order',
-            name='payment_method',
-            field=models.CharField(choices=[('cash_on_delivery', 'Cash on Delivery'), ('khalti', 'Khalti Digital Wallet'), ('credit_card', 'Credit/Debit Card')], default='cash_on_delivery', max_length=20),
+            model_name="order",
+            name="payment_method",
+            field=models.CharField(
+                choices=[
+                    ("cash_on_delivery", "Cash on Delivery"),
+                    ("khalti", "Khalti Digital Wallet"),
+                    ("credit_card", "Credit/Debit Card"),
+                ],
+                default="cash_on_delivery",
+                max_length=20,
+            ),
         ),
         migrations.AddField(
-            model_name='order',
-            name='payment_status',
-            field=models.CharField(choices=[('pending', 'Pending'), ('paid', 'Paid'), ('failed', 'Failed'), ('refunded', 'Refunded')], default='pending', max_length=10),
+            model_name="order",
+            name="payment_status",
+            field=models.CharField(
+                choices=[
+                    ("pending", "Pending"),
+                    ("paid", "Paid"),
+                    ("failed", "Failed"),
+                    ("refunded", "Refunded"),
+                ],
+                default="pending",
+                max_length=10,
+            ),
         ),
     ]

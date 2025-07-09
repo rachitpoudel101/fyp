@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('Inventory', '0001_initial'),
+        ("Inventory", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='product',
-            name='min_stock',
+            model_name="product",
+            name="min_stock",
             field=models.IntegerField(default=10),
         ),
     ]

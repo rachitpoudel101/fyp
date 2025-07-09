@@ -6,27 +6,61 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('Inventory', '0005_order_payment_date_order_payment_details_and_more'),
-        ('user', '0007_cart_wishlist_cartitem_wishlistitem'),
+        ("Inventory", "0005_order_payment_date_order_payment_details_and_more"),
+        ("user", "0007_cart_wishlist_cartitem_wishlistitem"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Notification',
+            name="Notification",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('notification_type', models.CharField(choices=[('order', 'New Order'), ('status', 'Status Update'), ('stock', 'Stock Alert'), ('general', 'General Notification')], default='general', max_length=20)),
-                ('title', models.CharField(max_length=255)),
-                ('message', models.TextField()),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('is_read', models.BooleanField(default=False)),
-                ('related_order', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, to='Inventory.order')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='notifications', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "notification_type",
+                    models.CharField(
+                        choices=[
+                            ("order", "New Order"),
+                            ("status", "Status Update"),
+                            ("stock", "Stock Alert"),
+                            ("general", "General Notification"),
+                        ],
+                        default="general",
+                        max_length=20,
+                    ),
+                ),
+                ("title", models.CharField(max_length=255)),
+                ("message", models.TextField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("is_read", models.BooleanField(default=False)),
+                (
+                    "related_order",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="Inventory.order",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="notifications",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at'],
+                "ordering": ["-created_at"],
             },
         ),
     ]

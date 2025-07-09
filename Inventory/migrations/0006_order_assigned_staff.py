@@ -6,16 +6,21 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('Inventory', '0005_order_payment_date_order_payment_details_and_more'),
+        ("Inventory", "0005_order_payment_date_order_payment_details_and_more"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='order',
-            name='assigned_staff',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_orders', to=settings.AUTH_USER_MODEL),
+            model_name="order",
+            name="assigned_staff",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="assigned_orders",
+                to=settings.AUTH_USER_MODEL,
+            ),
         ),
     ]

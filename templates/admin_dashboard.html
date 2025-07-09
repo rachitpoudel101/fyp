@@ -155,6 +155,30 @@
                         <h6 class="text-muted mb-0">Low Stock Alert</h6>
                         <span class="badge bg-danger">{{ low_stock_products|length }} items need attention</span>
                     </div>
+                    
+                    <!-- Debug Info for Admin -->
+                    {% if request.user.is_superuser %}
+                    <div class="alert alert-info mb-3">
+                        <h6><i class="fas fa-bug me-2"></i>Debug Info:</h6>
+                        <p><strong>Total Products:</strong> {{ total_products }}</p>
+                        <p><strong>Low Stock Products:</strong> {{ low_stock_products|length }}</p>
+                        {% if sample_products %}
+                        <p><strong>Sample Products:</strong></p>
+                        <ul>
+                            {% for product in sample_products %}
+                            <li>{{ product.name }} - Stock: {{ product.stock }}, Min Stock: {{ product.min_stock }}
+                                {% if product.stock <= product.min_stock %}
+                                <span class="badge bg-danger">LOW STOCK</span>
+                                {% else %}
+                                <span class="badge bg-success">OK</span>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
                     {% if low_stock_products %}
                     <div class="table-responsive">
                         <table class="table">
@@ -175,26 +199,30 @@
                                     <td>
                                         <div class="progress" style="height: 6px;">
                                             {% if product.stock < 5 %}
-                                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ product.stock }}0%"></div>
+                                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ product.stock|add:5 }}0%"></div>
                                             {% elif product.stock < 10 %}
-                                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ product.stock }}0%"></div>
+                                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ product.stock|add:10 }}%"></div>
                                             {% else %}
-                                                <div class="progress-bar bg-info" role="progressbar" style="width: {{ product.stock }}0%"></div>
+                                                <div class="progress-bar bg-info" role="progressbar" style="width: 50%"></div>
                                             {% endif %}
                                         </div>
-                                        <span class="small mt-1 d-inline-block">{{ product.stock }} items</span>
+                                        <span class="small mt-1 d-inline-block">{{ product.stock }} items (Min: {{ product.min_stock }})</span>
                                     </td>
                                     <td>
-                                        {% if product.stock < 5 %}
+                                        {% if product.stock == 0 %}
+                                            <span class="badge bg-danger">Out of Stock</span>
+                                        {% elif product.stock < 5 %}
                                             <span class="badge bg-danger">Critical</span>
-                                        {% elif product.stock < 10 %}
-                                            <span class="badge bg-warning">Warning</span>
+                                        {% elif product.stock <= product.min_stock %}
+                                            <span class="badge bg-warning">Low Stock</span>
                                         {% else %}
-                                            <span class="badge bg-info">Low</span>
+                                            <span class="badge bg-info">Moderate</span>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <a href="{% url 'restock_product' product.id %}" class="btn btn-sm btn-outline-primary">Restock</a>
+                                        <a href="{% url 'update_product' product.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-edit me-1"></i>Update Stock
+                                        </a>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -202,10 +230,20 @@
                         </table>
                     </div>
                     {% else %}
-                    <div class="text-center py-4">
-                        <i class="fas fa-check-circle text-success fs-1 mb-3"></i>
-                        <p class="text-success">All products are sufficiently stocked.</p>
-                    </div>
+                        {% if total_products > 0 %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-check-circle text-success fs-1 mb-3"></i>
+                            <p class="text-success">All products are sufficiently stocked.</p>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-box-open text-muted fs-1 mb-3"></i>
+                            <p class="text-muted">No products found in the database.</p>
+                            <a href="{% url 'add_product' %}" class="btn btn-primary mt-2">
+                                <i class="fas fa-plus me-2"></i>Add Your First Product
+                            </a>
+                        </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

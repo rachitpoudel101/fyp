@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('user', '0004_customuser_created_by_alter_customuser_is_staff_and_more'),
+        ("user", "0004_customuser_created_by_alter_customuser_is_staff_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='warehouse',
-            name='handles_expiring',
+            model_name="warehouse",
+            name="handles_expiring",
             field=models.BooleanField(default=False),
         ),
     ]

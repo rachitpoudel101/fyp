@@ -5,16 +5,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('Inventory', '0002_product_min_stock'),
-        ('user', '0005_warehouse_handles_expiring'),
+        ("Inventory", "0002_product_min_stock"),
+        ("user", "0005_warehouse_handles_expiring"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='product',
-            name='warehouse',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='user.warehouse'),
+            model_name="product",
+            name="warehouse",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="user.warehouse",
+            ),
         ),
     ]

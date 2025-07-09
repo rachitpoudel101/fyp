@@ -27,19 +27,25 @@
                                 {% endif %}
                                 
                                 <div class="form-group mb-4">
-                                    <label for="warehouse_name" class="form-label fw-bold text-purple" style="color: #6f42c1;"><i class="fas fa-tag me-2"></i>Warehouse Name</label>
+                                    <label for="warehouse_name" class="form-label fw-bold text-purple" style="color: #6f42c1;"><i class="fas fa-tag me-2"></i>Warehouse Name <span class="text-danger">*</span></label>
                                     <div class="input-group input-group-lg shadow-sm">
                                         <span class="input-group-text" style="background-color: #f3eeff; border-color: #d8c5ff;"><i class="fas fa-building text-purple" style="color: #6f42c1;"></i></span>
-                                        <input type="text" class="form-control form-control-lg border-start-0" id="warehouse_name" name="warehouse_name" placeholder="Enter warehouse name" required style="border-color: #d8c5ff;">
+                                        <input type="text" class="form-control form-control-lg border-start-0" id="warehouse_name" name="warehouse_name" placeholder="Enter warehouse name" value="{{ warehouse_name|default:'' }}" required style="border-color: #d8c5ff;">
+                                        <div class="invalid-feedback">
+                                            Please provide a warehouse name.
+                                        </div>
                                     </div>
                                     <div class="form-text text-muted">Choose a descriptive name for your warehouse</div>
                                 </div>
 
                                 <div class="form-group mb-4">
-                                    <label for="location" class="form-label fw-bold text-purple" style="color: #6f42c1;"><i class="fas fa-map-marker-alt me-2"></i>Location</label>
+                                    <label for="location" class="form-label fw-bold text-purple" style="color: #6f42c1;"><i class="fas fa-map-marker-alt me-2"></i>Location <span class="text-danger">*</span></label>
                                     <div class="input-group input-group-lg shadow-sm">
                                         <span class="input-group-text" style="background-color: #f3eeff; border-color: #d8c5ff;"><i class="fas fa-location-arrow text-purple" style="color: #6f42c1;"></i></span>
-                                        <input type="text" class="form-control form-control-lg border-start-0" id="location" name="location" placeholder="Enter warehouse location" required style="border-color: #d8c5ff;">
+                                        <input type="text" class="form-control form-control-lg border-start-0" id="location" name="location" placeholder="Enter warehouse location" value="{{ location|default:'' }}" required style="border-color: #d8c5ff;">
+                                        <div class="invalid-feedback">
+                                            Please provide a location.
+                                        </div>
                                     </div>
                                     <div class="form-text text-muted">Specify the physical address of the warehouse</div>
                                 </div>

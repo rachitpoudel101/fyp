@@ -4,25 +4,32 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('user', '0001_initial'),
+        ("user", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customuser',
-            name='is_approved',
+            model_name="customuser",
+            name="is_approved",
             field=models.BooleanField(default=False),
         ),
         migrations.AddField(
-            model_name='customuser',
-            name='is_verified',
+            model_name="customuser",
+            name="is_verified",
             field=models.BooleanField(default=False),
         ),
         migrations.AlterField(
-            model_name='customuser',
-            name='role',
-            field=models.CharField(choices=[('super_admin', 'Super Admin'), ('admin', 'Admin'), ('warehouse_manager', 'Warehouse Manager'), ('customer', 'Customer')], max_length=50),
+            model_name="customuser",
+            name="role",
+            field=models.CharField(
+                choices=[
+                    ("super_admin", "Super Admin"),
+                    ("admin", "Admin"),
+                    ("warehouse_manager", "Warehouse Manager"),
+                    ("customer", "Customer"),
+                ],
+                max_length=50,
+            ),
         ),
     ]

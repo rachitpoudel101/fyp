@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('user', '0005_warehouse_handles_expiring'),
+        ("user", "0005_warehouse_handles_expiring"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='customuser',
-            name='reset_password_expires',
+            model_name="customuser",
+            name="reset_password_expires",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='customuser',
-            name='reset_password_token',
+            model_name="customuser",
+            name="reset_password_token",
             field=models.CharField(blank=True, max_length=32, null=True),
         ),
     ]
