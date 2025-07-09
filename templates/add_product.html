@@ -84,6 +84,52 @@
                                         {{ field.help_text|safe }}
                                     </label>
                                 </div>
+                            {% elif field.name == 'warehouse' %}
+                                {{ field|safe }}
+                                <div class="form-text text-muted small mt-1">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Select a warehouse first. If the warehouse handles expiring products, an expiry date field will appear below.
+                                </div>
+                                <script>
+                                    document.getElementById('{{ field.id_for_label }}').classList.add('form-control');
+                                    document.getElementById('{{ field.id_for_label }}').addEventListener('change', function() {
+                                        const selectedWarehouse = this.value;
+                                        const expiryField = document.querySelector('.expires-field');
+                                        
+                                        if (selectedWarehouse) {
+                                            // Check if selected warehouse handles expiring products
+                                            const warehouseHandlesExpiring = {
+                                                {% for warehouse in form.warehouse.field.queryset %}
+                                                '{{ warehouse.id }}': {{ warehouse.handles_expiring|yesno:"true,false" }},
+                                                {% endfor %}
+                                            };
+                                            
+                                            if (warehouseHandlesExpiring[selectedWarehouse]) {
+                                                expiryField.style.display = 'block';
+                                                expiryField.querySelector('input').required = true;
+                                            } else {
+                                                expiryField.style.display = 'none';
+                                                expiryField.querySelector('input').required = false;
+                                                expiryField.querySelector('input').value = '';
+                                            }
+                                        } else {
+                                            expiryField.style.display = 'none';
+                                            expiryField.querySelector('input').required = false;
+                                        }
+                                    });
+                                </script>
+                            {% elif field.name == 'expires' %}
+                                <div class="expires-field" style="display: none;">
+                                    {{ field|safe }}
+                                    <div class="form-text text-muted small mt-1">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        <strong>Date Format:</strong> YYYY-MM-DD (Year-Month-Day)<br>
+                                        <small>Example: 2024-12-31 for December 31, 2024</small>
+                                    </div>
+                                    <script>
+                                        document.getElementById('{{ field.id_for_label }}').classList.add('form-control');
+                                    </script>
+                                </div>
                             {% else %}
                                 {{ field|safe }}
                                 <script>

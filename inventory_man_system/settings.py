@@ -24,9 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get('SECRET_KEY','django-insecure-qej&*iv62fa=m^dh(u^k_(_lh@t)=9=v@024*svs*q5bkg#3tz')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ["fyp-8xow.onrender.com"]
+# ALLOWED_HOSTS = ["fyp-8xow.onrender.com"]
+ALLOWED_HOSTS = []
 
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -34,7 +35,7 @@ EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'poudelrachit4@gmail.com')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'adxm gczk bwtl axtb')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'djba ddrw yjhe zaix ')
 
 # Application definition
 
@@ -86,16 +87,16 @@ WSGI_APPLICATION = 'inventory_man_system.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
-
 DATABASES = {
-    'default': dj_database_url.parse("postgresql://ims_7o4k_user:MkGfDIrGpPjkxDEjoOK6X1YSAyxNBtTH@dpg-d1mdhpm3jp1c73em3050-a.oregon-postgres.render.com/ims_7o4k"),
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
+
+# DATABASES = {
+#     'default': dj_database_url.parse("postgresql://ims_7o4k_user:MkGfDIrGpPjkxDEjoOK6X1YSAyxNBtTH@dpg-d1mdhpm3jp1c73em3050-a.oregon-postgres.render.com/ims_7o4k"),
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

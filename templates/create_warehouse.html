@@ -44,6 +44,40 @@
                                     <div class="form-text text-muted">Specify the physical address of the warehouse</div>
                                 </div>
 
+                                <div class="form-group mb-4">
+                                    <label for="handles_expiring" class="form-label fw-bold text-purple" style="color: #6f42c1;"><i class="fas fa-clock me-2"></i>Product Type</label>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="handles_expiring" name="handles_expiring" style="border-color: #6f42c1;">
+                                        <label class="form-check-label" for="handles_expiring">
+                                            This warehouse handles products with expiry dates
+                                        </label>
+                                    </div>
+                                    <div class="form-text text-muted">Enable this if the warehouse will store products that have expiration dates (food, medicine, etc.)</div>
+                                </div>
+
+                                <div class="form-group mb-4" id="expiry_date_field" style="display: none;">
+                                    <label for="sample_expiry_date" class="form-label fw-bold text-purple" style="color: #6f42c1;"><i class="fas fa-calendar-alt me-2"></i>Sample Expiry Date Format</label>
+                                    <div class="input-group input-group-lg shadow-sm">
+                                        <span class="input-group-text" style="background-color: #f3eeff; border-color: #d8c5ff;"><i class="fas fa-calendar text-purple" style="color: #6f42c1;"></i></span>
+                                        <input type="date" class="form-control form-control-lg border-start-0" id="sample_expiry_date" name="sample_expiry_date" style="border-color: #d8c5ff;">
+                                    </div>
+                                    <div class="form-text text-muted">
+                                        <strong>Date Format:</strong> YYYY-MM-DD (Year-Month-Day)<br>
+                                        <small>Example: 2024-12-31 for December 31, 2024</small>
+                                    </div>
+                                </div>
+
+                                <script>
+                                document.getElementById('handles_expiring').addEventListener('change', function() {
+                                    const expiryField = document.getElementById('expiry_date_field');
+                                    if (this.checked) {
+                                        expiryField.style.display = 'block';
+                                    } else {
+                                        expiryField.style.display = 'none';
+                                    }
+                                });
+                                </script>
+
                                 <div class="d-flex justify-content-between mt-5">
                                     <button type="submit" class="btn btn-lg px-5 text-white" style="background-color: #6f42c1; border-color: #6f42c1; box-shadow: 0 4px 6px rgba(111, 66, 193, 0.2);">
                                         <i class="fas fa-save me-2"></i>Create Warehouse

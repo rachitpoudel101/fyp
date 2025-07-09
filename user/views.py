@@ -304,7 +304,7 @@ def create_warehouse(request):
             # Log the activity
             ActivityLog.objects.create(
                 admin=request.user,
-                action=f"Created new warehouse: {warehouse_name}"
+                action=f"Created new warehouse: {warehouse_name} ({'Expiring' if handles_expiring else 'Non-Expiring'} Products)"
             )
             messages.success(request, f'Warehouse "{warehouse_name}" created successfully!')
             return redirect('admin_dashboard')
@@ -2152,7 +2152,7 @@ def product_catalog(request):
     
     # Get filter parameters from request
     category_id = request.GET.get('category')
-    search_query = request.GET.get('q')
+   
     sort_by = request.GET.get('sort', 'name')  # Default sort by name
     
     # Start with all products that have stock
