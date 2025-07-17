@@ -2382,6 +2382,7 @@ def checkout(request):
                 # Log the activity - FIX: Use admin field instead of user
                 ActivityLog.objects.create(
                     admin=request.user,  # Use admin field for the user
+
                     action=f"Placed order #{order.order_number} for ${order.total_amount} via {payment_method}",
                 )
 
@@ -3117,41 +3118,40 @@ def staff_change_password(request):
 @csrf_exempt
 @login_required
 def deactivate_user(request, user_id):
-    # Only superuser or admin can deactivate managers
+    # Only superuser or admin can deactivate managers or staff
     if request.method != "POST":
         return JsonResponse({"success": False, "error": "Invalid request method."}, status=405)
     if not (request.user.is_superuser or request.user.role == "admin"):
         return HttpResponseForbidden("You do not have permission to deactivate users.")
     user = get_object_or_404(CustomUser, id=user_id)
-    if user.role == "warehouse_manager":
+    if user.role in ["warehouse_manager", "staff"]:
         user.is_active = False
         user.save()
         ActivityLog.objects.create(
             admin=request.user,
-            action=f"Deactivated warehouse manager {user.username}",
+            action=f"Deactivated {user.role.replace('_', ' ')} {user.username}",
         )
-        messages.success(request, f"Warehouse manager {user.username} deactivated.")
+        messages.success(request, f"{user.get_role_display()} {user.username} deactivated.")
     return JsonResponse({"success": True})
 
 @require_POST
 @csrf_exempt
 @login_required
 def activate_user(request, user_id):
-
     if request.method != "POST":
         return JsonResponse({"success": False, "error": "Invalid request method."}, status=405)
     if not (request.user.is_superuser or request.user.role == "admin"):
         return HttpResponseForbidden("You do not have permission to activate users.")
     user = get_object_or_404(CustomUser, id=user_id)
-    if user.role == "warehouse_manager":
+    if user.role in ["warehouse_manager", "staff"]:
         user.is_active = True
         user.is_delete = False
         user.save()
         ActivityLog.objects.create(
             admin=request.user,
-            action=f"Activated warehouse manager {user.username}",
+            action=f"Activated {user.role.replace('_', ' ')} {user.username}",
         )
-        messages.success(request, f"Warehouse manager {user.username} activated.")
+        messages.success(request, f"{user.get_role_display()} {user.username} activated.")
     return redirect("user_statistics")
 
 @require_POST
@@ -3163,14 +3163,15 @@ def delete_user(request, user_id):
     if not (request.user.is_superuser or request.user.role == "admin"):
         return HttpResponseForbidden("You do not have permission to delete users.")
     user = get_object_or_404(CustomUser, id=user_id)
-    if user.role == "warehouse_manager":
+    if user.role in ["warehouse_manager", "staff"]:
         username = user.username
+        role_display = user.get_role_display()
         user.is_delete = True
         user.is_active = False
         user.save()
         ActivityLog.objects.create(
             admin=request.user,
-            action=f"Soft-deleted warehouse manager {username}",
+            action=f"Soft-deleted {user.role.replace('_', ' ')} {username}",
         )
-        messages.success(request, f"Warehouse manager {username} deleted (soft delete).")
+        messages.success(request, f"{role_display} {username} deleted (soft delete).")
     return redirect("user_statistics")

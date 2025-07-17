@@ -2,55 +2,159 @@
 
 {% block title %}Order Details{% endblock %}
 
-{% block content %}
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Detail</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link href="{% static 'css/order_detail.css' %}" rel="stylesheet">
-</head>
-<body>
-    <div class="container">
-        <h2>Order Detail</h2>
-        <p>Order Number: {{ order.order_number }}</p>
-        <p>Status: {{ order.status }}</p>
-        <p>Total Amount: {{ order.total_amount }}</p>
-        <h3>Products</h3>
-        <ul>
-            {% for item in order.orderitem_set.all %}
-                <li>{{ item.product.name }} - {{ item.quantity }} x {{ item.price }}</li>
-            {% endfor %}
-        </ul>
-        <button id="dashboardButton" class="btn btn-primary"> <a href="{% url 'order_list' %}">Go to Order Dashboard </a></button>
-    </div>
-    <script src="{% static 'js/order_detail.js' %}"></script>
-</body>
-</html>
+{% block head_extras %}
+<style>
+/* Consistent with dashboard look */
+body, html {
+    font-family: 'Poppins', Arial, sans-serif;
+    background: #f6f7fb;
+    color: #333;
+}
+.order-detail-container {
+    max-width: 700px;
+    margin: 40px auto 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(80, 80, 120, 0.08);
+    padding: 32px 32px 16px 32px;
+}
+.order-detail-header {
+    border-bottom: 1px solid #eee;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+}
+.order-detail-header h2 {
+    color: #6a1b9a;
+    font-weight: 700;
+    margin-bottom: 0;
+}
+.order-detail-info {
+    margin-bottom: 18px;
+}
+.order-detail-info p {
+    margin-bottom: 6px;
+    font-size: 1.05rem;
+}
+.order-products-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 24px;
+}
+.order-products-list li {
+    background: #f3eafc;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 8px;
+    font-size: 1.03rem;
+    display: flex;
+    justify-content: space-between;
+}
+.order-actions-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(80, 80, 120, 0.06);
+    margin-top: 24px;
+    padding: 18px 24px;
+}
+.order-actions-card .card-header {
+    background: none;
+    border-bottom: none;
+    padding: 0 0 10px 0;
+}
+.order-actions-card .btn-group .btn {
+    margin-right: 10px;
+    font-size: 1rem;
+    border-radius: 6px;
+    padding: 8px 18px;
+}
+.order-actions-card .btn-primary {
+    background: #6a1b9a;
+    border-color: #6a1b9a;
+}
+.order-actions-card .btn-primary:hover {
+    background: #7b1fa2;
+    border-color: #7b1fa2;
+}
+.order-actions-card .btn-success {
+    background: #43a047;
+    border-color: #43a047;
+}
+.order-actions-card .btn-success:hover {
+    background: #388e3c;
+    border-color: #388e3c;
+}
+.order-actions-card .btn-info {
+    background: #512da8;
+    border-color: #512da8;
+    color: #fff;
+}
+.order-actions-card .btn-info:hover {
+    background: #311b92;
+    border-color: #311b92;
+}
+.dashboard-btn {
+    margin-top: 18px;
+    display: block;
+    width: 100%;
+    background: #6a1b9a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 0;
+    font-size: 1.08rem;
+    font-weight: 500;
+    transition: background 0.2s;
+    text-align: center;
+    text-decoration: none;
+}
+.dashboard-btn:hover {
+    background: #7b1fa2;
+    color: #fff;
+    text-decoration: none;
+}
+</style>
+{% endblock %}
 
-<div class="card mb-4">
-    <div class="card-header">
-        <h5>Order Actions</h5>
+{% block content %}
+<div class="order-detail-container">
+    <div class="order-detail-header">
+        <h2>Order Detail</h2>
     </div>
-    <div class="card-body">
-        <div class="btn-group" role="group">
-            <!-- Export options -->
-            <a href="{% url 'export_billing_order' order.id %}?type=pdf" class="btn btn-primary">
-                <i class="fas fa-file-pdf"></i> Export as PDF
-            </a>
-            <a href="{% url 'export_billing_order' order.id %}?type=csv" class="btn btn-success">
-                <i class="fas fa-file-csv"></i> Export as CSV
-            </a>
-            
-            <!-- Email bill option -->
-            <a href="{% url 'email_bill' order.id %}" class="btn btn-info">
-                <i class="fas fa-envelope"></i> Email Invoice
-            </a>
+    <div class="order-detail-info">
+        <p><strong>Order Number:</strong> {{ order.order_number }}</p>
+        <p><strong>Status:</strong> {{ order.status|title }}</p>
+        <p><strong>Total Amount:</strong> {{ order.total_amount }}</p>
+    </div>
+    <h5 class="mb-2" style="color:#6a1b9a;">Products</h5>
+    <ul class="order-products-list">
+        {% for item in order.orderitem_set.all %}
+            <li>
+                <span>{{ item.product.name }}</span>
+                <span>{{ item.quantity }} x {{ item.price }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+    <a href="{% url 'order_list' %}" class="dashboard-btn">Go to Order Dashboard</a>
+
+    <div class="order-actions-card card mb-4 mt-4">
+        <div class="card-header">
+            <h5>Order Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="btn-group" role="group">
+                <!-- Export options -->
+                <a href="{% url 'export_billing_order' order.id %}?type=pdf" class="btn btn-primary">
+                    <i class="fas fa-file-pdf"></i> Export as PDF
+                </a>
+                <a href="{% url 'export_billing_order' order.id %}?type=csv" class="btn btn-success">
+                    <i class="fas fa-file-csv"></i> Export as CSV
+                </a>
+                <!-- Email bill option -->
+                <a href="{% url 'email_bill' order.id %}" class="btn btn-info">
+                    <i class="fas fa-envelope"></i> Email Invoice
+                </a>
+            </div>
         </div>
     </div>
 </div>
-
 {% endblock %}
