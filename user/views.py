@@ -40,6 +40,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from .models import Notification
 import csv
+from django.db.models.functions import ExtractMonth
+from collections import Counter
 
 
 class VerifyEmailView(View):
@@ -1827,8 +1829,6 @@ def edit_category(request, category_id):
 @login_required
 def manage_categories(request):
     """View function to list all categories"""
-    if request.user.role != "admin":
-        return HttpResponseForbidden("You are not authorized to view this page")
 
     categories = Category.objects.all()
     return render(request, "manage_categories.html", {"categories": categories})
