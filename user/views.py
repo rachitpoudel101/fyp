@@ -32,10 +32,8 @@ from django.urls import reverse
 from django.db.models import Sum, Q, F
 from django.contrib import messages
 from django.views.decorators.http import require_POST
-from django.db import transaction
-from django.contrib.auth.forms import PasswordChangeForm
-from django.contrib.auth import update_session_auth_hash
-from django.http import FileResponse
+from django.views.decorators.csrf import csrf_exempt
+
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from .models import Notification
@@ -3112,3 +3110,60 @@ def staff_change_password(request):
         form = PasswordChangeForm(request.user)
 
     return render(request, "staff_change_password.html", {"form": form})
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def deactivate_user(request, user_id):
+    # Only superadmin can deactivate managers
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("You do not have permission to deactivate users.")
+    user = get_object_or_404(CustomUser, id=user_id)
+    if user.role == "warehouse_manager":
+        user.is_active = False
+        user.save()
+        ActivityLog.objects.create(
+            admin=request.user,
+            action=f"Deactivated warehouse manager {user.username}",
+        )
+        messages.success(request, f"Warehouse manager {user.username} deactivated.")
+    return redirect("admin_dashboard")
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def activate_user(request, user_id):
+    # Only superadmin can activate managers
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("You do not have permission to activate users.")
+    user = get_object_or_404(CustomUser, id=user_id)
+    if user.role == "warehouse_manager":
+        user.is_active = True
+        user.save()
+        ActivityLog.objects.create(
+            admin=request.user,
+            action=f"Activated warehouse manager {user.username}",
+        )
+        messages.success(request, f"Warehouse manager {user.username} activated.")
+    return redirect("admin_dashboard")
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def delete_user(request, user_id):
+    # Only superadmin can delete managers
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("You do not have permission to delete users.")
+    user = get_object_or_404(CustomUser, id=user_id)
+    if user.role == "warehouse_manager":
+        username = user.username
+        user.delete()
+        ActivityLog.objects.create(
+            admin=request.user,
+            action=f"Deleted warehouse manager {username}",
+        )
+        messages.success(request, f"Warehouse manager {username} deleted.")
+    return redirect("admin_dashboard")

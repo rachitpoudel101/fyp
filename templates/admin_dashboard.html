@@ -328,27 +328,32 @@
                                         </button>
                                     </td>
                                     <td>
-                                        <!-- Only show actions for warehouse_manager if user is admin or superadmin -->
-                                        {% if request.user.role == 'admin' or request.user.is_superuser %}
-                                            {% if manager.is_active %}
-                                                <form method="post" action="{% url 'deactivate_user' manager.id %}" style="display:inline;">
-                                                    {% csrf_token %}
+                                        {# Only superadmin can deactivate/delete managers #}
+                                        {% if request.user.is_superuser %}
+                                            <form method="post" action="{% url 'deactivate_user' manager.id %}" style="display:inline;" class="action-form">
+                                                {% csrf_token %}
+                                                {% if manager.is_active %}
                                                     <button type="submit" class="btn btn-sm btn-danger" title="Deactivate">
                                                         <i class="fas fa-user-slash"></i> Deactivate
                                                     </button>
-                                                </form>
-                                            {% else %}
-                                                <form method="post" action="{% url 'activate_user' manager.id %}" style="display:inline;">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-success" title="Activate">
+                                                {% else %}
+                                                    <button type="submit" formaction="{% url 'activate_user' manager.id %}" class="btn btn-sm btn-success" title="Activate">
                                                         <i class="fas fa-user-check"></i> Activate
                                                     </button>
-                                                </form>
-                                            {% endif %}
-                                            <!-- Show is_active and is_delete status -->
-                                            <span class="badge bg-secondary ms-2">is_active: {{ manager.is_active }}</span>
-                                            <span class="badge bg-secondary ms-1">is_delete: {{ manager.is_delete|default:"False" }}</span>
+                                                {% endif %}
+                                            </form>
+                                            <form method="post" action="{% url 'delete_user' manager.id %}" style="display:inline;" class="action-form" onsubmit="return confirm('Are you sure you want to delete this manager?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <span class="text-muted">No permission</span>
                                         {% endif %}
+                                        <!-- Show is_active and is_delete status -->
+                                        <span class="badge bg-secondary ms-2">is_active: {{ manager.is_active }}</span>
+                                        <span class="badge bg-secondary ms-1">is_delete: {{ manager.is_delete|default:"False" }}</span>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -452,7 +457,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for admin in admin_users %}
+                                {% for admin in adAmin_users %}
                                 <tr>
                                     <td>{{ admin.id }}</td>
                                     <td>{{ admin.username }}</td>

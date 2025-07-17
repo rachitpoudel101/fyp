@@ -284,4 +284,8 @@ urlpatterns = [
         name="staff_change_password",
     ),
     path("admin-profile/", views.admin_profile, name="admin_profile"),
+    # Warehouse manager activation/deactivation/deletion (superadmin only)
+    path("deactivate-user/<int:user_id>/", views.deactivate_user, name="deactivate_user"),
+    path("activate-user/<int:user_id>/", views.activate_user, name="activate_user"),
+    path("delete-user/<int:user_id>/", views.delete_user, name="delete_user"),
 ]
