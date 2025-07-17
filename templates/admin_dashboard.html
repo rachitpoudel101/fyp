@@ -328,9 +328,27 @@
                                         </button>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-primary" onclick="editTags({{ manager.id }})">
-                                            <i class="fas fa-tags"></i> Edit Tags
-                                        </button>
+                                        <!-- Only show actions for warehouse_manager if user is admin or superadmin -->
+                                        {% if request.user.role == 'admin' or request.user.is_superuser %}
+                                            {% if manager.is_active %}
+                                                <form method="post" action="{% url 'deactivate_user' manager.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Deactivate">
+                                                        <i class="fas fa-user-slash"></i> Deactivate
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <form method="post" action="{% url 'activate_user' manager.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-success" title="Activate">
+                                                        <i class="fas fa-user-check"></i> Activate
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                            <!-- Show is_active and is_delete status -->
+                                            <span class="badge bg-secondary ms-2">is_active: {{ manager.is_active }}</span>
+                                            <span class="badge bg-secondary ms-1">is_delete: {{ manager.is_delete|default:"False" }}</span>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -384,9 +402,24 @@
                                         </button>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-primary" onclick="editTags({{ staff.id }})">
-                                            <i class="fas fa-tags"></i> Edit Tags
-                                        </button>
+                                        <!-- Only show actions for staff if user is admin or superadmin -->
+                                        {% if request.user.role == 'admin' or request.user.is_superuser %}
+                                            {% if staff.is_active %}
+                                                <form method="post" action="{% url 'deactivate_user' staff.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Deactivate">
+                                                        <i class="fas fa-user-slash"></i> Deactivate
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <form method="post" action="{% url 'activate_user' staff.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-success" title="Activate">
+                                                        <i class="fas fa-user-check"></i> Activate
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -400,6 +433,69 @@
                 </div>
             </div>
         </div>
+
+        <!-- Admins Section (for superadmin only) -->
+        {% if request.user.is_superuser %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-3">Admins</h6>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for admin in admin_users %}
+                                <tr>
+                                    <td>{{ admin.id }}</td>
+                                    <td>{{ admin.username }}</td>
+                                    <td>{{ admin.email }}</td>
+                                    <td>
+                                        {% if admin.is_active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if admin.id != request.user.id %}
+                                            {% if admin.is_active %}
+                                                <form method="post" action="{% url 'deactivate_user' admin.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Deactivate">
+                                                        <i class="fas fa-user-slash"></i> Deactivate
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <form method="post" action="{% url 'activate_user' admin.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-success" title="Activate">
+                                                        <i class="fas fa-user-check"></i> Activate
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No admin users found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Add Member Tab -->

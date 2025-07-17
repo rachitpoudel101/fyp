@@ -5,7 +5,7 @@ import traceback
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, authenticate
 from django.views.generic import TemplateView
 from django.http import (
     HttpResponse,
@@ -193,24 +193,12 @@ def user_login(request):
                 )
             return redirect("super_admin_dashboard")
 
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            if not user.is_email_verified:
-                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                    return JsonResponse(
-                        {
-                            "success": False,
-                            "email_verification_error": True,
-                            "message": "Your email is not verified. Please check your email for the verification link.",
-                        }
-                    )
-                messages.error(
-                    request,
-                    "Your email is not verified. Please check your email for the verification link.",
-                )
-                return redirect("login")
-
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            # Check is_active and is_delete before login
+            if hasattr(user, "is_allowed_to_login") and not user.is_allowed_to_login():
+                form = AuthenticationForm(request, data=request.POST)
+                return render(request, "login.html", {"form": form, "login_error": "Your account is inactive or deleted."})
             login(request, user)  # Log the user in
 
             # Determine redirect URL based on role

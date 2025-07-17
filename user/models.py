@@ -50,6 +50,8 @@ class CustomUser(AbstractUser):
     )
     reset_password_token = models.CharField(max_length=32, null=True, blank=True)
     reset_password_expires = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    is_delete = models.BooleanField(default=False)
 
     def generate_verification_token(self):
         """Generate a new unique verification token."""
@@ -67,6 +69,9 @@ class CustomUser(AbstractUser):
     @property
     def unread_notifications_count(self):
         return self.notifications.filter(is_read=False).count()
+
+    def is_allowed_to_login(self):
+        return self.is_active and not self.is_delete
 
 
 class ActivityLog(models.Model):
