@@ -246,7 +246,6 @@
                         <th>Added By</th>
                         <th>Email Verified</th>
                         <th>Status</th>
-                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -276,11 +275,6 @@
                                 <span class="badge bg-danger">Inactive</span>
                             {% endif %}
                         </td>
-                        <td>
-                            <a href="#" class="btn btn-action btn-edit">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -306,6 +300,7 @@
                 </thead>
                 <tbody>
                     {% for manager in warehouse_managers %}
+                    {% if not manager.is_delete %}
                     <tr>
                         <td>{{ manager.id }}</td>
                         <td>{{ manager.username }}</td>
@@ -332,20 +327,87 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="#" class="btn btn-action btn-view">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <a href="#" class="btn btn-action btn-edit">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <a href="#" class="btn btn-action btn-delete">
-                                <i class="fas fa-trash"></i>
-                            </a>
+                            {% if request.user.role == 'admin' %}
+                                {% if manager.is_active %}
+                                    <form method="post" action="{% url 'deactivate_user' manager.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
+                                    </form>
+                                    <form method="post" action="{% url 'delete_user' manager.id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this manager?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" action="{% url 'activate_user' manager.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-success">Activate</button>
+                                    </form>
+                                    <form method="post" action="{% url 'delete_user' manager.id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this manager?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">No permission</span>
+                            {% endif %}
                         </td>
                     </tr>
+                    {% endif %}
                     {% empty %}
                     <tr>
                         <td colspan="7" class="text-center">No warehouse managers found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Deleted Warehouse Managers Section -->
+    <div class="section-card">
+        <h3 class="mb-3 text-purple"><i class="fas fa-user-slash me-2"></i> Deleted Warehouse Managers</h3>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>User ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Added By</th>
+                        <th>Status</th>
+                        <th>Restore</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for manager in warehouse_managers %}
+                    {% if manager.is_delete %}
+                    <tr>
+                        <td>{{ manager.id }}</td>
+                        <td>{{ manager.username }}</td>
+                        <td>{{ manager.email }}</td>
+                        <td>
+                            {% if manager.created_by %}
+                                {{ manager.created_by.username }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-danger">Deleted</span>
+                        </td>
+                        <td>
+                            {% if request.user.role == 'admin' %}
+                                <form method="post" action="{% url 'activate_user' manager.id %}" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-success">Restore</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center">No deleted warehouse managers found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -398,15 +460,19 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="#" class="btn btn-action btn-view">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <a href="#" class="btn btn-action btn-edit">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <a href="#" class="btn btn-action btn-delete">
-                                <i class="fas fa-trash"></i>
-                            </a>
+                            {% if request.user.is_superuser %}
+                                {% if staff.is_active %}
+                                    <form method="post" action="{% url 'deactivate_user' staff.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" action="{% url 'activate_user' staff.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-success">Activate</button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}

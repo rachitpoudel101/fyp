@@ -302,12 +302,12 @@
                                     <th>Username</th>
                                     <th>Email</th>
                                     <th>Status</th>
-                                    <th>Tags</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for manager in warehouse_managers %}
+                                {% if not manager.is_delete %}
                                 <tr>
                                     <td>{{ manager.id }}</td>
                                     <td>{{ manager.username }}</td>
@@ -320,45 +320,85 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% for tag in manager.tags %}
-                                            <span class="badge bg-info me-1">{{ tag }}</span>
-                                        {% endfor %}
-                                        <button class="btn btn-sm btn-outline-primary" onclick="addTag({{ manager.id }})">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
+                                        {% if request.user.is_superuser or request.user.role == 'admin' %}
+                                            {% if manager.is_active %}
+                                                <form method="post" action="{% url 'deactivate_user' manager.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
+                                                </form>
+                                                <form method="post" action="{% url 'delete_user' manager.id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this manager?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                                </form>
+                                            {% else %}
+                                                <form method="post" action="{% url 'activate_user' manager.id %}" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-success">Activate</button>
+                                                </form>
+                                                <form method="post" action="{% url 'delete_user' manager.id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this manager?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                                </form>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">No permission</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">No warehouse managers found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deleted Warehouse Managers Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="metric-card">
+                    <h6 class="text-muted mb-3">Deleted Warehouse Managers</h6>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>Restore</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for manager in warehouse_managers %}
+                                {% if manager.is_delete %}
+                                <tr>
+                                    <td>{{ manager.id }}</td>
+                                    <td>{{ manager.username }}</td>
+                                    <td>{{ manager.email }}</td>
+                                    <td>
+                                        <span class="badge bg-danger">Deleted</span>
                                     </td>
                                     <td>
-                                        {# Only superadmin can deactivate/delete managers #}
-                                        {% if request.user.is_superuser %}
-                                            <form method="post" action="{% url 'deactivate_user' manager.id %}" style="display:inline;" class="action-form">
+                                        {% if request.user.is_superuser or request.user.role == 'admin' %}
+                                            <form method="post" action="{% url 'activate_user' manager.id %}" style="display:inline;">
                                                 {% csrf_token %}
-                                                {% if manager.is_active %}
-                                                    <button type="submit" class="btn btn-sm btn-danger" title="Deactivate">
-                                                        <i class="fas fa-user-slash"></i> Deactivate
-                                                    </button>
-                                                {% else %}
-                                                    <button type="submit" formaction="{% url 'activate_user' manager.id %}" class="btn btn-sm btn-success" title="Activate">
-                                                        <i class="fas fa-user-check"></i> Activate
-                                                    </button>
-                                                {% endif %}
-                                            </form>
-                                            <form method="post" action="{% url 'delete_user' manager.id %}" style="display:inline;" class="action-form" onsubmit="return confirm('Are you sure you want to delete this manager?');">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                                                    <i class="fas fa-trash"></i> Delete
-                                                </button>
+                                                <button type="submit" class="btn btn-sm btn-success">Restore</button>
                                             </form>
                                         {% else %}
                                             <span class="text-muted">No permission</span>
                                         {% endif %}
-                                        <!-- Show is_active and is_delete status -->
-                                        <span class="badge bg-secondary ms-2">is_active: {{ manager.is_active }}</span>
-                                        <span class="badge bg-secondary ms-1">is_delete: {{ manager.is_delete|default:"False" }}</span>
                                     </td>
                                 </tr>
+                                {% endif %}
                                 {% empty %}
                                 <tr>
-                                    <td colspan="6" class="text-center">No warehouse managers found.</td>
+                                    <td colspan="5" class="text-center">No deleted warehouse managers found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -381,7 +421,6 @@
                                     <th>Username</th>
                                     <th>Email</th>
                                     <th>Status</th>
-                                    <th>Tags</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -399,37 +438,34 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% for tag in staff.tags %}
-                                            <span class="badge bg-info me-1">{{ tag }}</span>
-                                        {% endfor %}
-                                        <button class="btn btn-sm btn-outline-primary" onclick="addTag({{ staff.id }})">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                    </td>
-                                    <td>
-                                        <!-- Only show actions for staff if user is admin or superadmin -->
-                                        {% if request.user.role == 'admin' or request.user.is_superuser %}
+                                        {% if request.user.is_superuser or request.user.role == 'admin' %}
                                             {% if staff.is_active %}
                                                 <form method="post" action="{% url 'deactivate_user' staff.id %}" style="display:inline;">
                                                     {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-danger" title="Deactivate">
-                                                        <i class="fas fa-user-slash"></i> Deactivate
-                                                    </button>
+                                                    <button type="submit" class="btn btn-sm btn-danger">Deactivate</button>
+                                                </form>
+                                                <form method="post" action="{% url 'delete_user' staff.id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this staff?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                                                 </form>
                                             {% else %}
                                                 <form method="post" action="{% url 'activate_user' staff.id %}" style="display:inline;">
                                                     {% csrf_token %}
-                                                    <button type="submit" class="btn btn-sm btn-success" title="Activate">
-                                                        <i class="fas fa-user-check"></i> Activate
-                                                    </button>
+                                                    <button type="submit" class="btn btn-sm btn-success">Activate</button>
+                                                </form>
+                                                <form method="post" action="{% url 'delete_user' staff.id %}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this staff?');">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
                                                 </form>
                                             {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">No permission</span>
                                         {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="6" class="text-center">No staff members found.</td>
+                                    <td colspan="5" class="text-center">No staff members found.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

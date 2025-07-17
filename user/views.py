@@ -4,10 +4,11 @@ import io
 import traceback
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth import login, logout, authenticate
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
+from django.contrib.auth import login, logout, authenticate, update_session_auth_hash
 from django.views.generic import TemplateView
 from django.http import (
+    FileResponse,
     HttpResponse,
     HttpResponseBadRequest,
     HttpResponseForbidden,
@@ -30,6 +31,7 @@ from django.core.mail import send_mail
 from django.utils.crypto import get_random_string
 from django.urls import reverse
 from django.db.models import Sum, Q, F
+from django.db import transaction
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
@@ -43,7 +45,6 @@ import csv
 class VerifyEmailView(View):
     def get(self, request, token):
         try:
-            # Try to find the user with this token
             user = CustomUser.objects.filter(verification_token=token).first()
 
             if not user:
@@ -3116,8 +3117,10 @@ def staff_change_password(request):
 @csrf_exempt
 @login_required
 def deactivate_user(request, user_id):
-    # Only superadmin can deactivate managers
-    if not request.user.is_superuser:
+    # Only superuser or admin can deactivate managers
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid request method."}, status=405)
+    if not (request.user.is_superuser or request.user.role == "admin"):
         return HttpResponseForbidden("You do not have permission to deactivate users.")
     user = get_object_or_404(CustomUser, id=user_id)
     if user.role == "warehouse_manager":
@@ -3128,42 +3131,46 @@ def deactivate_user(request, user_id):
             action=f"Deactivated warehouse manager {user.username}",
         )
         messages.success(request, f"Warehouse manager {user.username} deactivated.")
-    return redirect("admin_dashboard")
-
+    return JsonResponse({"success": True})
 
 @require_POST
 @csrf_exempt
 @login_required
 def activate_user(request, user_id):
-    # Only superadmin can activate managers
-    if not request.user.is_superuser:
+
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid request method."}, status=405)
+    if not (request.user.is_superuser or request.user.role == "admin"):
         return HttpResponseForbidden("You do not have permission to activate users.")
     user = get_object_or_404(CustomUser, id=user_id)
     if user.role == "warehouse_manager":
         user.is_active = True
+        user.is_delete = False
         user.save()
         ActivityLog.objects.create(
             admin=request.user,
             action=f"Activated warehouse manager {user.username}",
         )
         messages.success(request, f"Warehouse manager {user.username} activated.")
-    return redirect("admin_dashboard")
-
+    return redirect("user_statistics")
 
 @require_POST
 @csrf_exempt
 @login_required
 def delete_user(request, user_id):
-    # Only superadmin can delete managers
-    if not request.user.is_superuser:
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Invalid request method."}, status=405)
+    if not (request.user.is_superuser or request.user.role == "admin"):
         return HttpResponseForbidden("You do not have permission to delete users.")
     user = get_object_or_404(CustomUser, id=user_id)
     if user.role == "warehouse_manager":
         username = user.username
-        user.delete()
+        user.is_delete = True
+        user.is_active = False
+        user.save()
         ActivityLog.objects.create(
             admin=request.user,
-            action=f"Deleted warehouse manager {username}",
+            action=f"Soft-deleted warehouse manager {username}",
         )
-        messages.success(request, f"Warehouse manager {username} deleted.")
-    return redirect("admin_dashboard")
+        messages.success(request, f"Warehouse manager {username} deleted (soft delete).")
+    return redirect("user_statistics")
