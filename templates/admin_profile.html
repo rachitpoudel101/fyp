@@ -1,0 +1,129 @@
+{% extends 'base_dashboard.html' %}
+{% load static %}
+
+{% block title %}Admin Profile - Marline Dashboard{% endblock %}
+{% block page_title %}Admin Profile{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8 col-md-12 mx-auto">
+            <!-- Profile Header -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <div class="profile-header mb-4">
+                        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-6O6lZm6FwR4Urq0BnOCGuG59jdux31.png" 
+                             alt="Admin Profile" class="rounded-circle mb-3" width="120" height="120">
+                        <h3 class="mb-1">{{ user.first_name|default:'Admin' }} {{ user.last_name }}</h3>
+                        <p class="text-muted">System Administrator</p>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Information -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-user me-2"></i>Profile Information</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="first_name" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="first_name" name="first_name" 
+                                       value="{{ user.first_name }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="last_name" name="last_name" 
+                                       value="{{ user.last_name }}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" value="{{ user.username }}" readonly>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ user.email }}" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date_joined" class="form-label">Date Joined</label>
+                                <input type="text" class="form-control" value="{{ user.date_joined|date:'F d, Y' }}" readonly>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="last_login" class="form-label">Last Login</label>
+                                <input type="text" class="form-control" value="{{ user.last_login|date:'F d, Y g:i A' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Update Profile
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Account Statistics -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Account Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4 mb-3">
+                            <div class="stat-item">
+                                <i class="fas fa-calendar-alt text-primary mb-2" style="font-size: 2rem;"></i>
+                                <h6>Account Age</h6>
+                                <p class="text-muted">{{ user.date_joined|timesince }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="stat-item">
+                                <i class="fas fa-shield-alt text-success mb-2" style="font-size: 2rem;"></i>
+                                <h6>Account Status</h6>
+                                <p class="text-muted">{% if user.is_active %}Active{% else %}Inactive{% endif %}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="stat-item">
+                                <i class="fas fa-user-shield text-warning mb-2" style="font-size: 2rem;"></i>
+                                <h6>Role</h6>
+                                <p class="text-muted">{% if user.is_superuser %}Super Admin{% else %}Admin{% endif %}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-header {
+        position: relative;
+    }
+    .stat-item {
+        padding: 1rem;
+        border-radius: 10px;
+        background-color: #f8f9fa;
+        margin-bottom: 1rem;
+    }
+    .card {
+        border: none;
+        border-radius: 10px;
+    }
+    .card-header {
+        border-radius: 10px 10px 0 0 !important;
+    }
+</style>
+{% endblock %}

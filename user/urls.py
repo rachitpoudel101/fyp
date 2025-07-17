@@ -283,4 +283,5 @@ urlpatterns = [
         views.staff_change_password,
         name="staff_change_password",
     ),
+    path("admin-profile/", views.admin_profile, name="admin_profile"),
 ]

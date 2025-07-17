@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 import os
 from pathlib import Path
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -89,16 +90,18 @@ WSGI_APPLICATION = "inventory_man_system.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
-
 # DATABASES = {
-#     'default': dj_database_url.parse("postgresql://ims_7o4k_user:MkGfDIrGpPjkxDEjoOK6X1YSAyxNBtTH@dpg-d1mdhpm3jp1c73em3050-a.oregon-postgres.render.com/ims_7o4k"),
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
 # }
+
+DATABASES = {
+    "default": dj_database_url.parse(
+        "postgresql://ims_7o4k_user:MkGfDIrGpPjkxDEjoOK6X1YSAyxNBtTH@dpg-d1mdhpm3jp1c73em3050-a.oregon-postgres.render.com/ims_7o4k"
+    ),
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

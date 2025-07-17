@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout
+from django.views.generic import TemplateView
 from django.http import (
     HttpResponse,
     HttpResponseBadRequest,
@@ -13,6 +14,7 @@ from django.http import (
     JsonResponse,
 )
 from django.contrib.auth.decorators import login_required
+from django.views import View
 from Inventory.models import Order, OrderItem, Product, Category
 from .forms import CustomUserCreationForm, WarehouseForm, StaffCreationForm
 from .models import (
@@ -40,47 +42,56 @@ from .models import Notification
 import csv
 
 
-def verify_email(request, token):
-    try:
-        # Try to find the user with this token
-        user = CustomUser.objects.filter(verification_token=token).first()
+class VerifyEmailView(View):
+    def get(self, request, token):
+        try:
+            # Try to find the user with this token
+            user = CustomUser.objects.filter(verification_token=token).first()
 
-        if not user:
+            if not user:
+                messages.error(
+                    request,
+                    "Invalid or expired verification link. Please request a new verification email.",
+                )
+                return redirect("verify_pending")
+
+            # Check if already verified
+            if user.is_email_verified:
+                messages.info(
+                    request, "Your email is already verified. You can now log in."
+                )
+                return redirect("login")
+
+            # Verify the user
+            user.is_email_verified = True
+            user.verification_token = None  # Invalidate the token
+            user.save()
+
+            messages.success(request, "Your email has been successfully verified!")
+            return render(request, "email_verified.html")
+
+        except Exception:
             messages.error(
                 request,
-                "Invalid or expired verification link. Please request a new verification email.",
+                "An error occurred during email verification. Please try again.",
             )
             return redirect("verify_pending")
 
-        # Check if already verified
-        if user.is_email_verified:
-            messages.info(
-                request, "Your email is already verified. You can now log in."
-            )
-            return redirect("login")
 
-        # Verify the user
-        user.is_email_verified = True
-        user.verification_token = None  # Invalidate the token
-        user.save()
-
-        messages.success(request, "Your email has been successfully verified!")
-
-        return render(request, "email_verified.html")
-
-    except Exception:
-        messages.error(
-            request, "An error occurred during email verification. Please try again."
-        )
-        return redirect("verify_pending")
+verify_email = VerifyEmailView.as_view()
 
 
-def verify_pending(request):
-    return render(request, "verify_pending.html")
+class VerifyPendingView(TemplateView):
+    template_name = "verify_pending.html"
 
 
-def generate_verification_token():
-    return get_random_string(length=32)
+verify_pending = VerifyPendingView.as_view()
+
+
+class TokenGenerator:
+    @staticmethod
+    def generate_verification_token():
+        return get_random_string(length=32)
 
 
 # Sign up view - Allows users to register with a role
@@ -123,7 +134,7 @@ def signup(request):
                 user.save()
 
                 # Generate verification token
-                token = generate_verification_token()
+                token = TokenGenerator.generate_verification_token()
                 user.verification_token = token
                 user.save()
 
@@ -134,7 +145,7 @@ def signup(request):
                 send_mail(
                     "Verify your email",
                     f"Click the link to verify your email: {verification_link}",
-                    "your_email@example.com",  # Replace with your email
+                    "poudelrachit4@gmail.com",  # Replace with your email
                     [user.email],
                 )
 
@@ -1245,9 +1256,7 @@ def request_verification_form(request):
         return HttpResponseForbidden("You cannot request verification.")
 
     # Check if there's already a pending request - updated condition
-    has_pending_request = (
-        request.user.is_approved and not request.user.is_verified
-    )
+    has_pending_request = request.user.is_approved and not request.user.is_verified
 
     return render(
         request,
@@ -1448,6 +1457,23 @@ def super_admin_profile(request):
         )[:10],
     }
     return render(request, "super_admin_profile.html", context)
+
+
+@login_required
+def admin_profile(request):
+    """Display admin profile page"""
+    if request.method == "POST":
+        # Handle profile update
+        user = request.user
+        user.first_name = request.POST.get("first_name", "")
+        user.last_name = request.POST.get("last_name", "")
+        user.email = request.POST.get("email", "")
+        user.save()
+        messages.success(request, "Profile updated successfully!")
+        return redirect("admin_profile")
+
+    context = {"user": request.user, "title": "Admin Profile"}
+    return render(request, "admin_profile.html", context)
 
 
 @login_required

@@ -91,8 +91,11 @@
             <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
                 <div class="position-sticky pt-3">
                     <div class="d-flex align-items-center mb-4 px-3 sidebar-brand">
-                        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-6O6lZm6FwR4Urq0BnOCGuG59jdux31.png" alt="Marline" width="40" height="40" class="brand-logo">
-                        <span class="fs-4 ms-2 text-white fw-bold">Rachit</span>
+                        {% url 'admin_profile' as profile_url %}
+                        <a href="{{ profile_url|default:'#' }}" class="d-flex align-items-center text-decoration-none">
+                            <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-6O6lZm6FwR4Urq0BnOCGuG59jdux31.png" alt="Admin Profile" width="40" height="40" class="brand-logo rounded-circle">
+                            <span class="fs-4 ms-2 text-white fw-bold">{{ user.first_name|default:'Admin' }}</span>
+                        </a>
                     </div>
                     
                     <div class="sidebar-menu">
@@ -112,9 +115,33 @@
                         <h4 class="mb-0 ms-2">{% block page_title %}Dashboard{% endblock %}</h4>
                     </div>
                     <div class="d-flex align-items-center">
-                        <div class="user-profile d-flex align-items-center me-2">
-                            <span class="d-none d-md-inline">Welcome back!</span>
+                        <!-- Admin Profile Section -->
+                        <div class="dropdown me-3">
+                            <button class="btn btn-link dropdown-toggle d-flex align-items-center text-decoration-none" 
+                                    type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-6O6lZm6FwR4Urq0BnOCGuG59jdux31.png" 
+                                     alt="Admin" width="32" height="32" class="rounded-circle me-2">
+                                <span class="d-none d-md-inline text-dark">{{ user.username|default:'Admin' }}</span>
+                                <i class="fas fa-chevron-down ms-1 text-muted"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                <li><a class="dropdown-item" href="{{ profile_url|default:'#' }}">
+                                    <i class="fas fa-user me-2"></i>My Profile
+                                </a></li>
+                                <li><a class="dropdown-item" href="#">
+                                    <i class="fas fa-cog me-2"></i>Settings
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="{% url 'logout' %}">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                </a></li>
+                            </ul>
                         </div>
+                        
+                        <div class="user-profile d-flex align-items-center me-2">
+                            <span class="d-none d-md-inline">Welcome back, {{ user.first_name|default:'Admin' }}!</span>
+                        </div>
+                        
                         <!-- Logout Button -->
                         <div class="ms-2">
                             <a href="{% url 'logout' %}" class="btn btn-danger btn-sm px-3">
@@ -151,7 +178,7 @@
         function fetchNotificationCount() {
             fetch('/api/notification-count/')
                 .then(response => response.json())
-                .then(data => {
+                .then data => {
                     const notificationBadge = document.querySelector('#notificationDropdown .badge');
                     if (data.count > 0) {
                         // If we don't have a badge yet, create one
