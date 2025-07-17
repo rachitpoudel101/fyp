@@ -76,7 +76,7 @@
                         <div class="col-8">
                             <div class="numbers">
                                 <p class="text-sm mb-0 text-uppercase font-weight-bold text-muted">Your Assigned Processing Orders</p>
-                                <h5 class="font-weight-bolder mb-0">
+                                <h5 class="font-weight-bolder mb-0>
                                     {{ processing_orders }}
                                 </h5>
                                 <p class="mb-0 text-sm">
@@ -126,7 +126,7 @@
                         <div class="col-8">
                             <div class="numbers">
                                 <p class="text-sm mb-0 text-uppercase font-weight-bold text-muted">Your Total Assigned Orders</p>
-                                <h5 class="font-weight-bolder mb-0">
+                                <h5 class="font-weight-bolder mb-0>
                                     {{ total_orders }}
                                 </h5>
                                 <p class="mb-0 text-sm">
@@ -351,8 +351,16 @@
 <script>
     // Chart for order processing performance
     var ctx = document.getElementById("chart-bars").getContext("2d");
-    
-    // Sample data - in a real app you'd fetch this from your backend
+
+    // Use actual backend data for processed and delivered orders per month
+    // You must pass these lists from your Django view context as JSON
+    // Example in your view:
+    // context["orders_processed_per_month"] = [10, 12, 8, ...]
+    // context["orders_delivered_per_month"] = [8, 10, 7, ...]
+    // Then in template:
+    var processedData = {{ orders_processed_per_month|default:"[]"|safe }};
+    var deliveredData = {{ orders_delivered_per_month|default:"[]"|safe }};
+
     new Chart(ctx, {
         type: "bar",
         data: {
@@ -364,7 +372,7 @@
                 borderRadius: 4,
                 borderSkipped: false,
                 backgroundColor: "#3b82f6",
-                data: [20, 30, 25, 40, 32, 35, 50, 38, 52, 45, 43, 40],
+                data: processedData,
                 maxBarThickness: 10
             }, {
                 label: "Orders Delivered",
@@ -373,7 +381,7 @@
                 borderRadius: 4,
                 borderSkipped: false,
                 backgroundColor: "#10b981",
-                data: [15, 20, 22, 32, 28, 32, 44, 32, 48, 40, 40, 35],
+                data: deliveredData,
                 maxBarThickness: 10
             }],
         },
