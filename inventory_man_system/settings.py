@@ -30,7 +30,7 @@ SECRET_KEY = os.environ.get(
 DEBUG = False
 
 # ALLOWED_HOSTS = ["fyp-8xow.onrender.com"]
-ALLOWED_HOSTS = ["https://fyp-8xow.onrender.com/"]
+ALLOWED_HOSTS = ["*"]  # Allow all hosts for development; change in production
 
 # Email Configuration
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
