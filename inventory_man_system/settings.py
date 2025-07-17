@@ -27,10 +27,10 @@ SECRET_KEY = os.environ.get(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 # ALLOWED_HOSTS = ["fyp-8xow.onrender.com"]
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["https://fyp-8xow.onrender.com/"]
 
 # Email Configuration
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
