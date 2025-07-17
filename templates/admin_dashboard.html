@@ -81,11 +81,14 @@
                     <div class="metric-icon bg-primary-light">
                         <i class="fas fa-users text-primary"></i>
                     </div>
-                    <h3 class="metric-value">{{ total_users }}</h3>
+                    <h3 class="metric-value">{{ total_users|default:"0" }}</h3>
                     <p class="metric-label">Total Users</p>
+                    {% if users_trend %}
                     <div class="metric-trend text-success">
-                        <i class="fas fa-arrow-up"></i> 5% from last month
+                        <i class="fas fa-arrow-up"></i>
+                        {{ users_trend }}% from last month
                     </div>
+                    {% endif %}
                 </div>
             </div>
             <div class="col-md-3 mb-4">
@@ -93,11 +96,14 @@
                     <div class="metric-icon bg-success-light">
                         <i class="fas fa-box text-success"></i>
                     </div>
-                    <h3 class="metric-value">{{ total_products }}</h3>
+                    <h3 class="metric-value">{{ total_products|default:"0" }}</h3>
                     <p class="metric-label">Total Products</p>
+                    {% if products_trend %}
                     <div class="metric-trend text-success">
-                        <i class="fas fa-arrow-up"></i> 12% from last month
+                        <i class="fas fa-arrow-up"></i>
+                        {{ products_trend }}% from last month
                     </div>
+                    {% endif %}
                 </div>
             </div>
             <div class="col-md-3 mb-4">
@@ -105,11 +111,14 @@
                     <div class="metric-icon bg-warning-light">
                         <i class="fas fa-warehouse text-warning"></i>
                     </div>
-                    <h3 class="metric-value">{{ warehouses.count }}</h3>
+                    <h3 class="metric-value">{{ warehouses.count|default:"0" }}</h3>
                     <p class="metric-label">Warehouses</p>
+                    {% if warehouses_trend %}
                     <div class="metric-trend">
-                        <i class="fas fa-equals text-muted"></i> Same as last month
+                        <i class="fas fa-equals text-muted"></i>
+                        {{ warehouses_trend }}% from last month
                     </div>
+                    {% endif %}
                 </div>
             </div>
             <div class="col-md-3 mb-4">
@@ -117,27 +126,60 @@
                     <div class="metric-icon bg-danger-light">
                         <i class="fas fa-exclamation-triangle text-danger"></i>
                     </div>
-                    <h3 class="metric-value">{{ low_stock_products|length }}</h3>
+                    <h3 class="metric-value">{{ low_stock_products|length|default:"0" }}</h3>
                     <p class="metric-label">Low Stock Items</p>
+                    {% if low_stock_trend %}
                     <div class="metric-trend text-danger">
-                        <i class="fas fa-arrow-up"></i> 3% from last week
+                        <i class="fas fa-arrow-up"></i>
+                        {{ low_stock_trend }}% from last week
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- Charts Row -->
+        <!-- Inventory by Warehouse Section -->
         <div class="row mb-4">
-            <div class="col-md-6 mb-4">
+            <div class="col-12">
                 <div class="metric-card h-100">
-                    <h6 class="text-muted mb-3">Inventory Distribution by Warehouse</h6>
-                    <canvas id="warehouseDistributionChart" height="250"></canvas>
-                </div>
-            </div>
-            <div class="col-md-6 mb-4">
-                <div class="metric-card h-100">
-                    <h6 class="text-muted mb-3">Stock Levels Overview</h6>
-                    <canvas id="stockLevelsChart" height="250"></canvas>
+                    <h6 class="text-muted mb-3">Inventory by Warehouse</h6>
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Warehouse</th>
+                                    <th>Product ID</th>
+                                    <th>Product Name</th>
+                                    <th>Category</th>
+                                    <th>Stock</th>
+                                    <th>Min Stock</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for warehouse in warehouses %}
+                                    {% for product in warehouse.product_set.all %}
+                                    <tr>
+                                        <td>{{ warehouse.name }}</td>
+                                        <td>{{ product.id }}</td>
+                                        <td>{{ product.name }}</td>
+                                        <td>{{ product.category.name|default:"-" }}</td>
+                                        <td>{{ product.stock }}</td>
+                                        <td>{{ product.min_stock }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td>{{ warehouse.name }}</td>
+                                        <td colspan="5" class="text-muted text-center">No products in this warehouse</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">No warehouses found.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
