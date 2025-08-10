@@ -104,7 +104,7 @@ WSGI_APPLICATION = "inventory_man_system.wsgi.application"
 
 DATABASES = {
     "default": dj_database_url.parse(
-        "postgresql://ims_7o4k_user:MkGfDIrGpPjkxDEjoOK6X1YSAyxNBtTH@dpg-d1mdhpm3jp1c73em3050-a.oregon-postgres.render.com/ims_7o4k"
+        "postgresql://fyp_ucs8_user:DfpK3X3PVdZCh7fxKdNT0vpIXVg8MPb5@dpg-d2cc60qdbo4c73bjplj0-a.oregon-postgres.render.com/fyp_ucs8"
     ),
 }
 

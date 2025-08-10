@@ -84,8 +84,6 @@ verify_email = VerifyEmailView.as_view()
 
 class VerifyPendingView(TemplateView):
     template_name = "verify_pending.html"
-
-
 verify_pending = VerifyPendingView.as_view()
 
 
@@ -94,8 +92,6 @@ class TokenGenerator:
     def generate_verification_token():
         return get_random_string(length=32)
 
-
-# Sign up view - Allows users to register with a role
 
 
 def signup(request):
