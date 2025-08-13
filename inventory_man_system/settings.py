@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     "user",
     "Inventory",
     "widget_tweaks",
-    'api',
+    # 'api',
     
 ]
 
