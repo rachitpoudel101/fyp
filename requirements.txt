@@ -21,7 +21,7 @@ psycopg2-binary==2.9.10
 PyJWT==2.10.1
 pytz==2025.2
 reportlab==4.4.2
-requests==2.31.0
+requests==2.32.4
 ruff==0.12.2
 setuptools==69.0.0
 sqlparse==0.5.3
